@@ -15,6 +15,38 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/jsonrpc': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false, // if you are not using HTTPS
+          },
+          '/web': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false, // if you are not using HTTPS
+          },
+          '/api/protected': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false, // if you are not using HTTPS
+          },
+          '/api/auth/login': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false, // if you are not using HTTPS
+          },
+          '/api/auth/signup': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false, // if you are not using HTTPS
+          },
+          '/api/auth/logout': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false, // if you are not using HTTPS
+          },
+        },
       },
       plugins: [react()],
       define: {
