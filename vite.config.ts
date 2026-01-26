@@ -1,4 +1,3 @@
-
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig, loadEnv } from 'vite';
@@ -15,6 +14,66 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        strictPort: false,
+        allowedHosts: true,  // Changed to true instead of 'all'
+        hmr: {
+          clientPort: 3000,
+        },
+        proxy: {
+          '/mini': {
+            target: 'http://localhost:3001',
+            changeOrigin: true,
+            secure: false,
+            ws: true,
+            rewrite: (p) => p.replace(/^\/mini/, ''),
+          },
+          '/auth_saml': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/event': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/jsonrpc': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/web': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/api/protected': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/api/auth/login': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/api/auth/signup': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/api/auth/logout': {
+            target: 'http://localhost:8069',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/api/auth/redirect': {
+            target: "http://localhost:8069",
+            changeOrigin: true,
+            secure: false,
+            ws: true,
+          },
+        },
       },
       plugins: [react()],
       define: {

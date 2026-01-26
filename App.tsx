@@ -1,24 +1,16 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MINI_APPS, CATEGORIES } from './constants';
 import { MiniApp } from './types';
 import AppCard from './components/AppCard';
-import AuthPage from './components/SignUpPage';
+// import AuthPage from './components/SignUpPage';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
-
-export type View = 'gallery' | 'auth' | 'privacy' | 'terms';
-
-export interface AuthFormData {
-  fullName: string;
-  jobPosition: string;
-  phone: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  agreedToTerms: boolean;
-}
+import { AuthFormData } from './types/AuthFormData';
+import { View } from './types/View';
+import { AuthPage } from './features/auth/pages/AuthPage';
+import { checkAuth } from './services/checkAuth';
+import { signOut } from './services/signOut';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -31,7 +23,7 @@ const initialFormData: AuthFormData = {
 };
 
 const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [currentView, setCurrentView] = useState<View>('gallery');
   const [previousView, setPreviousView] = useState<View | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -45,7 +37,6 @@ const App: React.FC = () => {
   const userName = user?.fullName || "Guest User";
   const userInitial = userName.charAt(0).toUpperCase();
 
-  // Simple hash function to get a stable color for the avatar based on name
   const getAvatarColor = (name: string) => {
     const colors = [
       'bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 
@@ -61,7 +52,39 @@ const App: React.FC = () => {
 
   const avatarBgColor = useMemo(() => getAvatarColor(userName), [userName]);
 
-  // Close profile menu when clicking outside
+    useEffect(() => {
+    const verifySession = async () => {
+      const session = await checkAuth();
+      if (session.user?.error === "Authentication required") {
+        setIsLoggedIn(false);
+        setUser(null);
+      } else {
+        setIsLoggedIn(true);
+
+    // setAuthFormData({
+    //   fullName: session.user.name,
+    //   jobPosition: '',
+    //   phone: '',
+    //   email: session.user.email,
+    //   password: '',
+    //   confirmPassword: '',
+    //   agreedToTerms: true
+    // })
+        setUser({
+          fullName: session.user.name,
+          jobPosition: '',
+          phone: '',
+          email: session.user.email,
+          password: '',
+          confirmPassword: '',
+          agreedToTerms: true
+        });
+      }
+    };
+
+    verifySession();
+  }, [currentView]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
@@ -95,6 +118,10 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const logout = async () => {
+    await signOut();
+  }
+
   const handleBack = () => {
     if (previousView) {
       setCurrentView(previousView);
@@ -124,7 +151,9 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-8">
-          {isLoggedIn ? (
+          {isLoggedIn === null ? (
+              <div className="w-24 h-11 bg-gray-200 rounded-xl animate-pulse"></div> // placeholder
+            ) :isLoggedIn ? (
             <div className="relative" ref={profileMenuRef}>
               <motion.button 
                 whileHover={{ scale: 1.05 }}
@@ -175,6 +204,7 @@ const App: React.FC = () => {
                     <div className="p-2">
                       <button 
                         onClick={() => {
+                          logout();
                           setIsLoggedIn(false);
                           setUser(null);
                           setIsProfileMenuOpen(false);
@@ -238,11 +268,12 @@ const App: React.FC = () => {
               transition={{ duration: 0.3 }}
             >
               <AuthPage 
-                initialMode={authMode} 
-                onAuthSuccess={handleSuccessfulAuth} 
-                onNavigate={navigateTo}
-                formData={authFormData}
-                setFormData={setAuthFormData}
+                authMode={authMode} 
+                setCurrentView={setCurrentView}
+                // onAuthSuccess={handleSuccessfulAuth} 
+                // onNavigate={navigateTo}
+                // formData={authFormData}
+                // setFormData={setAuthFormData}
               />
             </motion.div>
           )}

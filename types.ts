@@ -4,6 +4,7 @@ export type Category = 'All' | 'Management' | 'Planning' | 'Creative' | 'Utiliti
 export interface MiniApp {
   id: string;
   title: string;
+  route?: string;
   category: Category;
   icon: string;
   colorScheme: {
