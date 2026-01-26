@@ -25,9 +25,10 @@ interface Props {
   error: FieldErrors<SignupFormInputs>;
   handleSubmit: UseFormHandleSubmit<SignupFormInputs, SignupFormInputs>
   onNavigate?: (view: View) => void;
+  setToastMsg?: (msg: string, options: { type: 'success' | 'error' }) => void;
 }
 
-export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNavigate, handleSubmit }) => {
+export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNavigate, handleSubmit, setToastMsg }) => {
   const [isLoginMode, setIsLoginMode] = useState('login');
   const [showTermsError, setShowTermsError] = useState(false);
   const [isOtherMode, setIsOtherMode] = useState(false);
@@ -37,8 +38,14 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
   
     const onSubmit: SubmitHandler<SignupFormInputs> = async (data) => {
       try {
-        const result = await signupMutation.mutateAsync(data);
-        // onNavigate('gallery');
+        const res =await signupMutation.mutateAsync(data);
+        if(res.status === 201){
+          setToastMsg('Registration successful! Email for verification sent.', { type: 'success' });
+          setTimeout(() => {
+            onNavigate && onNavigate('gallery');
+          }, 2000);
+        }
+        
       } catch (err: any) {
         console.error('Login failed:', err.message);
         alert(err.message);

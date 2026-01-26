@@ -19,6 +19,7 @@ interface Props {
   error: FieldErrors<LoginFormInputs>;
   handleSubmit: UseFormHandleSubmit<LoginFormInputs, LoginFormInputs>;
   onNavigate?: (view: View) => void;
+  setToastMsg?: (msg: string, options: { type: 'success' | 'error' }) => void;
 }
 
 const formVariants: Variants = {
@@ -27,13 +28,16 @@ const formVariants: Variants = {
   exit: { opacity: 0, y: -10, transition: { duration: 0.2, ease: "easeIn" } }
 };
 
-const LoginForm: React.FC<Props> = ({ control, onChange, error, handleSubmit, onNavigate }) => {
+const LoginForm: React.FC<Props> = ({ control, onChange, error, handleSubmit, onNavigate, setToastMsg }) => {
   const loginMutation = useLoginMutation();
 
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     try {
       const result = await loginMutation.mutateAsync(data);
-      result.sessionInfo.username !== "" && onNavigate('gallery');
+      result.sessionInfo.username !== "" && setToastMsg && setToastMsg("Login successful!", { type: "success" });
+      setTimeout(() => {
+        onNavigate && onNavigate('gallery');
+      }, 1000);
     } catch (err: any) {
       console.error('Login failed:', err.message);
       alert(err.message);

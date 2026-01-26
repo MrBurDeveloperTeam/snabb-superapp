@@ -9,10 +9,7 @@ export const useSignupMutation = () => {
   return useMutation({
     mutationFn: async (data: SignupFormInputs) => {
       const signupResult = await signupOdoo({...data});
-      console.log('signupResult: ',signupResult);
-      // const JWT = await issueJWT();
-      //   const sessionInfo = await getSessionInfo(data.email, data.password, loginResult.data); 
-      //   return { sessionInfo };
+      return signupResult;
     },
     onSuccess: () => {
     },

@@ -12,6 +12,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { containerVariants } from '@/shared/styles/variants';
 import { View } from '@/types/View.ts';
 import LoadingOverlay from '@/components/LoadingOverlay.tsx';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Props {
   authMode: "login" | "signup";
@@ -24,7 +26,7 @@ export function AuthPage({authMode, setCurrentView}: Props) {
     defaultValues: { email: "", password: "" }
   });
 
-  const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup }, setValue: setValueSignup } = useForm<SignupFormInputs>({
+  const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<SignupFormInputs>({
   defaultValues: {
     fullName: "",
     login: "",
@@ -42,10 +44,23 @@ export function AuthPage({authMode, setCurrentView}: Props) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const toastMessage = (msg: string, options: { type: 'success' | 'error' }) => {
+    if (options.type === 'success') {
+      toast.success(msg);
+    } else if (options.type === 'error') {
+      toast.error(msg);
+    }
+  };
+
 return(
   <>
+   <ToastContainer 
+        position="top-center"    // Position of the toast
+        autoClose={5000}        // Time (ms) before the toast disappears
+        hideProgressBar={false} // Option to show progress bar
+      />
   <Portal>
-    <LoadingOverlay isLoading={isSubmitting} message={"Registering..."} />
+    <LoadingOverlay isLoading={isSubmittingSignup} message={"Registering..."} />
   </Portal>
    <motion.div 
       variants={containerVariants}
@@ -69,6 +84,7 @@ return(
               handleSubmit={handleSubmitLogin}
               error={errorslogin}
               onNavigate={navigateTo}
+              setToastMsg={toastMessage}
             />
           ) : (
             <SignupForm
@@ -77,6 +93,7 @@ return(
               handleSubmit={handleSubmitSignUp}
               onChange={(e) => handleInputChangeSignup(e, setValueSignup)}
               onNavigate={navigateTo}
+              setToastMsg={toastMessage}
             />
           )}
           </AnimatePresence>
