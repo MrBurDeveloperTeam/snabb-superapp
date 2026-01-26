@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MiniApp } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 interface AppCardProps {
   app: MiniApp;
@@ -11,8 +11,43 @@ interface AppCardProps {
 const AppCard: React.FC<AppCardProps> = ({ app, index }) => {
   const isImageUrl = app.icon.startsWith('http');
 
+const handleClick = () => {
+  if (app.route) {
+    // Check if it's an external URL
+    const isExternal = app.route.startsWith("http://") || app.route.startsWith("https://");
+    if (isExternal) {
+      // Redirect to another port / domain
+      const host = window.location.hostname; 
+      switch(true){
+        case app.route?.includes('3001'):
+          window.location.href =
+            `http://${host}:3001/api/auth/redirect?destination=${encodeURIComponent(`http://${host}:3001`)}`;
+          break
+        case app.route?.includes('5173'):
+          window.location.href =
+            `http://${host}:5173/api/auth/redirect?destination=${encodeURIComponent(`http://${host}:5173`)}`;
+          break
+        case app.route?.includes('3002'):
+          window.location.href =
+            `http://${host}:3002/api/auth/redirect?destination=${encodeURIComponent(`http://${host}:3002`)}`;
+          break
+        case app.route?.includes('8069'):
+          window.location.href =
+            `http://${host}:8069/api/auth/redirect?destination=${encodeURIComponent(`http://${host}:8069`)}`;
+          break
+        default:
+          break;
+      }
+    } else {
+      // Internal navigation
+      // navigate(app.route);
+    }
+  }
+};
+
   return (
     <motion.div 
+      onClick={handleClick}
       layout
       initial={{ opacity: 0, scale: 0.8, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}

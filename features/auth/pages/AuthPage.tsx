@@ -3,7 +3,7 @@ import Showcase from './ShowCase.tsx';
 import { Dispatch, SetStateAction, useState } from 'react';
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { LoginFormInputs } from '../types/LoginPageProps.ts';
-import { Box } from '@mui/material';
+import { Box, Portal } from '@mui/material';
 import { SubmitButton } from '@/shared/ui/SubmitButton.tsx';
 import { handleInputChangeLogin, handleInputChangeSignup } from '../helper/AuthPageHelper.ts';
 import { SignupFormInputs } from '../types/SignUpFormInputs.ts';
@@ -11,6 +11,7 @@ import { SignupForm } from './SignUpForm.tsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import { containerVariants } from '@/shared/styles/variants';
 import { View } from '@/types/View.ts';
+import LoadingOverlay from '@/components/LoadingOverlay.tsx';
 
 interface Props {
   authMode: "login" | "signup";
@@ -19,7 +20,7 @@ interface Props {
 
 export function AuthPage({authMode, setCurrentView}: Props) {
   const [previousView, setPreviousView] = useState<View | null>(null);
-  const { control: controlLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorslogin }, setValue: setValueLogin } = useForm<LoginFormInputs>({
+  const { control: controlLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorslogin, isSubmitting }, setValue: setValueLogin } = useForm<LoginFormInputs>({
     defaultValues: { email: "", password: "" }
   });
 
@@ -42,6 +43,10 @@ export function AuthPage({authMode, setCurrentView}: Props) {
   };
 
 return(
+  <>
+  <Portal>
+    <LoadingOverlay isLoading={isSubmitting} message={"Registering..."} />
+  </Portal>
    <motion.div 
       variants={containerVariants}
       initial="hidden"
@@ -92,5 +97,6 @@ return(
   <Showcase isLoginMode={authMode} />
   </Box>
   </motion.div>
+  </>
   )
 }

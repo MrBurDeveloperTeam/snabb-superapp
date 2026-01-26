@@ -9,7 +9,6 @@ import TermsPage from './components/TermsPage';
 import { AuthFormData } from './types/AuthFormData';
 import { View } from './types/View';
 import { AuthPage } from './features/auth/pages/AuthPage';
-import { checkSession } from './services/checkSession';
 import { checkAuth } from './services/checkAuth';
 import { signOut } from './services/signOut';
 

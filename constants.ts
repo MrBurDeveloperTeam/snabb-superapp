@@ -14,6 +14,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Inventory',
     category: 'Management',
     icon: 'fa-solid fa-boxes-stacked',
+    route: `http://localhost:3001/`,
     colorScheme: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
   },
   {
@@ -21,6 +22,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Event',
     category: 'Planning',
     icon: 'fa-solid fa-calendar-check',
+    route: `http://localhost:8069/`,
     colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
   },
   {
@@ -28,11 +30,13 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Appointment',
     category: 'Planning',
     icon: 'fa-solid fa-calendar-plus',
+    route: `http://localhost:3002/`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
   },
   {
     id: 'app-5',
     title: 'Recruitment',
+    route: `http://localhost:5173/seekers`,
     category: 'Management',
     icon: 'fa-solid fa-user-tie',
     colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }
