@@ -5,8 +5,8 @@ import { getSessionInfo } from "@/services/GetSessionInfo";
 
 export const loginMutation = useMutation({
     mutationFn: async (data: LoginFormInputs) => {
-      const loginResult = await loginOdoo(data.email, data.password);
-      const sessionInfo = await getSessionInfo(data.email, data.password, loginResult.data);
+      const loginResult = await loginOdoo(data.login, data.password);
+      const sessionInfo = await getSessionInfo(data.login, data.password, loginResult.data);
       return { sessionInfo }; 
     },
     onSuccess: ({ sessionInfo }) => {
@@ -14,6 +14,5 @@ export const loginMutation = useMutation({
     },
     onError: (err: any) => {
       console.error("Login failed:", err.message);
-      alert(err.message); 
     },
   });

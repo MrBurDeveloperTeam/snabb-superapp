@@ -20,6 +20,27 @@ export default defineConfig(({ mode }) => {
           clientPort: 3000,
         },
         proxy: {
+          "/web": {
+            target: "https://mrbur-sandbox.odoo.com",
+            changeOrigin: true,
+            secure: false,
+          },
+          '/odoo': {
+            target: 'https://mrbur-sandbox.odoo.com',  
+            changeOrigin: true,
+            secure: false,
+          },
+          '/api/web': {
+            target: 'https://mrbur-sandbox.odoo.com',  
+            changeOrigin: true,
+            secure: false,
+            rewrite: (p) => p.replace(/^\/api/, ''),
+          },
+          '/api': {
+            target: 'https://mrbur-sandbox.odoo.com',  
+            changeOrigin: true,
+            secure: false,
+          },
           '/mini': {
             target: 'http://localhost:3001',
             changeOrigin: true,
@@ -42,11 +63,6 @@ export default defineConfig(({ mode }) => {
             changeOrigin: true,
             secure: false,
           },
-          '/web': {
-            target: 'http://localhost:8069',
-            changeOrigin: true,
-            secure: false,
-          },
           '/api/protected': {
             target: 'http://localhost:8069',
             changeOrigin: true,
@@ -57,8 +73,8 @@ export default defineConfig(({ mode }) => {
             changeOrigin: true,
             secure: false,
           },
-          '/api/auth/signup': {
-            target: 'http://localhost:8069',
+          '/api/v1/users': {
+            target: 'https://mrbur-sandbox.odoo.com',
             changeOrigin: true,
             secure: false,
           },

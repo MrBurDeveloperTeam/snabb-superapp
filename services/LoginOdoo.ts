@@ -1,14 +1,20 @@
 import axios from "axios";
+import api from "./api";
 
 export const loginOdoo = async (email: string, password: string) => {
-  const url = "/api/auth/login";
-  const db = "odoodb";
+  const url = "/web/session/authenticate";
+  const db = "mrbur-staging-bur-26090883";
 
   try {
-    const response = await axios.post(url, {
-      db: db,
-      login: email,
-      password: password
+    const response = await api.post(url, {
+      "jsonrpc": "2.0",
+      "method": "call",
+      "params": {
+        "db": "mrbur-staging-bur-26090883",
+        "login": email,
+        "password": password
+      },
+      "id": 1
     });
 
     if (response.data.error) {

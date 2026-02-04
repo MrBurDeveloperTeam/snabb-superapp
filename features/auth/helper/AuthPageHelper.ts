@@ -1,7 +1,7 @@
 import { UseFormSetValue } from "react-hook-form";
 import { LoginFormInputs } from "../types/LoginPageProps";
 import { ChangeEvent } from "react";
-import { SignupFormInputs } from "../types/SignUpFormInputs";
+import { AuthFormInputs } from "../types/AuthFormInputs";
 
 export const handleInputChangeLogin = <T extends Record<string, any>>(
     e: ChangeEvent<HTMLInputElement>,
@@ -9,12 +9,10 @@ export const handleInputChangeLogin = <T extends Record<string, any>>(
     const { name, value } = e.target;
 
     switch (name) {
-      case "email":
-        console.log("Email changed:",name, value);
+      case "login":
         // setValue("email", value.toLowerCase());
         break;
       case "password":
-        console.log("Password changed:", value);
         // Example: validate password strength here if you want
         break;
       default:
@@ -24,7 +22,7 @@ export const handleInputChangeLogin = <T extends Record<string, any>>(
 
 export const handleInputChangeSignup = (
     e: React.ChangeEvent<HTMLInputElement>,
-    setValue: UseFormSetValue<SignupFormInputs>) => {
+    setValue: UseFormSetValue<AuthFormInputs>) => {
       const { name, value } = e.target;
       switch (name) {
       case "fullName":

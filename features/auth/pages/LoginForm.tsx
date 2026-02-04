@@ -1,25 +1,29 @@
 import { ErrorMessage } from "@/components/ErrorMessage";
-import { useMutation } from '@tanstack/react-query';
-import { loginOdoo } from '@/services/LoginOdoo';
 import { Control, Controller, FieldErrors, SubmitHandler, UseFormHandleSubmit } from "react-hook-form";
 import { LoginFormInputs } from "../types/LoginPageProps";
-import React, { ChangeEventHandler } from "react";
+import React, { ChangeEventHandler, Dispatch, SetStateAction } from "react";
 import { Box } from "@mui/material";
 import { AnimatePresence, motion, Variants } from "framer-motion";
 import { inputClasses, labelClasses } from "@/shared/styles/style";
 import { AppIcon } from "@/shared/components/AppIcon";
 import { SubmitButton } from "@/shared/ui/SubmitButton";
-import { useLoginMutation } from "../hooks/useLoginMutation";
-import { useNavigate } from "react-router-dom";
 import { View } from "@/types/View";
+import { AuthFormInputs } from "../types/AuthFormInputs";
+import { useLoginMutation } from "../hooks/useLoginMutation";
+import { on } from "events";
+import { AuthFormData } from "@/types/AuthFormData";
 
 interface Props {
-  control: Control<LoginFormInputs, any, LoginFormInputs>;
+  onAuthSuccess: () => void;
+  control: Control<AuthFormInputs, any, AuthFormInputs>;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  error: FieldErrors<LoginFormInputs>;
-  handleSubmit: UseFormHandleSubmit<LoginFormInputs, LoginFormInputs>;
+  error: FieldErrors<AuthFormInputs>;
+  handleSubmit: UseFormHandleSubmit<AuthFormInputs, AuthFormInputs>;
   onNavigate?: (view: View) => void;
   setToastMsg?: (msg: string, options: { type: 'success' | 'error' }) => void;
+  setExternalUserId?: (id: string) => void;
+  setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData>>;
+  setFormData: Dispatch<SetStateAction<Partial<LoginFormInputs>>>;
 }
 
 const formVariants: Variants = {
@@ -28,19 +32,25 @@ const formVariants: Variants = {
   exit: { opacity: 0, y: -10, transition: { duration: 0.2, ease: "easeIn" } }
 };
 
-const LoginForm: React.FC<Props> = ({ control, onChange, error, handleSubmit, onNavigate, setToastMsg }) => {
-  const loginMutation = useLoginMutation();
+const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onChange, error, handleSubmit, onNavigate, setToastMsg, setExternalUserId, setLoggedInUser }) => {
+  const loginMutation = useLoginMutation(onAuthSuccess);
+  const isLoading = loginMutation.isPending;
 
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     try {
       const result = await loginMutation.mutateAsync(data);
-      result.sessionInfo.username !== "" && setToastMsg && setToastMsg("Login successful!", { type: "success" });
+      result.sessionInfo !== "" && setToastMsg && setToastMsg("Login successful!", { type: "success" });
+      result.sessionInfo !== "" && setLoggedInUser((user) => ({ ...user, fullName: result.sessionInfo.name, email: data.login }));
+      result.sessionInfo !== "" && setExternalUserId && setExternalUserId(result.sessionInfo.uid.toString());
+      result.sessionInfo !== "" && setFormData((prev) => ({ ...prev, login: result.sessionInfo.username }));
       setTimeout(() => {
         onNavigate && onNavigate('gallery');
       }, 1000);
     } catch (err: any) {
-      console.error('Login failed:', err.message);
-      alert(err.message);
+      if (err) {
+        setToastMsg && setToastMsg("Login failed", { type: "error" });
+        return;
+      }
     }
   };
 
@@ -72,7 +82,7 @@ const LoginForm: React.FC<Props> = ({ control, onChange, error, handleSubmit, on
           <i className="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-base transition-colors group-focus-within:text-blue-500" />
       
           <Controller
-            name="email"
+            name="login"
             control={control}
             render={({ field }) => (
               <input
@@ -117,11 +127,28 @@ const LoginForm: React.FC<Props> = ({ control, onChange, error, handleSubmit, on
           </div>
       </div>
 
+      {/* Name */}
+      <div style={{ display: 'none' }}>
+      <Controller
+      name="name" // Ensure the name field is part of the form
+      control={control}
+      render={({ field }) => (
+        <input
+          {...field}
+          type="text"
+          placeholder="John Doe"
+          className={inputClasses}
+          required
+        />
+      )}
+    />
+    </div>
+
       {/* Display generic form errors if needed */}
       {error && error.email && <ErrorMessage message={error.email.message} />}
       {error && error.password && <ErrorMessage message={error.password.message} />}
                 {/* Submit button stays shared */}
-      <SubmitButton isLoginMode={true} onClick={handleSubmit(onSubmit)} />
+      <SubmitButton isLoginMode={true} onClick={handleSubmit(onSubmit)} isLoading={isLoading} disabled={isLoading} />
       </Box>
       </motion.div>
       </AnimatePresence>

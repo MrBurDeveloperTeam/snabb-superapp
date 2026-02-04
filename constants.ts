@@ -7,6 +7,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Mr.Bur Shop',
     category: 'Management',
     icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s',
+    route: 'https://mrbur-sandbox.odoo.com/shop',
     colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#4338ca]', icon: '#4338ca' }
   },
   {
@@ -14,7 +15,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Inventory',
     category: 'Management',
     icon: 'fa-solid fa-boxes-stacked',
-    route: `http://localhost:3001/`,
+    route: `https://inventory.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
   },
   {
@@ -22,7 +23,8 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Event',
     category: 'Planning',
     icon: 'fa-solid fa-calendar-check',
-    route: `http://localhost:8069/`,
+    // route: `http://localhost:8069/`,
+    route: `https://event.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
   },
   {
@@ -30,13 +32,15 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Appointment',
     category: 'Planning',
     icon: 'fa-solid fa-calendar-plus',
-    route: `http://localhost:3002/`,
+    // route: `http://localhost:3002/`,
+    route: `https://appointment.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
   },
   {
     id: 'app-5',
     title: 'Recruitment',
-    route: `http://localhost:5173/seekers`,
+    // route: `http://localhost:5173/seekers`,
+    route: `https://recruitment.mrburstudio.com/`,
     category: 'Management',
     icon: 'fa-solid fa-user-tie',
     colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }

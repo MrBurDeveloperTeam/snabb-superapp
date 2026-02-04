@@ -4,7 +4,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { View } from '@/types/View';
 import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
 import { Control, Controller, FieldErrors, SubmitHandler, UseFormHandleSubmit } from 'react-hook-form';
-import { SignupFormInputs } from '../types/SignUpFormInputs';
+import { AuthFormInputs } from '../types/AuthFormInputs';
 import {
   TextField,
   Select,
@@ -17,13 +17,13 @@ import {
 import { inputClasses, labelClasses } from '@/shared/styles/style';
 import { containerVariants, formVariants, shakeVariants } from '@/shared/styles/variants';
 import { SubmitButton } from '@/shared/ui/SubmitButton';
-import { useSignupMutation } from '../hooks/useSignupMutation';
+import { useAuthMutation } from '../hooks/useAuthMutation';
 
 interface Props {
-  control: Control<SignupFormInputs, any, SignupFormInputs>;
+  control: Control<AuthFormInputs, any, AuthFormInputs>;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  error: FieldErrors<SignupFormInputs>;
-  handleSubmit: UseFormHandleSubmit<SignupFormInputs, SignupFormInputs>
+  error: FieldErrors<AuthFormInputs>;
+  handleSubmit: UseFormHandleSubmit<AuthFormInputs, AuthFormInputs>
   onNavigate?: (view: View) => void;
   setToastMsg?: (msg: string, options: { type: 'success' | 'error' }) => void;
 }
@@ -34,11 +34,11 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
   const [isOtherMode, setIsOtherMode] = useState(false);
   const [tempOtherValue, setTempOtherValue] = useState('');
 
-    const signupMutation = useSignupMutation();
+    const signupMutation = useAuthMutation();
   
-    const onSubmit: SubmitHandler<SignupFormInputs> = async (data) => {
+    const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
       try {
-        const res =await signupMutation.mutateAsync(data);
+        const res = await signupMutation.mutateAsync(data);
         if(res.status === 201){
           setToastMsg('Registration successful! Email for verification sent.', { type: 'success' });
           setTimeout(() => {
@@ -47,8 +47,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
         }
         
       } catch (err: any) {
-        console.error('Login failed:', err.message);
-        alert(err.message);
+        console.error('Signup failed:', err.message);
       }
     };
 
@@ -251,7 +250,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
 
           
     {/* Password */}
-    <div>
+    {/* <div>
       <label className={labelClasses}>Password</label>
 
       <div className="relative group">
@@ -279,11 +278,11 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
       {error.password && (
         <p className="mt-1 text-xs text-red-500">{error.password.message}</p>
       )}
-    </div>
+    </div> */}
 
         
       {/* Password */}
-    <div>
+    {/* <div>
       <label className={labelClasses}>Confirm Password</label>
 
       <div className="relative group">
@@ -313,7 +312,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           {error.confirmPassword.message}
         </p>
       )}
-    </div>
+    </div> */}
 
         
     {/* Terms */}

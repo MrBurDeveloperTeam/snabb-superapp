@@ -6,7 +6,7 @@ import { LoginFormInputs } from '../types/LoginPageProps.ts';
 import { Box, Portal } from '@mui/material';
 import { SubmitButton } from '@/shared/ui/SubmitButton.tsx';
 import { handleInputChangeLogin, handleInputChangeSignup } from '../helper/AuthPageHelper.ts';
-import { SignupFormInputs } from '../types/SignUpFormInputs.ts';
+import { AuthFormInputs } from '../types/AuthFormInputs.ts';
 import { SignupForm } from './SignUpForm.tsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import { containerVariants } from '@/shared/styles/variants';
@@ -14,19 +14,25 @@ import { View } from '@/types/View.ts';
 import LoadingOverlay from '@/components/LoadingOverlay.tsx';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+// import LoginForm from '@/components/LoginForm.tsx';
+import { getStoredUser } from '@/features/lib/auth.ts';
+import { AuthFormData } from '@/types/AuthFormData.ts';
 
 interface Props {
   authMode: "login" | "signup";
-  setCurrentView: Dispatch<SetStateAction<View>>
+  setCurrentView: Dispatch<SetStateAction<View>>;
+  onAuthSuccess: () => void;
+  setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData>>;
+  setFormData: Dispatch<SetStateAction<Partial<LoginFormInputs>>>;
 }
 
-export function AuthPage({authMode, setCurrentView}: Props) {
-  const [previousView, setPreviousView] = useState<View | null>(null);
-  const { control: controlLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorslogin, isSubmitting }, setValue: setValueLogin } = useForm<LoginFormInputs>({
-    defaultValues: { email: "", password: "" }
+export function AuthPage({authMode, setCurrentView, onAuthSuccess, setLoggedInUser, setFormData}: Props) {
+  const [loggedIn, setLoggedIn] = useState(!!getStoredUser());
+  const { control: controlLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorslogin, isSubmitting }, setValue: setValueLogin } = useForm<AuthFormInputs>({
+    defaultValues: { email: "", password: "", name: "login"}
   });
 
-  const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<SignupFormInputs>({
+  const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<AuthFormInputs>({
   defaultValues: {
     fullName: "",
     login: "",
@@ -51,6 +57,10 @@ export function AuthPage({authMode, setCurrentView}: Props) {
       toast.error(msg);
     }
   };
+
+  const setExternalUserId = (id: string) => {
+    localStorage.setItem('external_user_id', id);
+  }
 
 return(
   <>
@@ -79,12 +89,16 @@ return(
         <AnimatePresence mode="wait" initial={false}>
           {authMode === "login" ? (
             <LoginForm
+              onAuthSuccess={onAuthSuccess}
+              setLoggedInUser={setLoggedInUser}
               control={controlLogin}
               onChange={(e) => handleInputChangeLogin(e, setValueLogin)}
               handleSubmit={handleSubmitLogin}
               error={errorslogin}
               onNavigate={navigateTo}
               setToastMsg={toastMessage}
+              setExternalUserId={setExternalUserId}
+              setFormData={setFormData}
             />
           ) : (
             <SignupForm

@@ -2,48 +2,82 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { MiniApp } from '../types';
 import { useNavigate } from 'react-router-dom';
+import api, { redirection } from '@/services/api';
+import { getAuthUser } from '@/utils/authStorage';
 
 interface AppCardProps {
+  isLoggedIn: boolean;
   app: MiniApp;
   index: number;
 }
 
-const AppCard: React.FC<AppCardProps> = ({ app, index }) => {
+const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   const isImageUrl = app.icon.startsWith('http');
+  const user = getAuthUser();
 
-const handleClick = () => {
-  if (app.route) {
-    // Check if it's an external URL
-    const isExternal = app.route.startsWith("http://") || app.route.startsWith("https://");
-    if (isExternal) {
-      // Redirect to another port / domain
-      const host = window.location.hostname; 
-      switch(true){
-        case app.route?.includes('3001'):
-          window.location.href =
-            `http://${host}:3001/api/auth/redirect?destination=${encodeURIComponent(`http://${host}:3001`)}`;
-          break
-        case app.route?.includes('5173'):
-          window.location.href =
-            `http://${host}:5173/api/auth/redirect?destination=${encodeURIComponent(`http://${host}:5173`)}`;
-          break
-        case app.route?.includes('3002'):
-          window.location.href =
-            `http://${host}:3002/api/auth/redirect?destination=${encodeURIComponent(`http://${host}:3002`)}`;
-          break
-        case app.route?.includes('8069'):
-          window.location.href =
-            `http://${host}:8069/api/auth/redirect?destination=${encodeURIComponent(`http://${host}:8069`)}`;
-          break
-        default:
-          break;
+  const handleClick = async () => {
+    if (app.route) {
+      const isExternal = app.route.startsWith("http://") || app.route.startsWith("https://");
+      if (isExternal && isLoggedIn) {
+        const host = window.location.hostname; 
+  
+        switch(true){
+          case app.route?.includes('inventory'):
+            const inventoryRes = await redirection('inventory', user.username, user.name);
+            if(inventoryRes.result && inventoryRes.result.url){
+              window.location.href = inventoryRes.result.url;
+            }
+            break
+          case app.route?.includes('recruitment'):
+            const recruitmentRes = await redirection('recruitment', user.username, user.name);
+            if(recruitmentRes.result && recruitmentRes.result.url){
+              window.location.href = recruitmentRes.result.url;
+            }
+            break
+          case app.route?.includes('appointment'):
+            const appointmentRes = await redirection('appointment', user.username, user.name);
+            if(appointmentRes.result && appointmentRes.result.url){
+              window.location.href = appointmentRes.result.url;
+            }
+            break
+          case app.route?.includes('event'):
+            const eventRes = await redirection('event', user.username, user.name);
+            if(eventRes.result && eventRes.result.url){
+              window.location.href = eventRes.result.url;
+            }
+            break
+          case app.route?.includes('shop'):
+            const shopRes = await redirection('shop', user.username, user.name);
+            if(shopRes.result && shopRes.result.url){
+              window.location.href = shopRes.result.url;
+            }
+            break
+          default:
+            break;
+        }
+      } else {
+         switch(true){
+          case app.route?.includes('inventory'):
+              window.location.href = app.route;
+            break
+          case app.route?.includes('recruitment'):
+            window.location.href = app.route;
+            break
+          case app.route?.includes('appointment'):
+            window.location.href = app.route;
+            break
+          case app.route?.includes('event'):
+            window.location.href = app.route;
+            break
+          case app.route?.includes('shop'):
+            window.location.href = app.route;
+            break
+          default:
+            break;
+        }
       }
-    } else {
-      // Internal navigation
-      // navigate(app.route);
     }
-  }
-};
+  };
 
   return (
     <motion.div 

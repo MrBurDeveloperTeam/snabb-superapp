@@ -1,10 +1,10 @@
 import { Control, FieldErrors } from "react-hook-form";
-import { SignupFormInputs } from "./SignUpFormInputs";
+import { AuthFormInputs } from "./AuthFormInputs";
 
 interface Props {
-  control: Control<SignupFormInputs>;
+  control: Control<AuthFormInputs>;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  error: FieldErrors<SignupFormInputs>;
+  error: FieldErrors<AuthFormInputs>;
   showTermsError: boolean;
   isOtherMode: boolean;
   tempOtherValue: string;

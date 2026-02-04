@@ -3,22 +3,43 @@ import axios from "axios";
 const api = axios.create({
   baseURL: "/api",       
   withCredentials: true, 
+  headers: {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "X-Requested-With": "XMLHttpRequest",
+    "X-SSO-API-KEY": "my-sso-secret-123",
+  },
+});
+const odoo = axios.create({
+  baseURL: "/odoo",       
+  withCredentials: true, 
+  headers: {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "X-Requested-With": "XMLHttpRequest",
+    "X-SSO-API-KEY": "my-sso-secret-123",
+  },
 });
 
-// api.interceptors.request.use(
-//   async (config) => {
-//     try {
-//       await api.get("/protected");
-//       return config;
-//     } catch (err: any) {
-//       console.error("JWT invalid or expired, redirect to login");
-//       window.location.href = "/login";
-//       return Promise.reject(err);
-//     }
-//   },
-//   (error) => {
-//     return Promise.reject(error);
-//   }
-// );
+export const redirection = async (app: string, email: string, name: string) => {
+  try {
+     const res = await api.post('/v1/sso/app_link', {
+                  "jsonrpc": "2.0",
+                  "method": "call",
+                  "params": {
+                    "app_code": app,
+                    "email": email,
+                    "name": name,
+                    "company_id": 2,
+                    "portal": true
+                  },
+                  "id": 1
+                });
+    return res.data;
+  } catch (err: any) {
+    console.error("Redirection error:", err);
+    throw new Error(err.message || "SSO redirection failed");
+  }
+}
 
 export default api;

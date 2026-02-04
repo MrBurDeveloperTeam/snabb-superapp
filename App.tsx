@@ -11,6 +11,7 @@ import { View } from './types/View';
 import { AuthPage } from './features/auth/pages/AuthPage';
 import { checkAuth } from './services/checkAuth';
 import { signOut } from './services/signOut';
+import { getAuthUser } from './utils/authStorage';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -32,9 +33,11 @@ const App: React.FC = () => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const session = getAuthUser();
 
-  const userName = user?.fullName || "Guest User";
+  const userName = authFormData?.fullName || "Guest User";
   const userInitial = userName.charAt(0).toUpperCase();
 
   const getAvatarColor = (name: string) => {
@@ -54,27 +57,27 @@ const App: React.FC = () => {
 
     useEffect(() => {
     const verifySession = async () => {
-      const session = await checkAuth();
-      if (session.user?.error === "Authentication required") {
+      
+      if (session === null) {
         setIsLoggedIn(false);
         setUser(null);
       } else {
         setIsLoggedIn(true);
 
-    // setAuthFormData({
-    //   fullName: session.user.name,
-    //   jobPosition: '',
-    //   phone: '',
-    //   email: session.user.email,
-    //   password: '',
-    //   confirmPassword: '',
-    //   agreedToTerms: true
-    // })
+    setAuthFormData({
+      fullName: session.name,
+      jobPosition: '',
+      phone: '',
+      email: session.username,
+      password: '',
+      confirmPassword: '',
+      agreedToTerms: true
+    })
         setUser({
-          fullName: session.user.name,
+          fullName: session.name,
           jobPosition: '',
           phone: '',
-          email: session.user.email,
+          email: session.username,
           password: '',
           confirmPassword: '',
           agreedToTerms: true
@@ -83,7 +86,7 @@ const App: React.FC = () => {
     };
 
     verifySession();
-  }, [currentView]);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -105,11 +108,37 @@ const App: React.FC = () => {
   }, [activeCategory, searchQuery]);
 
   const handleSuccessfulAuth = () => {
-    setUser({ ...authFormData });
-    setIsLoggedIn(true);
-    setCurrentView('gallery');
-    setPreviousView(null);
-    setAuthFormData(initialFormData); // Clear form on success
+      const s = getAuthUser(); // re-read after AuthPage stored it
+      console.log("Authenticated user session:", s);
+
+  if (!s) {
+    setIsLoggedIn(false);
+    setUser(null);
+    return;
+  }
+
+  setIsLoggedIn(true);
+
+  const nextUser = {
+    fullName: s.name,
+    jobPosition: '',
+    phone: '',
+    email: s.username,
+    password: '',
+    confirmPassword: '',
+    agreedToTerms: true,
+  };
+
+  setAuthFormData(nextUser);
+  setUser(nextUser);
+
+  setCurrentView('gallery');
+  setPreviousView(null);
+    // setUser({ ...authFormData });
+    // setIsLoggedIn(true);
+    // setCurrentView('gallery');
+    // setPreviousView(null);
+    // setAuthFormData(initialFormData); // Clear form on success
   };
 
   const navigateTo = (view: View) => {
@@ -131,6 +160,8 @@ const App: React.FC = () => {
       navigateTo('gallery');
     }
   };
+
+  useEffect(() => {console.log("isLoggedIn: ",isLoggedIn)}, [isLoggedIn]);
 
   const Navigation = () => (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
@@ -179,10 +210,10 @@ const App: React.FC = () => {
                       
                       <div className="flex flex-col gap-3">
                         <div>
-                          <p className="text-base font-bold text-slate-900 truncate leading-tight">{user?.fullName}</p>
-                          {user?.jobPosition && (
+                          <p className="text-base font-bold text-slate-900 truncate leading-tight">{authFormData?.fullName}</p>
+                          {authFormData?.jobPosition && (
                             <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-wider border border-blue-100/50">
-                              {user.jobPosition}
+                              {authFormData.jobPosition}
                             </div>
                           )}
                         </div>
@@ -190,12 +221,12 @@ const App: React.FC = () => {
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2 text-slate-500">
                             <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
-                            <p className="text-xs font-semibold truncate">{user?.email}</p>
+                            <p className="text-xs font-semibold truncate">{authFormData?.email}</p>
                           </div>
-                          {user?.phone && (
+                          {authFormData?.phone && (
                             <div className="flex items-center gap-2 text-slate-500">
                               <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
-                              <p className="text-xs font-semibold truncate">{user?.phone}</p>
+                              <p className="text-xs font-semibold truncate">{authFormData?.phone}</p>
                             </div>
                           )}
                         </div>
@@ -270,10 +301,11 @@ const App: React.FC = () => {
               <AuthPage 
                 authMode={authMode} 
                 setCurrentView={setCurrentView}
-                // onAuthSuccess={handleSuccessfulAuth} 
+                onAuthSuccess={handleSuccessfulAuth} 
+                setLoggedInUser={setLoggedInUser}
                 // onNavigate={navigateTo}
                 // formData={authFormData}
-                // setFormData={setAuthFormData}
+                setFormData={setAuthFormData}
               />
             </motion.div>
           )}
@@ -371,6 +403,7 @@ const App: React.FC = () => {
                 <AnimatePresence mode='popLayout'>
                   {filteredApps.map((app, index) => (
                     <AppCard 
+                      isLoggedIn={isLoggedIn}
                       key={app.id} 
                       app={app} 
                       index={index} 
