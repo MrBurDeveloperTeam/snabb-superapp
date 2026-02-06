@@ -39,23 +39,23 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     try {
       const result = await loginMutation.mutateAsync(data);
-    
+
       if (result?.sessionInfo?.name) {
         setToastMsg?.("Login successful!", { type: "success" });
-      
+
         setLoggedInUser((user) => ({
           ...user,
           fullName: result.sessionInfo.name,
           email: result.sessionInfo.email,
         }));
-      
+
         setExternalUserId?.(String(result.sessionInfo.uid));
-      
+
         setFormData((prev) => ({
           ...prev,
           login: result.sessionInfo.email,
         }));
-      
+
         setTimeout(() => {
           onNavigate?.("gallery");
         }, 1000);
@@ -63,6 +63,7 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
         throw new Error("Session info missing");
       }
     } catch (err) {
+      console.log('err: ',err)
       setToastMsg?.("Login failed", { type: "error" });
     }
   };
