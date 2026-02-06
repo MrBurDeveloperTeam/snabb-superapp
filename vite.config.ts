@@ -8,8 +8,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
+  
     // Load env variables from the root directory
     const env = loadEnv(mode, '.', '');
+
+    const isDev = mode === "development";
     return {
       server: {
         port: 3000,
@@ -19,7 +22,12 @@ export default defineConfig(({ mode }) => {
         hmr: {
           clientPort: 3000,
         },
-        proxy: {
+        proxy: isDev ?{
+          // '/api/v1/users': {
+          //   target: 'http://localhost:8069',
+          //   changeOrigin: true,
+          //   secure: false,
+          // },
           "/web": {
             target: "https://mrbur-sandbox.odoo.com",
             changeOrigin: true,
@@ -89,7 +97,7 @@ export default defineConfig(({ mode }) => {
             secure: false,
             ws: true,
           },
-        },
+        }: undefined,
       },
       plugins: [react()],
       define: {

@@ -39,11 +39,11 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
     const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
       try {
         const res = await signupMutation.mutateAsync(data);
-        if(res.status === 201){
+        if(res.result.created){
           setToastMsg('Registration successful! Email for verification sent.', { type: 'success' });
           setTimeout(() => {
             onNavigate && onNavigate('gallery');
-          }, 2000);
+          }, 5000);
         }
         
       } catch (err: any) {
