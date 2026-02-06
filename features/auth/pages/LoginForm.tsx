@@ -39,20 +39,34 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     try {
       const result = await loginMutation.mutateAsync(data);
-      result.sessionInfo !== "" && setToastMsg && setToastMsg("Login successful!", { type: "success" });
-      result.sessionInfo !== "" && setLoggedInUser((user) => ({ ...user, fullName: result.sessionInfo.name, email: data.login }));
-      result.sessionInfo !== "" && setExternalUserId && setExternalUserId(result.sessionInfo.uid.toString());
-      result.sessionInfo !== "" && setFormData((prev) => ({ ...prev, login: result.sessionInfo.username }));
-      setTimeout(() => {
-        onNavigate && onNavigate('gallery');
-      }, 1000);
-    } catch (err: any) {
-      if (err) {
-        setToastMsg && setToastMsg("Login failed", { type: "error" });
-        return;
+    
+      if (result?.sessionInfo?.name) {
+        setToastMsg?.("Login successful!", { type: "success" });
+      
+        setLoggedInUser((user) => ({
+          ...user,
+          fullName: result.sessionInfo.name,
+          email: result.sessionInfo.email,
+        }));
+      
+        setExternalUserId?.(String(result.sessionInfo.uid));
+      
+        setFormData((prev) => ({
+          ...prev,
+          login: result.sessionInfo.email,
+        }));
+      
+        setTimeout(() => {
+          onNavigate?.("gallery");
+        }, 1000);
+      } else {
+        throw new Error("Session info missing");
       }
+    } catch (err) {
+      setToastMsg?.("Login failed", { type: "error" });
     }
   };
+
 
   return (
     <>
