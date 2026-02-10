@@ -63,7 +63,6 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
         throw new Error("Session info missing");
       }
     } catch (err) {
-      console.log('err: ',err)
       setToastMsg?.("Login failed", { type: "error" });
     }
   };
