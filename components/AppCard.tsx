@@ -52,6 +52,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
               window.location.href = shopRes.result.url;
             }
             break
+          case app.route?.includes('todo'):
+            const todoRes = await redirection('todo', user.username, user.name);
+            if(todoRes.result && todoRes.result.url){
+              window.location.href = todoRes.result.url;
+            }
+            break
           default:
             break;
         }
@@ -70,6 +76,9 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             window.location.href = app.route;
             break
           case app.route?.includes('shop'):
+            window.location.href = app.route;
+            break
+          case app.route?.includes('todo'):
             window.location.href = app.route;
             break
           default:

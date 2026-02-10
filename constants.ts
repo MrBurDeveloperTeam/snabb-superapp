@@ -66,6 +66,14 @@ export const MINI_APPS: MiniApp[] = [
     icon: 'fa-solid fa-calculator',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
+  {
+    id: 'app-9',
+    title: 'To-Do Manager',
+    category: 'Utilities',
+    icon: 'fa-solid fa-list-check',
+    route: `https://todo.mrburstudio.com/`,
+    colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
+  },
 ];
 
 export const CATEGORIES: string[] = ['All', 'Management', 'Planning', 'Creative', 'Utilities'];
