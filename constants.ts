@@ -23,7 +23,6 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Event',
     category: 'Planning',
     icon: 'fa-solid fa-calendar-check',
-    // route: `http://localhost:8069/`,
     route: `https://event.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
   },
@@ -32,14 +31,12 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Appointment',
     category: 'Planning',
     icon: 'fa-solid fa-calendar-plus',
-    // route: `http://localhost:3002/`,
     route: `https://appointment.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
   },
   {
     id: 'app-5',
     title: 'Recruitment',
-    // route: `http://localhost:5173/seekers`,
     route: `https://recruitment.mrburstudio.com/`,
     category: 'Management',
     icon: 'fa-solid fa-user-tie',
