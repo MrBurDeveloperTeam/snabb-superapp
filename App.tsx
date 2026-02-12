@@ -12,6 +12,7 @@ import { AuthPage } from './features/auth/pages/AuthPage';
 import { checkAuth } from './services/checkAuth';
 import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
+import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -36,6 +37,7 @@ const App: React.FC = () => {
   const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const session = getAuthUser();
+  const signedIn = useGetSessionInfo();
 
   const userName = authFormData?.fullName || "Guest User";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -56,37 +58,41 @@ const App: React.FC = () => {
   const avatarBgColor = useMemo(() => getAvatarColor(userName), [userName]);
 
     useEffect(() => {
-    const verifySession = async () => {
-      
-      if (session === null) {
-        setIsLoggedIn(false);
-        setUser(null);
-      } else {
-        setIsLoggedIn(true);
+      const verifySession = async () => {
+        
+        if (session === null) {
+          setIsLoggedIn(false);
+          setUser(null);
+        } else {
+          setIsLoggedIn(true);
 
-    setAuthFormData({
-      fullName: session.name,
-      jobPosition: '',
-      phone: '',
-      email: session.username,
-      password: '',
-      confirmPassword: '',
-      agreedToTerms: true
-    })
-        setUser({
-          fullName: session.name,
-          jobPosition: '',
-          phone: '',
-          email: session.username,
-          password: '',
-          confirmPassword: '',
-          agreedToTerms: true
-        });
-      }
-    };
+          setAuthFormData({
+            fullName: session.name,
+            jobPosition: '',
+            phone: '',
+            email: session.username,
+            password: '',
+            confirmPassword: '',
+            agreedToTerms: true
+          })
+          setUser({
+            fullName: session.name,
+            jobPosition: '',
+            phone: '',
+            email: session.username,
+            password: '',
+            confirmPassword: '',
+            agreedToTerms: true
+          });
+        }
+      };
+      signedIn.mutateAsync()
+      verifySession();
+    }, []);
 
-    verifySession();
-  }, []);
+    useEffect(() => {
+       console.log("Verifying session on App mount...",signedIn);
+    },[signedIn])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
