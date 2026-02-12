@@ -7,7 +7,7 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
   return useMutation({
     mutationFn: async (data: LoginFormInputs) => {
       const loginResult = await loginOdoo(data.login, data.password);
-      return { sessionInfo: loginResult.data.result };
+      return { sessionInfo: loginResult.result };
     },
     onSuccess: ({ sessionInfo }) => {
       localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
