@@ -59,28 +59,28 @@ const App: React.FC = () => {
 
   const verifySession = async () => {
     try{
-      await isLogin.mutateAsync() as any
+      const res = await isLogin.mutateAsync() as any
       
-      if (!session) {
+      if (!res?.sessionInfo) {
         setIsLoggedIn(false);
         setUser(null);
       } else {
         setIsLoggedIn(true);
       
         setAuthFormData({
-          fullName: session.name,
+          fullName: res.sessionInfo.name,
           jobPosition: '',
           phone: '',
-          email: session.username,
+          email: res.sessionInfo.username,
           password: '',
           confirmPassword: '',
           agreedToTerms: true
         })
         setUser({
-          fullName: session.name,
+          fullName: res.sessionInfo.name,
           jobPosition: '',
           phone: '',
-          email: session.username,
+          email: res.sessionInfo.username,
           password: '',
           confirmPassword: '',
           agreedToTerms: true
