@@ -11,7 +11,8 @@ const useGetSessionInfo = () => {
             }
             return { sessionInfo: response };
         },
-        onSuccess: (sessionInfo) => {
+        onSuccess: (data) => {
+            const { sessionInfo } = data;
             console.log("Successfully retrieved session info:", sessionInfo)
             localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
             return sessionInfo
