@@ -37,7 +37,7 @@ const App: React.FC = () => {
   const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const session = getAuthUser();
-  const signedIn = useGetSessionInfo();
+  const isLogin = useGetSessionInfo();
 
   const userName = authFormData?.fullName || "Guest User";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -57,42 +57,44 @@ const App: React.FC = () => {
 
   const avatarBgColor = useMemo(() => getAvatarColor(userName), [userName]);
 
-    useEffect(() => {
-      const verifySession = async () => {
-        
-        if (session === null) {
-          setIsLoggedIn(false);
-          setUser(null);
-        } else {
-          setIsLoggedIn(true);
+  const verifySession = async () => {
+    try{
+      await isLogin.mutateAsync() as any
+      
+      if (!session) {
+        setIsLoggedIn(false);
+        setUser(null);
+      } else {
+        setIsLoggedIn(true);
+      
+        setAuthFormData({
+          fullName: session.name,
+          jobPosition: '',
+          phone: '',
+          email: session.username,
+          password: '',
+          confirmPassword: '',
+          agreedToTerms: true
+        })
+        setUser({
+          fullName: session.name,
+          jobPosition: '',
+          phone: '',
+          email: session.username,
+          password: '',
+          confirmPassword: '',
+          agreedToTerms: true
+        });
+      }
+      } catch (error) {
+        setIsLoggedIn(false);
+        setUser(null);
+    }
+  };
 
-          setAuthFormData({
-            fullName: session.name,
-            jobPosition: '',
-            phone: '',
-            email: session.username,
-            password: '',
-            confirmPassword: '',
-            agreedToTerms: true
-          })
-          setUser({
-            fullName: session.name,
-            jobPosition: '',
-            phone: '',
-            email: session.username,
-            password: '',
-            confirmPassword: '',
-            agreedToTerms: true
-          });
-        }
-      };
-      signedIn.mutateAsync()
-      verifySession();
-    }, []);
-
-    useEffect(() => {
-       console.log("Verifying session on App mount...",signedIn);
-    },[signedIn])
+  useEffect(() => {
+    verifySession();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -166,8 +168,6 @@ const App: React.FC = () => {
       navigateTo('gallery');
     }
   };
-
-  useEffect(() => {console.log("isLoggedIn: ",isLoggedIn)}, [isLoggedIn]);
 
   const Navigation = () => (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">

@@ -49,6 +49,11 @@ export default defineConfig(({ mode }) => {
             changeOrigin: true,
             secure: false,
           },
+          '/web/session/get_session_info': {
+            target: 'https://mrbur-staging-bur-26090883.dev.odoo.com',  
+            changeOrigin: true,
+            secure: false,
+          },
           '/mini': {
             target: 'http://localhost:3001',
             changeOrigin: true,

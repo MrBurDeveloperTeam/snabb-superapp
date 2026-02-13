@@ -1,5 +1,4 @@
 import { loginOdoo } from "@/services/LoginOdoo";
-import { getSessionInfo } from "@/services/GetSessionInfo";
 import { useMutation } from "@tanstack/react-query";
 import { LoginFormInputs } from "@/features/auth/types/LoginPageProps";
 

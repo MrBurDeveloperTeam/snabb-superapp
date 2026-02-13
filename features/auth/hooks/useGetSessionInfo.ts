@@ -5,10 +5,15 @@ const useGetSessionInfo = () => {
     return useMutation({
         mutationFn: async () => {
             const response = await getSessionInfo()
-            return response
+            console.log("Session Info:", response)
+            if(!response) {
+                throw new Error("No session info found")
+            }
+            return { sessionInfo: response };
         },
         onSuccess: (sessionInfo) => {
-            console.log("Session info retrieved:", sessionInfo)
+            console.log("Successfully retrieved session info:", sessionInfo)
+            localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
             return sessionInfo
         },
         onError: (err: any) => {
