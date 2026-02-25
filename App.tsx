@@ -116,37 +116,31 @@ const App: React.FC = () => {
   }, [activeCategory, searchQuery]);
 
   const handleSuccessfulAuth = () => {
-      const s = getAuthUser(); // re-read after AuthPage stored it
-      console.log("Authenticated user session:", s);
+    const s = getAuthUser(); // re-read after AuthPage stored it
 
-  if (!s) {
-    setIsLoggedIn(false);
-    setUser(null);
-    return;
-  }
+    if (!s) {
+      setIsLoggedIn(false);
+      setUser(null);
+      return;
+    }
 
-  setIsLoggedIn(true);
+    setIsLoggedIn(true);
 
-  const nextUser = {
-    fullName: s.name,
-    jobPosition: '',
-    phone: '',
-    email: s.username,
-    password: '',
-    confirmPassword: '',
-    agreedToTerms: true,
-  };
+    const nextUser = {
+      fullName: s.name,
+      jobPosition: '',
+      phone: '',
+      email: s.username,
+      password: '',
+      confirmPassword: '',
+      agreedToTerms: true,
+    };
 
-  setAuthFormData(nextUser);
-  setUser(nextUser);
+    setAuthFormData(nextUser);
+    setUser(nextUser);
 
-  setCurrentView('gallery');
-  setPreviousView(null);
-    // setUser({ ...authFormData });
-    // setIsLoggedIn(true);
-    // setCurrentView('gallery');
-    // setPreviousView(null);
-    // setAuthFormData(initialFormData); // Clear form on success
+    setCurrentView('gallery');
+    setPreviousView(null);
   };
 
   const navigateTo = (view: View) => {
