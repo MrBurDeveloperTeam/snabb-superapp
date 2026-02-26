@@ -30,8 +30,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, mutate }) => 
         switch(true){
           case app.route?.includes('inventory'):
             const inventoryRes = await createAppLink({app: 'inventory', email: user.username, name: user.name});
-            if(inventoryRes && inventoryRes.url){
-              window.location.href = inventoryRes.url;
+            if(inventoryRes && inventoryRes.result.url){
+              window.location.href = inventoryRes.result.url;
             }
             break
           case app.route?.includes('recruitment'):
