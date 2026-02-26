@@ -29,7 +29,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, mutate }) => 
   
         switch(true){
           case app.route?.includes('inventory'):
-            const inventoryRes = await mutate.mutateAsync({app: 'inventory', email: user.username, name: user.name});
+            const inventoryRes = await createAppLink({app: 'inventory', email: user.username, name: user.name});
             if(inventoryRes && inventoryRes.url){
               window.location.href = inventoryRes.url;
             }
