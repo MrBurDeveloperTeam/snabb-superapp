@@ -4,6 +4,7 @@ import { MiniApp } from '../types';
 import { useNavigate } from 'react-router-dom';
 import api, { redirection } from '@/services/api';
 import { getAuthUser } from '@/utils/authStorage';
+import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 
 interface AppCardProps {
   isLoggedIn: boolean;
@@ -12,6 +13,7 @@ interface AppCardProps {
 }
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
+  const { mutateAsync: createAppLink, isPending, error } = useCreateAppLink();
   const isImageUrl = app.icon.startsWith('http');
   const user = getAuthUser();
 
@@ -23,37 +25,37 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   
         switch(true){
           case app.route?.includes('inventory'):
-            const inventoryRes = await redirection('inventory', user.username, user.name);
+            const inventoryRes = await createAppLink({app: 'inventory', email: user.username, name: user.name});
             if(inventoryRes.result && inventoryRes.result.url){
               window.location.href = inventoryRes.result.url;
             }
             break
           case app.route?.includes('recruitment'):
-            const recruitmentRes = await redirection('recruitment', user.username, user.name);
+            const recruitmentRes = await createAppLink({app: 'recruitment', email: user.username, name: user.name});
             if(recruitmentRes.result && recruitmentRes.result.url){
               window.location.href = recruitmentRes.result.url;
             }
             break
           case app.route?.includes('appointment'):
-            const appointmentRes = await redirection('appointment', user.username, user.name);
+            const appointmentRes = await createAppLink({app: 'appointment', email: user.username, name: user.name});
             if(appointmentRes.result && appointmentRes.result.url){
               window.location.href = appointmentRes.result.url;
             }
             break
           case app.route?.includes('event'):
-            const eventRes = await redirection('event', user.username, user.name);
+            const eventRes = await createAppLink({app: 'event', email: user.username, name: user.name});
             if(eventRes.result && eventRes.result.url){
               window.location.href = eventRes.result.url;
             }
             break
           case app.route?.includes('shop'):
-            const shopRes = await redirection('shop', user.username, user.name);
+            const shopRes = await createAppLink({app: 'shop', email: user.username, name: user.name});
             if(shopRes.result && shopRes.result.url){
               window.location.href = shopRes.result.url;
             }
             break
           case app.route?.includes('todo'):
-            const todoRes = await redirection('todo', user.username, user.name);
+            const todoRes = await createAppLink({app: 'todo', email: user.username, name: user.name});
             if(todoRes.result && todoRes.result.url){
               window.location.href = todoRes.result.url;
             }
@@ -87,6 +89,38 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       }
     }
   };
+
+  if(isPending){
+    return (
+      <motion.div 
+        layout
+        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.8, y: 20, transition: { duration: 0.08 } }}
+        transition={{ 
+          layout: {
+            type: 'spring',
+            stiffness: 300,
+            damping: 30
+          },
+          opacity: { duration: 0.3 },
+          scale: { duration: 0.3 },
+          y: { duration: 0.3 }
+        }}
+        className="group flex flex-col items-center gap-3 sm:gap-4 w-full pb-4 pt-2"
+      >
+        <div className={`relative z-10 w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 bg-gray-200 rounded-[2rem] shadow-[0_4px_12px_rgba(0,0,0,0.03),0_8px_24px_rgba(0,0,0,0.02)] flex items-center justify-center transition-all duration-500 overflow-hidden`}>
+          <svg className="animate-spin h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+        </div>
+        <h3 className="text-[12px] sm:text-[14px] font-bold text-slate-400 text-center px-1 truncate w-full tracking-tight">
+          Loading...
+        </h3>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div 
