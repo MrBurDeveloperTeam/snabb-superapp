@@ -5,14 +5,18 @@ import { useNavigate } from 'react-router-dom';
 import api, { redirection } from '@/services/api';
 import { getAuthUser } from '@/utils/authStorage';
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
+import { UseMutationResult } from '@tanstack/react-query';
+import { AppLinkResult } from '@/features/lib/rpcClient';
+import { AppLinkParams } from '@/features/auth/hooks/useAppLink';
 
 interface AppCardProps {
   isLoggedIn: boolean;
   app: MiniApp;
   index: number;
+  mutate: UseMutationResult<AppLinkResult, Error, AppLinkParams, unknown>
 }
 
-const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
+const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, mutate }) => {
   const { mutateAsync: createAppLink, isPending, error } = useCreateAppLink();
   const isImageUrl = app.icon.startsWith('http');
   const user = getAuthUser();
@@ -25,9 +29,9 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   
         switch(true){
           case app.route?.includes('inventory'):
-            const inventoryRes = await createAppLink({app: 'inventory', email: user.username, name: user.name});
-            if(inventoryRes.result && inventoryRes.result.url){
-              window.location.href = inventoryRes.result.url;
+            const inventoryRes = await mutate.mutateAsync({app: 'inventory', email: user.username, name: user.name});
+            if(inventoryRes && inventoryRes.url){
+              window.location.href = inventoryRes.url;
             }
             break
           case app.route?.includes('recruitment'):
