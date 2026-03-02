@@ -1,8 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MiniApp } from '../types';
-import { useNavigate } from 'react-router-dom';
-import api, { redirection } from '@/services/api';
 import { getAuthUser } from '@/utils/authStorage';
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 import { UseMutationResult } from '@tanstack/react-query';
@@ -58,6 +56,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, mutate }) => 
               window.location.href = shopRes.result.url;
             }
             break
+          case app.route?.includes('calculator'):
+            const calculatorRes = await createAppLink({app: 'calculator', email: user.username, name: user.name});
+            if(calculatorRes.result && calculatorRes.result.url){
+              window.location.href = calculatorRes.result.url;
+            }
+            break
           case app.route?.includes('todo'):
             const todoRes = await createAppLink({app: 'todo', email: user.username, name: user.name});
             if(todoRes.result && todoRes.result.url){
@@ -82,6 +86,9 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, mutate }) => 
             window.location.href = app.route;
             break
           case app.route?.includes('shop'):
+            window.location.href = app.route;
+            break
+          case app.route?.includes('calculator'):
             window.location.href = app.route;
             break
           case app.route?.includes('todo'):
