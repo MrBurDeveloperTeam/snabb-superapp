@@ -61,6 +61,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Smart Calculator',
     category: 'Utilities',
     icon: 'fa-solid fa-calculator',
+    route: `https://calculator.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
