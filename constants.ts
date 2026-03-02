@@ -34,14 +34,14 @@ export const MINI_APPS: MiniApp[] = [
     route: `https://appointment.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
   },
-  {
-    id: 'app-5',
-    title: 'Recruitment',
-    route: `https://recruitment.mrburstudio.com/`,
-    category: 'Management',
-    icon: 'fa-solid fa-user-tie',
-    colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }
-  },
+  // {
+  //   id: 'app-5',
+  //   title: 'Recruitment',
+  //   route: `https://recruitment.mrburstudio.com/`,
+  //   category: 'Management',
+  //   icon: 'fa-solid fa-user-tie',
+  //   colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }
+  // },
   {
     id: 'app-6',
     title: 'AI Image Studio',

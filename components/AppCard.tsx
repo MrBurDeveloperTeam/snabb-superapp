@@ -33,10 +33,10 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, mutate }) => 
             }
             break
           case app.route?.includes('recruitment'):
-            const recruitmentRes = await createAppLink({app: 'recruitment', email: user.username, name: user.name});
-            if(recruitmentRes.result && recruitmentRes.result.url){
-              window.location.href = recruitmentRes.result.url;
-            }
+            // const recruitmentRes = await createAppLink({app: 'recruitment', email: user.username, name: user.name});
+            // if(recruitmentRes.result && recruitmentRes.result.url){
+            //   window.location.href = recruitmentRes.result.url;
+            // }
             break
           case app.route?.includes('appointment'):
             const appointmentRes = await createAppLink({app: 'appointment', email: user.username, name: user.name});
