@@ -53,6 +53,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, mutate }) => 
           case app.route?.includes('shop'):
             const shopRes = await createAppLink({app: 'shop', email: user.username, name: user.name});
             if(shopRes.result && shopRes.result.url){
+              console.log('Redirecting to shop URL:', shopRes.result.url);
               window.location.href = shopRes.result.url;
             }
             break
