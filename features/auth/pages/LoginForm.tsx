@@ -104,6 +104,7 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
                 </p>
               </header>
               <Box className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)}>
       {/* Email */}
       <div>
         <label className={labelClasses}>Email Address</label>
@@ -178,28 +179,29 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
     />
     </div>
       <div className="flex items-center justify-between">
-      <Controller
-        name="rememberMe"
-        control={control}
-        defaultValue={true}
-        render={({ field }) => (
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-pointer">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={!!field.value}
-              onChange={(e) => field.onChange(e.target.checked)}
-            />
-            Remember me
-          </label>
-        )}
-      />
-    </div>
+        <Controller
+          name="rememberMe"
+          control={control}
+          defaultValue={true}
+          render={({ field }) => (
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={!!field.value}
+                onChange={(e) => field.onChange(e.target.checked)}
+              />
+              Remember me
+            </label>
+          )}
+        />
+      </div>
       {/* Display generic form errors if needed */}
       {error && error.email && <ErrorMessage message={error.email.message} />}
       {error && error.password && <ErrorMessage message={error.password.message} />}
                 {/* Submit button stays shared */}
-      <SubmitButton isLoginMode={true} onClick={handleSubmit(onSubmit)} isLoading={isLoading} disabled={isLoading} />
+      <SubmitButton isLoginMode={true} isLoading={isLoading} disabled={isLoading} />
+      </form>
       </Box>
       </motion.div>
       </AnimatePresence>
