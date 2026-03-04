@@ -177,7 +177,7 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
       )}
     />
     </div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-2">
         <Controller
           name="rememberMe"
           control={control}
