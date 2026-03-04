@@ -135,7 +135,7 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
       </div>
 
       {/* Password */}
-      <div>
+      <div className="mt-4">
         <label className={labelClasses}>Password</label>
         <div className="relative group">
           <i className="fa-solid fa-shield-halved absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-sm transition-colors group-focus-within:text-blue-500"></i>
