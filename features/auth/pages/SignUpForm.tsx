@@ -170,8 +170,6 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
               {pos}
             </option>
           ))}
-
-          <option value="OTHER">OTHER</option>
         </select>
       )}
     />

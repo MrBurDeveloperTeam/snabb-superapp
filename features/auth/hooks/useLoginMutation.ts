@@ -1,10 +1,11 @@
 import { loginOdoo } from "@/services/LoginOdoo";
 import { useMutation } from "@tanstack/react-query";
 import { LoginFormInputs } from "@/features/auth/types/LoginPageProps";
+import { AuthFormInputs } from "../types/AuthFormInputs";
 
 export const useLoginMutation = (onAuthSuccess: () => void) => {
   return useMutation({
-    mutationFn: async (data: LoginFormInputs) => {
+    mutationFn: async (data: AuthFormInputs) => {
       const loginResult = await loginOdoo(data.login, data.password);
       return { sessionInfo: loginResult.result };
     },

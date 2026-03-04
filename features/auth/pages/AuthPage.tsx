@@ -89,6 +89,7 @@ return(
         <AnimatePresence mode="wait" initial={false}>
           {authMode === "login" ? (
             <LoginForm
+              setValue={setValueLogin}
               onAuthSuccess={onAuthSuccess}
               setLoggedInUser={setLoggedInUser}
               control={controlLogin}

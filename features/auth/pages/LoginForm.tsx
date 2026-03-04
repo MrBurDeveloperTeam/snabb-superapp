@@ -1,7 +1,7 @@
 import { ErrorMessage } from "@/components/ErrorMessage";
-import { Control, Controller, FieldErrors, SubmitHandler, UseFormHandleSubmit } from "react-hook-form";
+import { Control, Controller, FieldErrors, SubmitHandler, UseFormHandleSubmit, UseFormSetValue } from "react-hook-form";
 import { LoginFormInputs } from "../types/LoginPageProps";
-import React, { ChangeEventHandler, Dispatch, SetStateAction } from "react";
+import React, { ChangeEventHandler, Dispatch, SetStateAction, useEffect } from "react";
 import { Box } from "@mui/material";
 import { AnimatePresence, motion, Variants } from "framer-motion";
 import { inputClasses, labelClasses } from "@/shared/styles/style";
@@ -18,6 +18,7 @@ interface Props {
   control: Control<AuthFormInputs, any, AuthFormInputs>;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   error: FieldErrors<AuthFormInputs>;
+  setValue: UseFormSetValue<AuthFormInputs>;
   handleSubmit: UseFormHandleSubmit<AuthFormInputs, AuthFormInputs>;
   onNavigate?: (view: View) => void;
   setToastMsg?: (msg: string, options: { type: 'success' | 'error' }) => void;
@@ -32,11 +33,26 @@ const formVariants: Variants = {
   exit: { opacity: 0, y: -10, transition: { duration: 0.2, ease: "easeIn" } }
 };
 
-const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onChange, error, handleSubmit, onNavigate, setToastMsg, setExternalUserId, setLoggedInUser }) => {
+const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onChange, error, setValue, handleSubmit, onNavigate, setToastMsg, setExternalUserId, setLoggedInUser }) => {
   const loginMutation = useLoginMutation(onAuthSuccess);
   const isLoading = loginMutation.isPending;
 
-  const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
+  useEffect(() => {
+    const saved = localStorage.getItem("remember_email");
+    if (saved) {
+      setValue("login", saved, { shouldDirty: false });
+      setValue("rememberMe", true, { shouldDirty: false });
+    }
+  }, [setValue]);
+
+  const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
+    const remember = (data as any).rememberMe;
+
+    if (remember) {
+      localStorage.setItem("remember_email", data.login);
+    } else {
+      localStorage.removeItem("remember_email");
+    }
     try {
       const result = await loginMutation.mutateAsync(data);
 
@@ -102,6 +118,8 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
               <input
                 {...field}
                 type="email"
+                name="email"  
+                autoComplete="email"
                 placeholder="john@example.com"
                 className={inputClasses}
                 required
@@ -127,6 +145,8 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
               <input
                 {...field}
                 type="password"
+                name="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 required
                 value={field.value}
@@ -157,7 +177,24 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
       )}
     />
     </div>
-
+      <div className="flex items-center justify-between">
+      <Controller
+        name="rememberMe"
+        control={control}
+        defaultValue={true}
+        render={({ field }) => (
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-pointer">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={!!field.value}
+              onChange={(e) => field.onChange(e.target.checked)}
+            />
+            Remember me
+          </label>
+        )}
+      />
+    </div>
       {/* Display generic form errors if needed */}
       {error && error.email && <ErrorMessage message={error.email.message} />}
       {error && error.password && <ErrorMessage message={error.password.message} />}
