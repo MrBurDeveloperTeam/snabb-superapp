@@ -120,7 +120,7 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
                 {...field}
                 type="email"
                 name="email"  
-                autoComplete="login"
+                autoComplete="email"
                 placeholder="john@example.com"
                 className={inputClasses}
                 required
