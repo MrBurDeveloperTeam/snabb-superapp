@@ -150,7 +150,6 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
                 autoComplete="current-password"
                 placeholder="••••••••"
                 required
-                value={field.value}
                 className={inputClasses}
                 onChange={(e) => {
                   field.onChange(e);
