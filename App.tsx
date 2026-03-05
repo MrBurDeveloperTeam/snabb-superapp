@@ -106,19 +106,21 @@ const App: React.FC = () => {
       // Clean URL immediately
       window.history.replaceState({}, document.title, window.location.pathname);
       
-      // Set cookie first
-      document.cookie = `session_id=${session_id}; path=/; domain=.mrburstudio.com; secure; samesite=lax`;
-      
-      // Now call the API after cookie is set
-      const res = await  api.get("/protected")
-      const data = res.data;
+      fetch(`https://sso.mrburstudio.com/api/redirect?sid=${session_id}`, {
+        method: 'GET',
+        credentials: 'include', // ← browser will store the Set-Cookie from response
+      }).then(res => res.json())
+      .then(data => {
         if (data.ok) {
-          // Clean up URL and redirect to app
-          window.location.href = '/';
+          verifySession(); // cookie is now set, proceed
         } else {
           window.location.href = '/login';
         }
-      }
+      })
+      .catch(() => {
+        window.location.href = '/login';
+      });
+    }
       checksesionid();
       verifySession();
       }, [])
