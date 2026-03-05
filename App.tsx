@@ -95,6 +95,7 @@ const App: React.FC = () => {
     // verifySession();
     const params = new URLSearchParams(window.location.search);
       const session_id = params.get('sid');  // this is your session_id
+      console.log('URL Parameters:', Object.fromEntries(params.entries())); // Debug log to see all params
       const uid = params.get('uid');
 
       if (!session_id) return;
