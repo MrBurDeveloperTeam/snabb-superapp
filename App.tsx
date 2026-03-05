@@ -9,7 +9,6 @@ import TermsPage from './components/TermsPage';
 import { AuthFormData } from './types/AuthFormData';
 import { View } from './types/View';
 import { AuthPage } from './features/auth/pages/AuthPage';
-import { checkAuth } from './services/checkAuth';
 import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
@@ -93,7 +92,42 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+      const token = params.get('sid');  // this is your JWT
+      const uid = params.get('uid');
+      console.log('Received token from SSO:', token);
+
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+    
+      // Option 1: Store in memory/state (most secure)
+      // Option 2: Call your worker to exchange for a Supabase session
+
+      fetch('https://sso.mrburstudio.com/api/supabase-session', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // sends cookies too
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok) {
+          // Clean up URL and redirect to app
+          window.location.href = '/';
+        } else {
+          window.location.href = '/login';
+        }
+      })
+      .catch(() => {
+        window.location.href = '/login';
+      });
+
     verifySession();
+
   }, []);
 
   useEffect(() => {

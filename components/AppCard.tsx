@@ -11,10 +11,9 @@ interface AppCardProps {
   isLoggedIn: boolean;
   app: MiniApp;
   index: number;
-  mutate: UseMutationResult<AppLinkResult, Error, AppLinkParams, unknown>
 }
 
-const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, mutate }) => {
+const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   const { mutateAsync: createAppLink, isPending, error } = useCreateAppLink();
   const isImageUrl = app.icon.startsWith('http');
   const user = getAuthUser();
