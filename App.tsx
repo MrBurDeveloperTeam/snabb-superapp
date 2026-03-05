@@ -92,15 +92,14 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    verifySession();
+    // verifySession();
     const params = new URLSearchParams(window.location.search);
-      const token = params.get('sid');  // this is your JWT
+      const session_id = params.get('sid');  // this is your session_id
       const uid = params.get('uid');
-      console.log('Received token from SSO:', token);
 
-      if (!token) return;
+      if (!session_id) return;
 
-      console.log('Received token from SSO:', token);
+      console.log('Received session_id from SSO:', session_id);
     
       // Option 1: Store in memory/state (most secure)
       // Option 2: Call your worker to exchange for a Supabase session
@@ -108,7 +107,7 @@ const App: React.FC = () => {
       fetch('https://sso.mrburstudio.com/api/supabase-session', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session_id}`,
           'Content-Type': 'application/json',
         },
         credentials: 'include', // sends cookies too
