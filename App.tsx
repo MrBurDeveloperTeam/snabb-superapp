@@ -92,6 +92,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    verifySession();
     const params = new URLSearchParams(window.location.search);
       const token = params.get('sid');  // this is your JWT
       const uid = params.get('uid');
@@ -125,7 +126,7 @@ const App: React.FC = () => {
         window.location.href = '/login';
       });
 
-    verifySession();
+
 
   }, []);
 
