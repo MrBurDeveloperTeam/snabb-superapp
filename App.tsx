@@ -106,11 +106,9 @@ const App: React.FC = () => {
       // Clean URL immediately
       window.history.replaceState({}, document.title, window.location.pathname);
       
-      fetch(`https://sso.mrburstudio.com/api/redirect?sid=${session_id}`, {
-        method: 'GET',
-        credentials: 'include', // ← browser will store the Set-Cookie from response
-      }).then(res => res.json())
+      api.get(`https://sso.mrburstudio.com/api/redirect?sid=${session_id}`).then(res => res.data)
       .then(data => {
+        console.log('the data cookie check response:', data);
         if (data.ok) {
           verifySession(); // cookie is now set, proceed
         } else {
