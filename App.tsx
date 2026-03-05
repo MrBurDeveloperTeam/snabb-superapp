@@ -97,10 +97,9 @@ const App: React.FC = () => {
       const uid = params.get('uid');
       console.log('Received token from SSO:', token);
 
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
+      if (!token) return;
+
+      console.log('Received token from SSO:', token);
     
       // Option 1: Store in memory/state (most secure)
       // Option 2: Call your worker to exchange for a Supabase session
