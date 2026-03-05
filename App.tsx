@@ -93,7 +93,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // verifySession();
+    
     
     const checksesionid = async () => {
     const params = new URLSearchParams(window.location.search);
@@ -120,6 +120,7 @@ const App: React.FC = () => {
         }
       }
       checksesionid();
+      verifySession();
       }, [])
 
 
