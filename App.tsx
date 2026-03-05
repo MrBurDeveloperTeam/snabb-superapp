@@ -12,6 +12,7 @@ import { AuthPage } from './features/auth/pages/AuthPage';
 import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
+import api from './services/api';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -93,42 +94,34 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // verifySession();
+    
+    const checksesionid = async () => {
     const params = new URLSearchParams(window.location.search);
       const session_id = params.get('sid');  // this is your session_id
-      console.log('URL Parameters:', session_id); // Debug log to see all params
-      const uid = params.get('uid');
 
       if (!session_id) return;
 
       console.log('Received session_id from SSO:', session_id);
     
-      // Option 1: Store in memory/state (most secure)
-      // Option 2: Call your worker to exchange for a Supabase session
-
-      fetch('https://sso.mrburstudio.com/api/supabase-session', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session_id}`,
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // sends cookies too
-      })
-      .then(res => res.json())
-      .then(data => {
+      // Clean URL immediately
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Set cookie first
+      document.cookie = `session_id=${session_id}; path=/; domain=.mrburstudio.com; secure; samesite=lax`;
+      
+      // Now call the API after cookie is set
+      const res = await  api.get("/protected")
+      const data = res.data;
         if (data.ok) {
           // Clean up URL and redirect to app
           window.location.href = '/';
         } else {
           window.location.href = '/login';
         }
-      })
-      .catch(() => {
-        window.location.href = '/login';
-      });
+      }
+      checksesionid();
+      }, [])
 
-
-
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
