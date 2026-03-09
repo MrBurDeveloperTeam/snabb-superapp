@@ -44,6 +44,8 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           setTimeout(() => {
             onNavigate && onNavigate('gallery');
           }, 5000);
+        } else {
+          setToastMsg('User already exists, please log in.', { type: 'error' });
         }
         
       } catch (err: any) {
