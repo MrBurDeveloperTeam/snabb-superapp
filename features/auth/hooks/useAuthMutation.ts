@@ -8,8 +8,8 @@ export const useAuthMutation = () => {
       const authResult = await authOdoo({...data});
       return authResult.data;
     },
-    onSuccess: (authResult: any) => {
-      console.log("Auth successful:", authResult);
+    onSuccess: ({result}: any) => {
+      console.log("Auth successful:", result);
     },
     onError: (err: any) => {
       console.error("auth failed:", err.message);
