@@ -69,7 +69,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
               window.location.href = todoRes.result.url;
             }
             break
-          case app.route?.includes('aimage'):
+          case app.route?.includes('imageai'):
             const aimageRes = await createAppLink({app: 'aimage', email: user.username, name: user.name});
             if(aimageRes.result && aimageRes.result.url){
               window.location.href = aimageRes.result.url;
