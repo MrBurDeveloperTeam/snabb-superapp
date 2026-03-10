@@ -267,7 +267,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
         {isComingSoon && (
           <div className="absolute bottom-2 left-0 right-0 flex justify-center z-30">
             <span className="text-[8px] font-black uppercase tracking-wider bg-black/20 text-white px-2 py-0.5 rounded-full">
-              Soon
+              Coming Soon
             </span>
           </div>
         )}
