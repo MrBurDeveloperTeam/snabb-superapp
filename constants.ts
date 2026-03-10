@@ -7,7 +7,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Mr.Bur Shop',
     category: 'Shops',
     icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s',
-    route: `https://shop.mrburstudio.com/`,
+    route: `https://shop.snabbb.com/`,
     colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#4338ca]', icon: '#4338ca' }
   },
   {
@@ -45,7 +45,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Inventory',
     category: 'Productivity',
     icon: 'fa-solid fa-boxes-stacked',
-    route: `https://inventory.mrburstudio.com/`,
+    route: `https://inventory.snabbb.com/`,
     colorScheme: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
   },
   {
@@ -53,7 +53,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Event',
     category: 'Productivity',
     icon: 'fa-solid fa-calendar-check',
-    route: `https://event.mrburstudio.com/`,
+    route: `https://event.snabbb.com/`,
     colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
   },
   {
@@ -61,7 +61,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Appointment',
     category: 'Productivity',
     icon: 'fa-solid fa-calendar-plus',
-    route: `https://appointment.mrburstudio.com/`,
+    route: `https://appointment.snabbb.com/`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
   },
   {
@@ -69,6 +69,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'AI Image Studio',
     category: 'Productivity',
     icon: 'fa-solid fa-wand-magic-sparkles',
+    route: 'https://imageai.snabbb.com',
     colorScheme: { bg: 'bg-[#faf5ff]', text: 'text-[#7e22ce]', icon: '#7e22ce' }
   },
   {
@@ -83,7 +84,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Smart Calculator',
     category: 'Productivity',
     icon: 'fa-solid fa-calculator',
-    route: `https://calculator.mrburstudio.com/`,
+    route: `https://calculator.snabbb.com/`,
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
@@ -91,7 +92,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'To-Do Manager',
     category: 'Productivity',
     icon: 'fa-solid fa-list-check',
-    route: `https://todo.mrburstudio.com/`,
+    route: `https://todo.snabbb.com/`,
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
 

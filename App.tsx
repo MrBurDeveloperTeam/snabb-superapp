@@ -106,7 +106,7 @@ const App: React.FC = () => {
       // Clean URL immediately
       window.history.replaceState({}, document.title, window.location.pathname);
       
-      api.get(`https://sso.mrburstudio.com/api/redirect?sid=${session_id}`).then(res => res.data)
+      api.get(`https://sso.snabbb.com/api/redirect?sid=${session_id}`).then(res => res.data)
       .then(data => {
         console.log('the data cookie check response:', data);
         if (data.ok) {
