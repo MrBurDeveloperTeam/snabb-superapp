@@ -1,5 +1,5 @@
 
-export type Category = 'All' | 'Management' | 'Planning' | 'Creative' | 'Utilities';
+export type Category = 'All' | 'Shops' | 'Productivity' | 'Value Added';
 
 export interface MiniApp {
   id: string;

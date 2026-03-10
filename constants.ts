@@ -1,19 +1,49 @@
-
 import { MiniApp } from './types';
 
 export const MINI_APPS: MiniApp[] = [
+  // ======= SHOPS =======
   {
     id: 'app-1',
     title: 'Mr.Bur Shop',
-    category: 'Management',
+    category: 'Shops',
     icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s',
     route: `https://shop.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#4338ca]', icon: '#4338ca' }
   },
   {
+    id: 'app-10',
+    title: 'Kaneiko',
+    category: 'Shops',
+    icon: 'fa-solid fa-store',
+    colorScheme: { bg: 'bg-[#fdf4ff]', text: 'text-[#a21caf]', icon: '#a21caf' }
+  },
+  {
+    id: 'app-11',
+    title: 'Ortho',
+    category: 'Shops',
+    icon: 'fa-solid fa-tooth',
+    colorScheme: { bg: 'bg-[#f0f9ff]', text: 'text-[#0369a1]', icon: '#0369a1' }
+  },
+  {
+    id: 'app-12',
+    title: 'Endo',
+    category: 'Shops',
+    icon: 'fa-solid fa-stethoscope',
+    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
+  },
+  {
+    id: 'app-13',
+    title: 'DTV',
+    category: 'Shops',
+    icon: 'fa-solid fa-tv',
+    colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }
+  },
+
+  // ======= PRODUCTIVITY =======
+  {
     id: 'app-2',
     title: 'Inventory',
-    category: 'Management',
+    category: 'Productivity',
     icon: 'fa-solid fa-boxes-stacked',
     route: `https://inventory.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
@@ -21,7 +51,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'app-3',
     title: 'Event',
-    category: 'Planning',
+    category: 'Productivity',
     icon: 'fa-solid fa-calendar-check',
     route: `https://event.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
@@ -29,37 +59,29 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'app-4',
     title: 'Appointment',
-    category: 'Planning',
+    category: 'Productivity',
     icon: 'fa-solid fa-calendar-plus',
     route: `https://appointment.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
   },
-  // {
-  //   id: 'app-5',
-  //   title: 'Recruitment',
-  //   route: `https://recruitment.mrburstudio.com/`,
-  //   category: 'Management',
-  //   icon: 'fa-solid fa-user-tie',
-  //   colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }
-  // },
   {
     id: 'app-6',
     title: 'AI Image Studio',
-    category: 'Creative',
+    category: 'Productivity',
     icon: 'fa-solid fa-wand-magic-sparkles',
     colorScheme: { bg: 'bg-[#faf5ff]', text: 'text-[#7e22ce]', icon: '#7e22ce' }
   },
   {
     id: 'app-7',
     title: 'AI Video Lab',
-    category: 'Creative',
+    category: 'Productivity',
     icon: 'fa-solid fa-clapperboard',
     colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#312e81]', icon: '#312e81' }
   },
   {
     id: 'app-8',
     title: 'Smart Calculator',
-    category: 'Utilities',
+    category: 'Productivity',
     icon: 'fa-solid fa-calculator',
     route: `https://calculator.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
@@ -67,11 +89,27 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'app-9',
     title: 'To-Do Manager',
-    category: 'Utilities',
+    category: 'Productivity',
     icon: 'fa-solid fa-list-check',
     route: `https://todo.mrburstudio.com/`,
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
+
+  // ======= VALUE ADDED =======
+  {
+    id: 'app-14',
+    title: 'Insurance',
+    category: 'Value Added',
+    icon: 'fa-solid fa-shield-halved',
+    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#166534]', icon: '#166534' }
+  },
+  {
+    id: 'app-15',
+    title: 'Lease',
+    category: 'Value Added',
+    icon: 'fa-solid fa-file-contract',
+    colorScheme: { bg: 'bg-[#fefce8]', text: 'text-[#854d0e]', icon: '#854d0e' }
+  },
 ];
 
-export const CATEGORIES: string[] = ['All', 'Management', 'Planning', 'Creative', 'Utilities'];
+export const CATEGORIES: string[] = ['All', 'Shops', 'Productivity', 'Value Added'];
