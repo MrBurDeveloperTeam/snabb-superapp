@@ -32,7 +32,7 @@ function getErrorMessage(err: any): string {
 
 /**
  * OPTION A (Recommended): call your own backend proxy
- * - baseURL should be your server, e.g. https://gallery.mrburstudio.com
+ * - baseURL should be your server, e.g. https://app.snabbb.com
  * - your server attaches X-SSO-API-KEY safely (not in browser)
  */
 const ODOO_BASE_URL =

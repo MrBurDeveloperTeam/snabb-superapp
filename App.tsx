@@ -360,7 +360,7 @@ const App: React.FC = () => {
             </motion.div>
           )}
 
-          {currentView === 'gallery' && (
+          {/* {currentView === 'gallery' && (
             <motion.div
               key="gallery"
               initial={{ opacity: 0 }}
@@ -452,6 +452,75 @@ const App: React.FC = () => {
                   </motion.div>
                 )}
               </motion.div>
+            </motion.div>
+          )} */}
+          {activeCategory === 'All' ? (
+            // ✅ Grouped view with category separators
+            ['Shops', 'Productivity', 'Value Added'].map((cat) => {
+              const appsInCategory = filteredApps.filter(app => app.category === cat);
+              if (appsInCategory.length === 0) return null;
+              return (
+                <div key={cat} className="mb-12">
+                  {/* Category Header */}
+                  <div className="flex items-center gap-4 mb-8">
+                    <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">
+                      {cat}
+                    </h2>
+                    <div className="flex-1 h-px bg-slate-100" />
+                    <span className="text-xs font-bold text-slate-300">
+                      {appsInCategory.length} apps
+                    </span>
+                  </div>
+              
+                  {/* Apps Grid */}
+                  <motion.div
+                    layout
+                    className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
+                  >
+                    <AnimatePresence mode='popLayout'>
+                      {appsInCategory.map((app, index) => (
+                        <AppCard
+                          isLoggedIn={isLoggedIn}
+                          key={app.id}
+                          app={app}
+                          index={index}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </motion.div>
+                </div>
+              );
+            })
+          ) : (
+            // ✅ Normal flat grid for specific category
+            <motion.div
+              layout
+              className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8 mt-12"
+            >
+              <AnimatePresence mode='popLayout'>
+                {filteredApps.map((app, index) => (
+                  <AppCard
+                    isLoggedIn={isLoggedIn}
+                    key={app.id}
+                    app={app}
+                    index={index}
+                  />
+                ))}
+              </AnimatePresence>
+              
+              {filteredApps.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="col-span-full py-32 flex flex-col items-center justify-center"
+                >
+                  <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-2xl mb-4">
+                    <i className="fa-solid fa-search text-slate-300"></i>
+                  </div>
+                  <h3 className="text-slate-900 font-bold text-lg mb-1">No results found</h3>
+                  <p className="text-slate-400 text-sm">Try another category or search term.</p>
+                </motion.div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
