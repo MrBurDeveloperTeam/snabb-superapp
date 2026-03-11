@@ -24,6 +24,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       const isExternal = app.route.startsWith("http://") || app.route.startsWith("https://");
       if (isExternal && isLoggedIn) {
         const host = window.location.hostname; 
+        console.log('app.route: ',app.route)
   
         switch(true){
           case app.route?.includes('inventory'):
