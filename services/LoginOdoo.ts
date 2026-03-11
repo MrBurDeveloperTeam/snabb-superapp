@@ -3,7 +3,7 @@ import api from "./api";
 
 export const loginOdoo = async (email: string, password: string) => {
   const url = "/web/session/authenticate";
-  const db = "mrbur-staging-bur-26090883";
+  const db = "aht-systemadmin-mrbur-main-20994444";
 
   try {
     const response = await api.post(url, {
