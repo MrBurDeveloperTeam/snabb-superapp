@@ -55,6 +55,7 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
     }
     try {
       const result = await loginMutation.mutateAsync(data);
+      console.log('res: ', result);
 
       if (result?.sessionInfo?.name) {
         setToastMsg?.("Login successful!", { type: "success" });

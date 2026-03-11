@@ -10,16 +10,6 @@ const api = axios.create({
     "X-SSO-API-KEY": "my-sso-secret-123",
   },
 });
-const odoo = axios.create({
-  baseURL: "/odoo",       
-  withCredentials: true, 
-  headers: {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-    "X-Requested-With": "XMLHttpRequest",
-    "X-SSO-API-KEY": "my-sso-secret-123",
-  },
-});
 
 export const redirection = async (app: string, email: string, name: string) => {
   try {
