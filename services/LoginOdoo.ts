@@ -10,7 +10,7 @@ export const loginOdoo = async (email: string, password: string) => {
       "jsonrpc": "2.0",
       "method": "call",
       "params": {
-        // "db": db,
+        "db": db,
         "login": email,
         "password": password
       },
