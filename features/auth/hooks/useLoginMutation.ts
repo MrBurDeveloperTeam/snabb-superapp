@@ -5,7 +5,7 @@ import { AuthFormInputs } from "../types/AuthFormInputs";
 export const useLoginMutation = (onAuthSuccess: () => void) => {
   return useMutation({
     mutationFn: async (data: AuthFormInputs) => {
-      const loginResult = await loginOdoo(data.login, data.password);
+      const {data: loginResult} = await loginOdoo(data.login, data.password);
       return { sessionInfo: loginResult.result };
     },
     onSuccess: ({ sessionInfo }) => {
