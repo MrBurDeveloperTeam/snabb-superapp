@@ -101,6 +101,9 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           case app.route?.includes('todo'):
             window.location.href = app.route;
             break
+          case app.route?.includes('imageai'):
+            window.location.href = app.route;
+            break
           default:
             break;
         }
