@@ -204,8 +204,8 @@ const App: React.FC = () => {
           <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
             <i className="fa-solid fa-layer-group text-xs sm:text-lg"></i>
           </div>
-          <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">Snabbb
-            <span className="text-blue-600">Apps</span>
+          <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">Snabbb.
+            <span className="text-blue-600">io</span>
           </span>
         </div>
 
