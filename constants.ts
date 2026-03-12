@@ -81,7 +81,7 @@ export const MINI_APPS: MiniApp[] = [
   },
   {
     id: 'app-8',
-    title: 'Smart Calculator',
+    title: 'Profit Calculator',
     category: 'Productivity',
     icon: 'fa-solid fa-calculator',
     route: `https://calculator.snabbb.com/`,
