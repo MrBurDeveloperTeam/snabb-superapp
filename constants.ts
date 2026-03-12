@@ -4,7 +4,7 @@ export const MINI_APPS: MiniApp[] = [
   // ======= SHOPS =======
   {
     id: 'app-1',
-    title: 'Mr.Bur Shop',
+    title: 'Mr.Bur',
     category: 'Shops',
     icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s',
     route: `https://shop.snabbb.com/`,
