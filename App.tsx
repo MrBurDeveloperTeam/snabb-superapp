@@ -376,7 +376,7 @@ const App: React.FC = () => {
                 >
                   <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
                     Snabbb
-                    <span className="text-blue-600">.io Gallery</span>
+                    <span className="text-blue-600">.io</span>
                   </h1>
                   <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
                     {isLoggedIn ? `Welcome back, ${user?.fullName.split(' ')[0]}! Discover our premium collection.` : "Explore a curated universe of mini-apps designed to streamline your daily tasks."}
