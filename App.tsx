@@ -95,18 +95,6 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const onFocus = () => {
-      checkSession();
-    }
-  
-    window.addEventListener("focus", onFocus)
-  
-    return () => {
-      window.removeEventListener("focus", onFocus)
-    }
-  }, [])
-
-  useEffect(() => {
     
     
     const checksesionid = async () => {
