@@ -14,6 +14,7 @@ import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
 import api from './services/api';
 import { useLocation } from 'react-router-dom';
+import { checkSession } from './services/checkSession';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -93,17 +94,17 @@ const App: React.FC = () => {
     }
   };
 
-useEffect(() => {
-  const onFocus = () => {
-    console.log("Tab focused")
-  }
-
-  window.addEventListener("focus", onFocus)
-
-  return () => {
-    window.removeEventListener("focus", onFocus)
-  }
-}, [])
+  useEffect(() => {
+    const onFocus = () => {
+      checkSession();
+    }
+  
+    window.addEventListener("focus", onFocus)
+  
+    return () => {
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [])
 
   useEffect(() => {
     
