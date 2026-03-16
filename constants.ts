@@ -10,34 +10,34 @@ export const MINI_APPS: MiniApp[] = [
     route: `https://shop.snabbb.com/`,
     colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#4338ca]', icon: '#4338ca' }
   },
-  {
-    id: 'app-10',
-    title: 'Kaneiko',
-    category: 'Shops',
-    icon: 'fa-solid fa-store',
-    colorScheme: { bg: 'bg-[#fdf4ff]', text: 'text-[#a21caf]', icon: '#a21caf' }
-  },
-  {
-    id: 'app-11',
-    title: 'Ortho',
-    category: 'Shops',
-    icon: 'fa-solid fa-tooth',
-    colorScheme: { bg: 'bg-[#f0f9ff]', text: 'text-[#0369a1]', icon: '#0369a1' }
-  },
-  {
-    id: 'app-12',
-    title: 'Endo',
-    category: 'Shops',
-    icon: 'fa-solid fa-stethoscope',
-    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
-  },
-  {
-    id: 'app-13',
-    title: 'DTV',
-    category: 'Shops',
-    icon: 'fa-solid fa-tv',
-    colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }
-  },
+  // {
+  //   id: 'app-10',
+  //   title: 'Kaneiko',
+  //   category: 'Shops',
+  //   icon: 'fa-solid fa-store',
+  //   colorScheme: { bg: 'bg-[#fdf4ff]', text: 'text-[#a21caf]', icon: '#a21caf' }
+  // },
+  // {
+  //   id: 'app-11',
+  //   title: 'Ortho',
+  //   category: 'Shops',
+  //   icon: 'fa-solid fa-tooth',
+  //   colorScheme: { bg: 'bg-[#f0f9ff]', text: 'text-[#0369a1]', icon: '#0369a1' }
+  // },
+  // {
+  //   id: 'app-12',
+  //   title: 'Endo',
+  //   category: 'Shops',
+  //   icon: 'fa-solid fa-stethoscope',
+  //   colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
+  // },
+  // {
+  //   id: 'app-13',
+  //   title: 'DTV',
+  //   category: 'Shops',
+  //   icon: 'fa-solid fa-tv',
+  //   colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }
+  // },
 
   // ======= PRODUCTIVITY =======
   {
@@ -50,7 +50,7 @@ export const MINI_APPS: MiniApp[] = [
   },
   {
     id: 'app-3',
-    title: 'Event',
+    title: 'Events',
     category: 'Productivity',
     icon: 'fa-solid fa-calendar-check',
     route: `https://event.snabbb.com`,
@@ -93,6 +93,20 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'fa-solid fa-list-check',
     route: `https://todo.snabbb.com/`,
+    colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
+  },
+  {
+    id: 'app-10',
+    title: 'E-Learning',
+    category: 'Productivity',
+    icon: 'fa-solid fa-list-check',
+    colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
+  },
+  {
+    id: 'app-11',
+    title: 'Expenses',
+    category: 'Productivity',
+    icon: 'fa-solid fa-list-check',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
 
