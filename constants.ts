@@ -44,7 +44,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-2',
     title: 'Inventory',
     category: 'Productivity',
-    icon: 'fa-solid fa-boxes-stacked',
+    icon: 'https://mrbur.odoo.com/stock/static/description/icon.png',
     route: `https://inventory.snabbb.com/`,
     colorScheme: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
   },
