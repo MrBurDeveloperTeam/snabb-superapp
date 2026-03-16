@@ -13,6 +13,7 @@ import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
 import api from './services/api';
+import { useLocation } from 'react-router-dom';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -91,6 +92,12 @@ const App: React.FC = () => {
         setUser(null);
     }
   };
+
+  const location = useLocation();
+
+  useEffect(() => {
+  console.log("Route changed / page focused");
+}, [location]);
 
   useEffect(() => {
     
