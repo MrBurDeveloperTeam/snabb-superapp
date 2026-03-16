@@ -93,11 +93,17 @@ const App: React.FC = () => {
     }
   };
 
-  const location = useLocation();
+useEffect(() => {
+  const onFocus = () => {
+    console.log("Tab focused")
+  }
 
-  useEffect(() => {
-  console.log("Route changed / page focused");
-}, [location]);
+  window.addEventListener("focus", onFocus)
+
+  return () => {
+    window.removeEventListener("focus", onFocus)
+  }
+}, [])
 
   useEffect(() => {
     
