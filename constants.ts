@@ -99,14 +99,14 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-10',
     title: 'E-Learning',
     category: 'Productivity',
-    icon: 'fa-solid fa-list-check',
+    icon: 'fa-solid fa-book',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
     id: 'app-11',
     title: 'Expenses',
     category: 'Productivity',
-    icon: 'fa-solid fa-list-check',
+    icon: 'fa-solid fa-file-invoice',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
 
