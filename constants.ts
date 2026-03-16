@@ -99,14 +99,14 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-10',
     title: 'E-Learning',
     category: 'Productivity',
-    icon: 'fa-solid fa-book',
+    icon: 'https://mrbur.odoo.com/website_slides/static/description/icon.png',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
     id: 'app-11',
     title: 'Expenses',
     category: 'Productivity',
-    icon: 'fa-solid fa-file-invoice',
+    icon: 'https://mrbur.odoo.com/hr_expense/static/description/icon.png',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
 
