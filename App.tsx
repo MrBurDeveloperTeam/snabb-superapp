@@ -151,7 +151,6 @@ const App: React.FC = () => {
       if (event.data?.type === 'SSO_LOGOUT') {
         console.log('Received SSO logout message from:', event.origin);
         clearAuthState();
-        await verifySession();
       }
 
       if (event.data?.type === 'SSO_LOGIN') {
@@ -194,6 +193,33 @@ const App: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+  const allowedOrigins = [
+    'https://inventory.snabbb.com',
+    'https://appointment.snabbb.com',
+    'https://event.snabbb.com',
+    'https://shop.snabbb.com',
+    'https://app.snabbb.com',
+  ];
+
+  const handleMessage = (event: MessageEvent) => {
+    if (!allowedOrigins.includes(event.origin)) return;
+
+    if (event.data?.type === 'SSO_LOGOUT') {
+      console.log('Received SSO logout message from:', event.origin);
+      clearAuthState();
+    }
+
+    if (event.data?.type === 'SSO_LOGIN') {
+      console.log('Received SSO login message from:', event.origin);
+      verifySession();
+    }
+  };
+
+  window.addEventListener('message', handleMessage);
+  return () => window.removeEventListener('message', handleMessage);
+}, [verifySession, clearAuthState]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app) => {
@@ -240,17 +266,9 @@ const App: React.FC = () => {
   const logout = async () => {
     try {
       await signOut();
-
-      // Notify any opened child windows/tabs if they listen
-      try {
-        window.postMessage({ type: 'SSO_LOGOUT', source: 'superapp' }, window.location.origin);
-      } catch (e) {
-        console.error('Failed to broadcast local logout message:', e);
-      }
-
-      clearAuthState();
     } catch (error) {
       console.error('Logout failed:', error);
+    } finally {
       clearAuthState();
     }
   };
