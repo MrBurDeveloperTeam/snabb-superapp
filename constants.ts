@@ -52,7 +52,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-3',
     title: 'Events',
     category: 'Productivity',
-    icon: 'fa-solid fa-calendar-check',
+    icon: 'https://mrbur.odoo.com/event/static/description/icon.png',
     route: `https://event.snabbb.com`,
     colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
   },
@@ -60,7 +60,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-4',
     title: 'Appointment',
     category: 'Productivity',
-    icon: 'fa-solid fa-calendar-plus',
+    icon: 'https://mrbur.odoo.com/appointment/static/description/icon.png',
     route: `https://appointment.snabbb.com/`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
   },
@@ -91,7 +91,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-9',
     title: 'To-Do Manager',
     category: 'Productivity',
-    icon: 'fa-solid fa-list-check',
+    icon: 'https://mrbur.odoo.com/project_todo/static/description/icon.png',
     route: `https://todo.snabbb.com/`,
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
