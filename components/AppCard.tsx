@@ -269,6 +269,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             <img
               src={app.icon}
               alt={app.title}
+              style={{filter: "brightness(0) saturate(100%) invert(71%) sepia(14%) saturate(987%) hue-rotate(127deg) brightness(92%) contrast(90%)"}}
               className="max-w-[60%] max-h-[60%] object-contain"
             />
           ) : (
