@@ -266,7 +266,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
         
         <div className={`relative z-10 select-none transition-all duration-300 transform group-hover:scale-110 flex items-center justify-center h-full w-full ${!isImageUrl ? app.colorScheme.text : ''}`}>
           {isImageUrl ? (
-            <img src={app.icon} alt={app.title} className="w-full h-full object-cover" />
+            <img src={app.icon} alt={app.title} className="w-full h-full object-contain" />
           ) : (
             <i className={`${app.icon} text-3xl sm:text-4xl`}></i>
           )}
