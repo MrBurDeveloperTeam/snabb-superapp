@@ -269,7 +269,11 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             <img
               src={app.icon}
               alt={app.title}
-              className="max-w-[60%] max-h-[60%] object-contain"
+              className={`${
+                app.route?.includes('shop')
+                  ? 'max-w-[100%] max-h-[100%] object-cover'
+                  : 'max-w-[60%] max-h-[60%] object-contain'
+              }`}
             />
           ) : (
             <i className={`${app.icon} text-3xl sm:text-4xl`}></i>
