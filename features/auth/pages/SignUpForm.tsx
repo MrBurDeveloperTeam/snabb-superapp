@@ -252,7 +252,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
 
           
     {/* Password */}
-    {/* <div>
+    <div>
       <label className={labelClasses}>Password</label>
 
       <div className="relative group">
@@ -280,7 +280,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
       {error.password && (
         <p className="mt-1 text-xs text-red-500">{error.password.message}</p>
       )}
-    </div> */}
+    </div>
 
         
       {/* Password */}
