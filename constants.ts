@@ -78,7 +78,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/ai_video.png',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#312e81]', icon: '#312e81' }
+    colorScheme: { bg: 'bg-[#F5F7F6]', text: 'text-[#312e81]', icon: '#312e81' }
   },
   {
     id: 'app-8',
@@ -86,7 +86,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/profit_calculator.png',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#EEF2F1]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
     id: 'app-9',
@@ -94,7 +94,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
     route: `https://todo.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#E6EBE9]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
     id: 'app-10',
@@ -102,7 +102,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/e-learning.png',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#F9FBFA]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
     id: 'app-11',
@@ -110,7 +110,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#ECFDFC]', text: 'text-[#b45309]', icon: '#b45309' }
   },
 
   // ======= VALUE ADDED =======
