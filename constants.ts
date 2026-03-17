@@ -46,7 +46,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
     route: `https://inventory.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
+    colorScheme: { bg: 'bg-[#E6F4F3]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
   },
   {
     id: 'app-3',
