@@ -12,6 +12,7 @@ import { AuthFormInputs } from "../types/AuthFormInputs";
 import { useLoginMutation } from "../hooks/useLoginMutation";
 import { on } from "events";
 import { AuthFormData } from "@/types/AuthFormData";
+import { MINI_APPS } from "@/constants";
 
 interface Props {
   onAuthSuccess: () => void;
@@ -235,12 +236,23 @@ const LoginForm: React.FC<Props> = ({ setFormData, onAuthSuccess, control, onCha
             }}
             className="grid grid-cols-3 gap-y-10 gap-x-6"
           >
-            <AppIcon icon="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s" label="SHOP" color="bg-blue-600" />
+            {MINI_APPS.map((app, i) => {
+              if(i <= 5) {
+              return(<AppIcon
+                key={app.id}
+                icon={app.icon}
+                label={app.title}
+                color={app.colorScheme.bg}
+              />)
+              }
+            }
+            )}
+            {/* <AppIcon icon="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s" label="SHOP" color="bg-blue-600" />
             <AppIcon icon="fa-solid fa-boxes-stacked" label="INVENTORY" color="bg-[#fff1e6] text-[#b91c1c]" />
             <AppIcon icon="fa-solid fa-calendar-check" label="EVENT" color="bg-[#ecfeff] text-[#0891b2]" />
             <AppIcon icon="fa-solid fa-wand-magic-sparkles" label="IMAGE STUDIO" color="bg-[#f2e9ff] text-[#7e22ce]" />
             <AppIcon icon="fa-solid fa-calendar-plus" label="APPOINTMENT" color="bg-[#f0fdf4] text-[#15803d]" />
-            <AppIcon icon="fa-solid fa-calculator" label="CALCULATOR" color="bg-[#fffbeb] text-[#b45309]" />
+            <AppIcon icon="fa-solid fa-calculator" label="CALCULATOR" color="bg-[#fffbeb] text-[#b45309]" /> */}
           </motion.div>
         </div>
     </>
