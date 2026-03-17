@@ -86,7 +86,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/profit_calculator.png',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#EEF2F1]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#E8F8F7]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
     id: 'app-9',
