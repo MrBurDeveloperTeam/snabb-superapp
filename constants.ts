@@ -60,7 +60,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-4',
     title: 'Appointment',
     category: 'Productivity',
-    icon: 'https://mrbur.odoo.com/appointment/static/description/icon.png',
+    icon: 'https://app.snabbb.com/icons/appointment.png',
     route: `https://appointment.snabbb.com/`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
   },
