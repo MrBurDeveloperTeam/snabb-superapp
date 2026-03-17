@@ -77,7 +77,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'AI Video Lab',
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/ai_video.png',
-    route: `https://app.snabbb.com`,
+    // route: `https://app.snabbb.com`,
     colorScheme: { bg: 'bg-[#F5F7F6]', text: 'text-[#312e81]', icon: '#312e81' }
   },
   {
@@ -101,7 +101,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'E-Learning',
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/e-learning.png',
-    route: `https://app.snabbb.com`,
+    // route: `https://app.snabbb.com`,
     colorScheme: { bg: 'bg-[#F9FBFA]', text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
@@ -109,7 +109,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Expenses',
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
-    route: `https://app.snabbb.com`,
+    // route: `https://app.snabbb.com`,
     colorScheme: { bg: 'bg-[#ECFDFC]', text: 'text-[#b45309]', icon: '#0891b2' }
   },
 
