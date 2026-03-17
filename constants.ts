@@ -52,7 +52,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-3',
     title: 'Events',
     category: 'Productivity',
-    icon: 'https://mrbur.odoo.com/event/static/description/icon.png',
+    icon: 'https://app.snabbb.com/icons/events.png',
     route: `https://event.snabbb.com`,
     colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
   },
