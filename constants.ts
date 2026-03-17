@@ -1,5 +1,4 @@
 import { MiniApp } from './types';
-import inventory from '@/shared/icons/inventory.png';
 
 export const MINI_APPS: MiniApp[] = [
   // ======= SHOPS =======
@@ -45,7 +44,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-2',
     title: 'Inventory',
     category: 'Productivity',
-    icon: inventory,
+    icon: 'https://mrbur.odoo.com/stock/static/description/inventory.png',
     route: `https://inventory.snabbb.com/`,
     colorScheme: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
   },
