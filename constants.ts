@@ -1,5 +1,5 @@
 import { MiniApp } from './types';
-import inventory from '@/assets/icons/inventory.svg';
+import inventory from './inventory.svg';
 
 export const MINI_APPS: MiniApp[] = [
   // ======= SHOPS =======
