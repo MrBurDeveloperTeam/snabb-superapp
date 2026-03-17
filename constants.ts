@@ -46,7 +46,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
     route: `https://inventory.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#E6F4F3]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
+    colorScheme: { bg: 'bg-[#E6F4F3]', text: 'text-[#b91c1c]', icon: '#0891b2' }
   },
   {
     id: 'app-3',
@@ -62,7 +62,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/appointment.png',
     route: `https://appointment.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
+    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#0891b2' }
   },
   {
     id: 'app-6',
@@ -70,7 +70,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/ai_image.png',
     route: 'https://imageai.snabbb.com',
-    colorScheme: { bg: 'bg-[#F0FAF0]', text: 'text-[#7e22ce]', icon: '#7e22ce' }
+    colorScheme: { bg: 'bg-[#F0FAF0]', text: 'text-[#7e22ce]', icon: '#0891b2' }
   },
   {
     id: 'app-7',
@@ -94,7 +94,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
     route: `https://todo.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#F4FBFA]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#F4FBFA]', text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
     id: 'app-10',
@@ -102,7 +102,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/e-learning.png',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#F9FBFA]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#F9FBFA]', text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
     id: 'app-11',
@@ -110,7 +110,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#ECFDFC]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#ECFDFC]', text: 'text-[#b45309]', icon: '#0891b2' }
   },
 
   // ======= VALUE ADDED =======
@@ -120,7 +120,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Value Added',
     icon: 'fa-solid fa-shield-halved',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#166534]', icon: '#166534' }
+    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#166534]', icon: '#0891b2' }
   },
   {
     id: 'app-15',
@@ -128,7 +128,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Value Added',
     icon: 'fa-solid fa-file-contract',
     route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#fefce8]', text: 'text-[#854d0e]', icon: '#854d0e' }
+    colorScheme: { bg: 'bg-[#fefce8]', text: 'text-[#854d0e]', icon: '#0891b2' }
   },
 ];
 
