@@ -12,7 +12,9 @@ export const AppIcon = ({ icon, label, color }: { icon: string, label: string, c
       whileHover={{ y: -6, transition: { type: 'spring', stiffness: 400, damping: 10 } }}
       className="flex flex-col items-center gap-3"
     >
-      <div className={`p-2 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30 relative overflow-hidden group/icon ${color}`}>
+      <div className={`${
+          label?.includes('shop') ? '' : 'p-2'
+        } w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30 relative overflow-hidden group/icon ${color}`}>
         <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10" />
         
         {isImageUrl ? (
