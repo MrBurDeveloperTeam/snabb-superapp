@@ -94,7 +94,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
     route: `https://todo.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#E6EBE9]', text: 'text-[#b45309]', icon: '#b45309' }
+    colorScheme: { bg: 'bg-[#F4FBFA]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
     id: 'app-10',
