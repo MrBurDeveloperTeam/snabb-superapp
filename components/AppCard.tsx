@@ -140,7 +140,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
                 <img
                   src={app.icon}
                   alt={app.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <i className={`${app.icon} text-3xl sm:text-4xl`} />
