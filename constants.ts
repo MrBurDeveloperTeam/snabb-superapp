@@ -44,7 +44,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-2',
     title: 'Inventory',
     category: 'Productivity',
-    icon: 'https://mrbur.odoo.com/stock/static/description/icon.png',
+    icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
     route: `https://inventory.snabbb.com/`,
     colorScheme: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', icon: '#b91c1c' }
   },
@@ -91,7 +91,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-9',
     title: 'To-Do Manager',
     category: 'Productivity',
-    icon: 'https://mrbur.odoo.com/project_todo/static/description/icon.png',
+    icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
     route: `https://todo.snabbb.com/`,
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
@@ -99,14 +99,14 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-10',
     title: 'E-Learning',
     category: 'Productivity',
-    icon: 'https://mrbur.odoo.com/website_slides/static/description/icon.png',
+    icon: 'https://app.snabbb.com/icons/e-learning.png',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
     id: 'app-11',
     title: 'Expenses',
     category: 'Productivity',
-    icon: 'https://mrbur.odoo.com/hr_expense/static/description/icon.png',
+    icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
 
