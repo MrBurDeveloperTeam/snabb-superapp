@@ -68,7 +68,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-6',
     title: 'AI Image Studio',
     category: 'Productivity',
-    icon: 'fa-solid fa-wand-magic-sparkles',
+    icon: 'https://app.snabbb.com/icons/ai_image.png',
     route: 'https://imageai.snabbb.com',
     colorScheme: { bg: 'bg-[#faf5ff]', text: 'text-[#7e22ce]', icon: '#7e22ce' }
   },
@@ -76,15 +76,14 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-7',
     title: 'AI Video Lab',
     category: 'Productivity',
-    icon: 'fa-solid fa-clapperboard',
+    icon: 'https://app.snabbb.com/icons/ai_video.png',
     colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#312e81]', icon: '#312e81' }
   },
   {
     id: 'app-8',
     title: 'Profit Calculator',
     category: 'Productivity',
-    icon: 'fa-solid fa-calculator',
-    route: `https://calculator.snabbb.com/`,
+    icon: 'https://app.snabbb.com/icons/profit_calculator.png',
     colorScheme: { bg: 'bg-[#fffbeb]', text: 'text-[#b45309]', icon: '#b45309' }
   },
   {
