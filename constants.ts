@@ -70,7 +70,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/ai_image.png',
     route: 'https://imageai.snabbb.com',
-    colorScheme: { bg: 'bg-[#faf5ff]', text: 'text-[#7e22ce]', icon: '#7e22ce' }
+    colorScheme: { bg: 'bg-[#ACE1AF]', text: 'text-[#7e22ce]', icon: '#7e22ce' }
   },
   {
     id: 'app-7',
