@@ -119,7 +119,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Insurance',
     category: 'Value Added',
     icon: 'fa-solid fa-shield-halved',
-    route: `https://app.snabbb.com`,
+    // route: `https://app.snabbb.com`,
     colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#166534]', icon: '#0891b2' }
   },
   {
@@ -127,7 +127,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Lease',
     category: 'Value Added',
     icon: 'fa-solid fa-file-contract',
-    route: `https://app.snabbb.com`,
+    // route: `https://app.snabbb.com`,
     colorScheme: { bg: 'bg-[#fefce8]', text: 'text-[#854d0e]', icon: '#0891b2' }
   },
 ];
