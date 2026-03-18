@@ -133,7 +133,9 @@ const App: React.FC = () => {
       lastVerifyAtRef.current = now;
 
       try {
-        await verifySession();
+        if(currentView === 'gallery'){
+          await verifySession();
+        }
       } finally {
         checkingSessionRef.current = false;
       }
