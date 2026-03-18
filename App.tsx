@@ -268,6 +268,7 @@ const App: React.FC = () => {
 
   const navigateTo = (view: View) => {
     setPreviousView(currentView);
+    console.log(`Navigating from ${currentView} to ${view}`); // Debug log
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
