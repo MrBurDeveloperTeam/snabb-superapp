@@ -226,6 +226,17 @@ const App: React.FC = () => {
         setIsProfileMenuOpen(false);
       }
     };
+    const path = window.location.pathname;
+
+    if (path === '/signup') {
+      setAuthMode('signup');
+      setCurrentView('auth');
+    }
+
+    if (path === '/login') {
+      setAuthMode('login');
+      setCurrentView('auth');
+    }
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
