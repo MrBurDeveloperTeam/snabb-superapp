@@ -6,10 +6,9 @@ const useGetSessionInfo = () => {
         mutationFn: async () => {
             const response = await getSessionInfo()
             console.log("Session Info:", response)
-            if(!response) {
-                throw new Error("No session info found")
-            }
-            return { sessionInfo: response };
+            return {
+              sessionInfo: response ?? null,
+            };
         },
         onSuccess: (data) => {
             const { sessionInfo } = data;
@@ -18,7 +17,7 @@ const useGetSessionInfo = () => {
             return sessionInfo
         },
         onError: (err: any) => {
-            console.error("Failed to get session info:", err.message)
+            console.error("Failed to get session info:", err.message);
         },
     })
 }
