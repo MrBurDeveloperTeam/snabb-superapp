@@ -91,7 +91,7 @@ const App: React.FC = () => {
   const verifySession = useCallback(async () => {
     try {
       const res = (await getSessionInfo()) as any;
-      console.log('the res up: ',res);
+
       console.log('the res: ',!res?.sessionInfo);
       if (!res?.sessionInfo) {
         clearAuthState();
@@ -114,6 +114,7 @@ const App: React.FC = () => {
 
       return true;
     } catch (error) {
+            console.log('the res down: ',error);
       clearAuthState();
       return false;
     }
