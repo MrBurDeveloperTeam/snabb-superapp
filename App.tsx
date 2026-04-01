@@ -84,7 +84,7 @@ const App: React.FC = () => {
     setLoggedInUser(null);
     setAuthFormData(initialFormData);
     setIsProfileMenuOpen(false);
-    setCurrentView('gallery');
+    (!path.includes('/signup') || !path.includes('/login')) && setCurrentView('gallery');
     setPreviousView(null);
   }, []);
 
