@@ -224,33 +224,37 @@ const App: React.FC = () => {
     };
   }, [verifySessionSafe]);
 
-  const verify = async () => {
-    return await verifySession();
-  }
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      setIsProfileMenuOpen(false);
+    }
+  };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setIsProfileMenuOpen(false);
-      }
-    };
-    
-    const loggedIn = verify();
+  const run = async () => {
+    const loggedIn = await verifySession();
     console.log('Initial session verification result:', loggedIn);
 
     if (path === '/signup' && !loggedIn) {
+      setIsLoggedIn(false);
       setAuthMode('signup');
       setCurrentView('auth');
+      return;
     }
 
     if (path === '/login' && !loggedIn) {
+      setIsLoggedIn(false);
       setAuthMode('login');
       setCurrentView('auth');
+      return;
     }
+  };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  run();
+
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, [path, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {
