@@ -402,6 +402,7 @@ const App: React.FC = () => {
             <>
               <button
                 onClick={() => {
+                  window.history.pushState({}, '', '/login');
                   setAuthMode('login');
                   navigateTo('auth');
                 }}
