@@ -224,6 +224,10 @@ const App: React.FC = () => {
     };
   }, [verifySessionSafe]);
 
+  const verify = async () => {
+    return await verifySession();
+  }
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
@@ -231,13 +235,14 @@ const App: React.FC = () => {
       }
     };
     
+    const loggedIn = verify();
 
-    if (path === '/signup' && !verifySession()) {
+    if (path === '/signup' && !loggedIn) {
       setAuthMode('signup');
       setCurrentView('auth');
     }
 
-    if (path === '/login' && !verifySession()) {
+    if (path === '/login' && !loggedIn) {
       setAuthMode('login');
       setCurrentView('auth');
     }
