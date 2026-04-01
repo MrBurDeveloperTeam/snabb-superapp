@@ -230,12 +230,12 @@ const App: React.FC = () => {
     };
     
 
-    if (path === '/signup') {
+    if (path === '/signup' && !isLoggedIn) {
       setAuthMode('signup');
       setCurrentView('auth');
     }
 
-    if (path === '/login') {
+    if (path === '/login' && !isLoggedIn) {
       setAuthMode('login');
       setCurrentView('auth');
     }
