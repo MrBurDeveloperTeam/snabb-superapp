@@ -13,7 +13,12 @@ const useGetSessionInfo = () => {
         onSuccess: (data) => {
             const { sessionInfo } = data;
             console.log("Successfully retrieved session info:", sessionInfo)
-            localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
+            if (sessionInfo) {
+              localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
+            } else {
+              localStorage.removeItem("odoo_session");
+              console.log("No session info found, user is not logged in");
+            }
             return sessionInfo
         },
         onError: (err: any) => {
