@@ -230,12 +230,12 @@ const App: React.FC = () => {
 
     if (path === '/signup') {
       setAuthMode('signup');
-      setCurrentView('auth');
+      // setCurrentView('auth');
     }
 
     if (path === '/login') {
       setAuthMode('login');
-      setCurrentView('auth');
+      // setCurrentView('auth');
     }
 
     document.addEventListener('mousedown', handleClickOutside);
