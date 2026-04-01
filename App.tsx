@@ -34,7 +34,7 @@ const ALLOWED_ORIGINS = [
 
 const App: React.FC = () => {
   const path = window.location.pathname;
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [currentView, setCurrentView] = useState<View>('gallery');
   const [previousView, setPreviousView] = useState<View | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
