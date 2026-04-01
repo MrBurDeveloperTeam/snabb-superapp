@@ -419,6 +419,7 @@ const App: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
+                  window.history.pushState({}, '', '/signup');
                   setAuthMode('signup');
                   navigateTo('auth');
                 }}
