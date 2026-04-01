@@ -236,6 +236,7 @@ const App: React.FC = () => {
     };
     
     const loggedIn = verify();
+    console.log('Initial session verification result:', loggedIn);
 
     if (path === '/signup' && !loggedIn) {
       setAuthMode('signup');
