@@ -33,6 +33,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
+  const path = window.location.pathname;
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [currentView, setCurrentView] = useState<View>('gallery');
   const [previousView, setPreviousView] = useState<View | null>(null);
@@ -133,8 +134,9 @@ const App: React.FC = () => {
       lastVerifyAtRef.current = now;
 
       try {
-        console.log('cur view: ', currentView)
-        if(currentView === 'gallery'){
+        if(currentView === 'gallery' &&
+          path !== '/signup' &&
+          path !== '/login'){
           await verifySession();
         }
       } finally {
@@ -226,7 +228,7 @@ const App: React.FC = () => {
         setIsProfileMenuOpen(false);
       }
     };
-    const path = window.location.pathname;
+    
 
     if (path === '/signup') {
       setAuthMode('signup');
