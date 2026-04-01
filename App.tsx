@@ -92,7 +92,6 @@ const App: React.FC = () => {
     try {
       const res = (await getSessionInfo()) as any;
 
-      console.log('the res: ',!res?.sessionInfo);
       if (!res?.sessionInfo) {
         clearAuthState();
         return false;
@@ -114,7 +113,6 @@ const App: React.FC = () => {
 
       return true;
     } catch (error) {
-            console.log('the res down: ',error);
       clearAuthState();
       return false;
     }
@@ -233,7 +231,6 @@ useEffect(() => {
 
   const run = async () => {
     const loggedIn = await verifySession();
-    console.log('Initial session verification result:', loggedIn);
 
     if (path === '/signup' && !loggedIn) {
       setIsLoggedIn(false);
