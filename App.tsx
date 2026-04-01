@@ -312,6 +312,7 @@ const App: React.FC = () => {
         <div
           className="flex items-center gap-2 sm:gap-3 cursor-pointer"
           onClick={() => {
+            window.history.pushState({}, '', '/');
             navigateTo('gallery');
             setActiveCategory('All');
           }}
