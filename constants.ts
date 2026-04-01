@@ -53,7 +53,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Events',
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/event.png',
-    route: `https://app.snabbb.com/event`,
+    // route: `https://app.snabbb.com/event`,
     colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
   },
   {
