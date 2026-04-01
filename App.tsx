@@ -518,7 +518,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="text-slate-400 text-xs sm:text-sm font-bold whitespace-nowrap bg-slate-100/50 px-4 py-2 rounded-full mb-3 sm:mb-0">
-                  Showing <span className="text-slate-900 font-extrabold">{filteredApps.length}</span> app
+                  Showing <span className="text-slate-900 font-extrabold">{filteredApps.length}</span> apps
                 </div>
               </div>
 
