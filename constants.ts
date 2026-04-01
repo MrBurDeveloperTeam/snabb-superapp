@@ -7,7 +7,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Mr.Bur',
     category: 'Shops',
     icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s',
-    route: `https://shop.snabbb.com/`,
+    route: `https://app.snabbb.com/shop`,
     colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#4338ca]', icon: '#4338ca' }
   },
   // {
