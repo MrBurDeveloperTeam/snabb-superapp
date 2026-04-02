@@ -23,11 +23,13 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
         const host = window.location.hostname; 
         console.log('app.route: ',app.route)
   
+        const w = window.open("", "_blank");
         switch(true){
           case app.route?.includes('inventory'):
             const inventoryRes = await createAppLink({app: 'inventory', email: user.username, name: user.name});
-            if(inventoryRes && inventoryRes.result.url){
-              window.open(inventoryRes.result.url, "_blank");
+            if(inventoryRes.result && inventoryRes.result.url){
+              if (!w) return;
+              w.location.href = inventoryRes.result.url;
             }
             break
           case app.route?.includes('recruitment'):
@@ -39,40 +41,43 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           case app.route?.includes('appointment'):
             const appointmentRes = await createAppLink({app: 'appointment', email: user.username, name: user.name});
             if(appointmentRes.result && appointmentRes.result.url){
-              window.open(appointmentRes.result.url, "_blank");
+              if (!w) return;
+              w.location.href = appointmentRes.result.url;
             }
             break
           case app.route?.includes('event'):
             const eventRes = await createAppLink({app: 'event', email: user.username, name: user.name});
             if(eventRes.result && eventRes.result.url){
-              window.open(eventRes.result.url, "_blank");
+              if (!w) return;
+              w.location.href = eventRes.result.url;
             }
             break
           case app.route?.includes('shop'):
-            const w = window.open("", "_blank");
             const shopRes = await createAppLink({app: 'shop', email: user.username, name: user.name});
             if(shopRes.result && shopRes.result.url){
               if (!w) return;
               w.location.href = shopRes.result.url;
-              // window.open(shopRes.result.url, "_blank");
             }
             break
           case app.route?.includes('calculator'):
             const calculatorRes = await createAppLink({app: 'calculator', email: user.username, name: user.name});
             if(calculatorRes.result && calculatorRes.result.url){
-              window.open(calculatorRes.result.url, "_blank");
+              if (!w) return;
+              w.location.href = calculatorRes.result.url;
             }
             break
           case app.route?.includes('todo'):
             const todoRes = await createAppLink({app: 'todo', email: user.username, name: user.name});
             if(todoRes.result && todoRes.result.url){
-              window.open(todoRes.result.url, "_blank");
+              if (!w) return;
+              w.location.href = todoRes.result.url;
             }
             break
           case app.route?.includes('imageai'):
             const aimageRes = await createAppLink({app: 'imageai', email: user.username, name: user.name});
             if(aimageRes.result && aimageRes.result.url){
-              window.open(aimageRes.result.url, "_blank");
+              if (!w) return;
+              w.location.href = aimageRes.result.url;
             }
             break
           default:
