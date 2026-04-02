@@ -51,7 +51,10 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           case app.route?.includes('shop'):
             const shopRes = await createAppLink({app: 'shop', email: user.username, name: user.name});
             if(shopRes.result && shopRes.result.url){
-              window.open(shopRes.result.url, "_blank");
+              const w = window.open("", "_blank");
+              if (!w) return;
+              w.location.href = shopRes.result.url;
+              // window.open(shopRes.result.url, "_blank");
             }
             break
           case app.route?.includes('calculator'):
