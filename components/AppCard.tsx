@@ -22,25 +22,13 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       if (isExternal && isLoggedIn) {
         const host = window.location.hostname; 
         console.log('app.route: ',app.route)
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-              
-
   
         switch(true){
           case app.route?.includes('inventory'):
             const inventoryRes = await createAppLink({app: 'inventory', email: user.username, name: user.name});
-            if (inventoryRes?.result?.url) {
-              if (isIOS) {
-                // iPhone fix
-                window.location.href = inventoryRes.result.url;
-              } else {
-                // Desktop / Android
-                window.open(inventoryRes.result.url, "_blank");
-              }
+            if(inventoryRes && inventoryRes.result.url){
+              window.open(inventoryRes.result.url, "_blank");
             }
-            // if(inventoryRes && inventoryRes.result.url){
-            //   window.open(inventoryRes.result.url, "_blank");
-            // }
             break
           case app.route?.includes('recruitment'):
             // const recruitmentRes = await createAppLink({app: 'recruitment', email: user.username, name: user.name});
@@ -50,93 +38,39 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             break
           case app.route?.includes('appointment'):
             const appointmentRes = await createAppLink({app: 'appointment', email: user.username, name: user.name});
-            if (inventoryRes?.result?.url) {
-              if (isIOS) {
-                // iPhone fix
-                window.location.href = appointmentRes.result.url;
-              } else {
-                // Desktop / Android
-                window.open(appointmentRes.result.url, "_blank");
-              }
+            if(appointmentRes.result && appointmentRes.result.url){
+              window.open(appointmentRes.result.url, "_blank");
             }
-            // if(appointmentRes.result && appointmentRes.result.url){
-            //   window.open(appointmentRes.result.url, "_blank");
-            // }
             break
           case app.route?.includes('event'):
             const eventRes = await createAppLink({app: 'event', email: user.username, name: user.name});
-            if (eventRes?.result?.url) {
-              if (isIOS) {
-                // iPhone fix
-                window.location.href = eventRes.result.url;
-              } else {
-                // Desktop / Android
-                window.open(eventRes.result.url, "_blank");
-              }
+            if(eventRes.result && eventRes.result.url){
+              window.open(eventRes.result.url, "_blank");
             }
-            // if(eventRes.result && eventRes.result.url){
-            //   window.open(eventRes.result.url, "_blank");
-            // }
             break
           case app.route?.includes('shop'):
             const shopRes = await createAppLink({app: 'shop', email: user.username, name: user.name});
-            if (inventoryRes?.result?.url) {
-              if (isIOS) {
-                // iPhone fix
-                window.location.href = inventoryRes.result.url;
-              } else {
-                // Desktop / Android
-                window.open(inventoryRes.result.url, "_blank");
-              }
+            if(shopRes.result && shopRes.result.url){
+              window.open(shopRes.result.url, "_blank");
             }
-            // if(shopRes.result && shopRes.result.url){
-            //   window.open(shopRes.result.url, "_blank");
-            // }
             break
           case app.route?.includes('calculator'):
             const calculatorRes = await createAppLink({app: 'calculator', email: user.username, name: user.name});
-            if (calculatorRes?.result?.url) {
-              if (isIOS) {
-                // iPhone fix
-                window.location.href = calculatorRes.result.url;
-              } else {
-                // Desktop / Android
-                window.open(calculatorRes.result.url, "_blank");
-              }
+            if(calculatorRes.result && calculatorRes.result.url){
+              window.open(calculatorRes.result.url, "_blank");
             }
-            // if(calculatorRes.result && calculatorRes.result.url){
-            //   window.open(calculatorRes.result.url, "_blank");
-            // }
             break
           case app.route?.includes('todo'):
             const todoRes = await createAppLink({app: 'todo', email: user.username, name: user.name});
-            if (todoRes?.result?.url) {
-              if (isIOS) {
-                // iPhone fix
-                window.location.href = todoRes.result.url;
-              } else {
-                // Desktop / Android
-                window.open(todoRes.result.url, "_blank");
-              }
+            if(todoRes.result && todoRes.result.url){
+              window.open(todoRes.result.url, "_blank");
             }
-            // if(todoRes.result && todoRes.result.url){
-            //   window.open(todoRes.result.url, "_blank");
-            // }
             break
           case app.route?.includes('imageai'):
             const aimageRes = await createAppLink({app: 'imageai', email: user.username, name: user.name});
-            if (aimageRes?.result?.url) {
-              if (isIOS) {
-                // iPhone fix
-                window.location.href = aimageRes.result.url;
-              } else {
-                // Desktop / Android
-                window.open(aimageRes.result.url, "_blank");
-              }
+            if(aimageRes.result && aimageRes.result.url){
+              window.open(aimageRes.result.url, "_blank");
             }
-            // if(aimageRes.result && aimageRes.result.url){
-            //   window.open(aimageRes.result.url, "_blank");
-            // }
             break
           default:
             break;
