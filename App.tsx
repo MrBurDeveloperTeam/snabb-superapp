@@ -446,7 +446,8 @@ useEffect(() => {
 
   useEffect(() => {
     console.log('currentView: ',currentView)
-  }, [currentView])
+    console.log('authMode: ',authMode)
+  }, [currentView, authMode])
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
