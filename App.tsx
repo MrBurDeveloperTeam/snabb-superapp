@@ -40,11 +40,11 @@ const App: React.FC = () => {
     if (pathname === '/login' || pathname === '/signup') return 'auth';
     return 'gallery';
   };
-  
+
   const getInitialAuthMode = (): 'login' | 'signup' => {
     return window.location.pathname === '/signup' ? 'signup' : 'login';
   };
-  
+
   const [path, setPath] = useState(getInitialPath);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [currentView, setCurrentView] = useState<View>(getInitialView);
@@ -426,7 +426,7 @@ useEffect(() => {
                 onClick={() => {
                   setAuthMode('login');
                   navigateTo('auth');
-                  window.history.pushState({}, '', '/login');
+                  window.location.href = '/login';
                 }}
                 className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
                   currentView === 'auth' && authMode === 'login'
@@ -441,7 +441,7 @@ useEffect(() => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  window.history.pushState({}, '', '/signup');
+                  window.location.href = '/signup';
                   setAuthMode('signup');
                   navigateTo('auth');
                 }}
