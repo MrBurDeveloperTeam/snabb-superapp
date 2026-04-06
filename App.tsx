@@ -33,7 +33,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
-  const path = window.location.pathname;
+  const [path, setPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [currentView, setCurrentView] = useState<View>('gallery');
   const [previousView, setPreviousView] = useState<View | null>(null);
@@ -84,8 +84,20 @@ const App: React.FC = () => {
     setLoggedInUser(null);
     setAuthFormData(initialFormData);
     setIsProfileMenuOpen(false);
-    (!path.includes('/login') && !path.includes('/signup')) && setCurrentView('gallery');
+    // (!path.includes('/login') && !path.includes('/signup')) && setCurrentView('gallery');
     setPreviousView(null);
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setPath(window.location.pathname);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   const verifySession = useCallback(async () => {
@@ -288,6 +300,11 @@ useEffect(() => {
     setPreviousView(null);
   };
 
+  const navigate = (url: string) => {
+    window.history.pushState({}, '', url);
+    setPath(url); // 👈 THIS is what makes it reactive
+  };
+
   const navigateTo = (view: View) => {
     setPreviousView(currentView);
     setCurrentView(view);
@@ -412,9 +429,9 @@ useEffect(() => {
             <>
               <button
                 onClick={() => {
+                  navigate('/login');
                   setAuthMode('login');
-                  navigateTo('auth');
-                  window.location.href = '/login';
+                  setCurrentView('auth');
                 }}
                 className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
                   currentView === 'auth' && authMode === 'login'
@@ -429,9 +446,9 @@ useEffect(() => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  window.location.href = '/signup';
+                  navigate('/signup');
                   setAuthMode('signup');
-                  navigateTo('auth');
+                  setCurrentView('auth');
                 }}
                 className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
               >
