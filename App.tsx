@@ -33,7 +33,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
-  const [path, setPath] = useState(window.location.pathname);
+  const path = window.location.pathname;
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [currentView, setCurrentView] = useState<View>('gallery');
   const [previousView, setPreviousView] = useState<View | null>(null);
@@ -78,45 +78,14 @@ const App: React.FC = () => {
 
   const avatarBgColor = useMemo(() => getAvatarColor(userName), [userName]);
 
-  const navigate = useCallback((url: string) => {
-    window.history.pushState({}, '', url);
-    setPath(url);
-  }, []);
-
   const clearAuthState = useCallback(() => {
     setIsLoggedIn(false);
     setUser(null);
     setLoggedInUser(null);
     setAuthFormData(initialFormData);
     setIsProfileMenuOpen(false);
+    // (!path.includes('/login') && !path.includes('/signup')) && setCurrentView('gallery');
     setPreviousView(null);
-  }, []);
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const nextPath = window.location.pathname;
-      setPath(nextPath);
-
-      if (nextPath === '/login') {
-        setAuthMode('login');
-        setCurrentView('auth');
-        return;
-      }
-
-      if (nextPath === '/signup') {
-        setAuthMode('signup');
-        setCurrentView('auth');
-        return;
-      }
-
-      setCurrentView('gallery');
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
   }, []);
 
   const verifySession = useCallback(async () => {
@@ -153,21 +122,28 @@ const App: React.FC = () => {
     async (force = false) => {
       const now = Date.now();
 
-      if (!force && now - lastVerifyAtRef.current < 1500) return;
-      if (checkingSessionRef.current) return;
+      if (!force && now - lastVerifyAtRef.current < 1500) {
+        return;
+      }
+
+      if (checkingSessionRef.current) {
+        return;
+      }
 
       checkingSessionRef.current = true;
       lastVerifyAtRef.current = now;
 
       try {
-        if (currentView === 'gallery' && path !== '/signup' && path !== '/login') {
+        if(currentView === 'gallery' &&
+          path !== '/signup' &&
+          path !== '/login'){
           await verifySession();
         }
       } finally {
         checkingSessionRef.current = false;
       }
     },
-    [verifySession, currentView, path]
+    [verifySession, currentView]
   );
 
   useEffect(() => {
@@ -183,40 +159,41 @@ const App: React.FC = () => {
         return;
       }
 
+      console.log('Received session_id from SSO:', sessionId);
+
       window.history.replaceState({}, document.title, window.location.pathname);
-      setPath(window.location.pathname);
 
       try {
         const { data } = await api.get(`https://sso.snabbb.com/api/redirect?sid=${sessionId}`);
+
+        console.log('the data cookie check response:', data);
 
         if (data?.ok) {
           await verifySessionSafe(true);
         } else {
           clearAuthState();
-          navigate('/login');
-          setAuthMode('login');
-          setCurrentView('auth');
+          window.location.href = '/login';
         }
       } catch (error) {
         clearAuthState();
-        navigate('/login');
-        setAuthMode('login');
-        setCurrentView('auth');
+        window.location.href = '/login';
       }
     };
 
     bootstrapSession();
-  }, [verifySessionSafe, clearAuthState, navigate]);
+  }, [verifySessionSafe, clearAuthState]);
 
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (!ALLOWED_ORIGINS.includes(event.origin)) return;
 
       if (event.data?.type === 'SSO_LOGOUT') {
+        console.log('Received SSO logout message from:', event.origin);
         clearAuthState();
       }
 
       if (event.data?.type === 'SSO_LOGIN') {
+        console.log('Received SSO login message from:', event.origin);
         await verifySessionSafe(true);
       }
     };
@@ -245,50 +222,36 @@ const App: React.FC = () => {
     };
   }, [verifySessionSafe]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setIsProfileMenuOpen(false);
-      }
-    };
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      setIsProfileMenuOpen(false);
+    }
+  };
 
-    const run = async () => {
-      const loggedIn = await verifySession();
+  const run = async () => {
+    const loggedIn = await verifySession();
 
-      if (path === '/login') {
-        if (loggedIn) {
-          setCurrentView('gallery');
-          window.history.replaceState({}, '', '/');
-          setPath('/');
-        } else {
-          setIsLoggedIn(false);
-          setAuthMode('login');
-          setCurrentView('auth');
-        }
-        return;
-      }
+    if (path === '/signup' && !loggedIn) {
+      setIsLoggedIn(false);
+      setAuthMode('signup');
+      setCurrentView('auth');
+      return;
+    }
 
-      if (path === '/signup') {
-        if (loggedIn) {
-          setCurrentView('gallery');
-          window.history.replaceState({}, '', '/');
-          setPath('/');
-        } else {
-          setIsLoggedIn(false);
-          setAuthMode('signup');
-          setCurrentView('auth');
-        }
-        return;
-      }
+    if (path === '/login' && !loggedIn) {
+      setIsLoggedIn(false);
+      setAuthMode('login');
+      setCurrentView('auth');
+      return;
+    }
+  };
 
-      setCurrentView('gallery');
-    };
+  run();
 
-    run();
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [path, verifySession]);
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, [path, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {
@@ -323,8 +286,6 @@ const App: React.FC = () => {
     setUser(nextUser);
     setCurrentView('gallery');
     setPreviousView(null);
-    window.history.replaceState({}, '', '/');
-    setPath('/');
   };
 
   const navigateTo = (view: View) => {
@@ -350,8 +311,7 @@ const App: React.FC = () => {
       setPreviousView(null);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      navigate('/');
-      setCurrentView('gallery');
+      navigateTo('gallery');
     }
   };
 
@@ -361,10 +321,9 @@ const App: React.FC = () => {
         <div
           className="flex items-center gap-2 sm:gap-3 cursor-pointer"
           onClick={() => {
-            navigate('/');
+            window.history.pushState({}, '', '/');
             navigateTo('gallery');
             setActiveCategory('All');
-            setSearchQuery('');
           }}
         >
           <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
@@ -453,9 +412,9 @@ const App: React.FC = () => {
             <>
               <button
                 onClick={() => {
-                  navigate('/login');
                   setAuthMode('login');
-                  setCurrentView('auth');
+                  navigateTo('auth');
+                  window.history.pushState({}, '', '/login');
                 }}
                 className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
                   currentView === 'auth' && authMode === 'login'
@@ -470,9 +429,9 @@ const App: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  navigate('/signup');
+                  window.history.pushState({}, '', '/signup');
                   setAuthMode('signup');
-                  setCurrentView('auth');
+                  navigateTo('auth');
                 }}
                 className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
               >
@@ -486,21 +445,21 @@ const App: React.FC = () => {
   );
 
   useEffect(() => {
-    console.log('path:', path);
-    console.log('currentView:', currentView);
-    console.log('authMode:', authMode);
-    console.log('isLoggedIn:', isLoggedIn);
-  }, [path, currentView, authMode, isLoggedIn]);
+    console.log('currentView: ',currentView)
+    console.log('authMode: ',authMode)
+    console.log('isLoggedIn: ',isLoggedIn)
+  }, [currentView, authMode, isLoggedIn])
 
   return (
+    <>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <Navigation />
 
       <main className="flex-1">
         <AnimatePresence mode="wait">
-          {currentView === 'auth' && (
+          {currentView === 'auth' && !isLoggedIn && (
             <motion.div
-              key={`auth-${authMode}`}
+              key="auth"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -682,6 +641,7 @@ const App: React.FC = () => {
         )}
       </main>
     </motion.div>
+    </>
   );
 };
 
