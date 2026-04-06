@@ -456,8 +456,8 @@ useEffect(() => {
       <Navigation />
 
       <main className="flex-1">
-    s
         <AnimatePresence mode="wait">
+          s
           {currentView === 'auth' && !isLoggedIn && (
             <motion.div
               key="auth"
