@@ -26,7 +26,7 @@ interface Props {
   setFormData: Dispatch<SetStateAction<Partial<LoginFormInputs>>>;
 }
 
-export function AuthPage({authMode, setCurrentView, onAuthSuccess, setLoggedInUser, setFormData}: Props) {
+export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData}: Props) {
   const [loggedIn, setLoggedIn] = useState(!!getStoredUser());
   const { control: controlLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorslogin, isSubmitting }, setValue: setValueLogin } = useForm<AuthFormInputs>({
     defaultValues: { email: "", password: "", name: "login"}

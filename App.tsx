@@ -412,7 +412,6 @@ useEffect(() => {
             <>
               <button
                 onClick={() => {
-                  setActiveCategory('All');
                   setAuthMode('login');
                   navigateTo('auth');
                   window.history.pushState({}, '', '/login');
