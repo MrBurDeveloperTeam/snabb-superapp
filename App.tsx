@@ -452,11 +452,11 @@ useEffect(() => {
 
   return (
     <>
-    s
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <Navigation />
 
       <main className="flex-1">
+    s
         <AnimatePresence mode="wait">
           {currentView === 'auth' && !isLoggedIn && (
             <motion.div
