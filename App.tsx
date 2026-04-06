@@ -522,7 +522,7 @@ const App: React.FC = () => {
                 {activeCategory === 'All' ? (
                   ['Shops', 'Productivity', 'Value Added'].map((cat) => {
                     const appsInCategory = filteredApps.filter((app) => app.category === cat);
-                    if (appsInCategory.length === 0) return null;
+                    if (appsInCategory.length === 0 && window.location.pathname !== "/login") return null;
 
                     return (
                       <div key={cat} className="mb-12">
