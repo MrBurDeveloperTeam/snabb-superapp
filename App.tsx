@@ -412,9 +412,10 @@ useEffect(() => {
             <>
               <button
                 onClick={() => {
-                  window.history.pushState({}, '', '/login');
+                  setActiveCategory('All');
                   setAuthMode('login');
                   navigateTo('auth');
+                  window.history.pushState({}, '', '/login');
                 }}
                 className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
                   currentView === 'auth' && authMode === 'login'
