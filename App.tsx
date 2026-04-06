@@ -232,34 +232,19 @@ useEffect(() => {
   const run = async () => {
     const loggedIn = await verifySession();
 
-    // LOGIN PAGE
-    if (path === '/login') {
-      if (loggedIn) {
-        setCurrentView('gallery');
-        window.history.replaceState({}, '', '/');
-      } else {
-        setIsLoggedIn(false);
-        setAuthMode('login');
-        setCurrentView('auth');
-      }
+    if (path === '/signup' && !loggedIn) {
+      setIsLoggedIn(false);
+      setAuthMode('signup');
+      setCurrentView('auth');
       return;
     }
 
-    // SIGNUP PAGE
-    if (path === '/signup') {
-      if (loggedIn) {
-        setCurrentView('gallery');
-        window.history.replaceState({}, '', '/');
-      } else {
-        setIsLoggedIn(false);
-        setAuthMode('signup');
-        setCurrentView('auth');
-      }
+    if (path === '/login' && !loggedIn) {
+      setIsLoggedIn(false);
+      setAuthMode('login');
+      setCurrentView('auth');
       return;
     }
-
-    // DEFAULT → ALWAYS GALLERY
-    setCurrentView('gallery');
   };
 
   run();
@@ -428,7 +413,6 @@ useEffect(() => {
               <button
                 onClick={() => {
                   window.history.pushState({}, '', '/login');
-                  setActiveCategory('All'); // 👈 prevent weird state carryover
                   setAuthMode('login');
                   navigateTo('auth');
                 }}
@@ -466,7 +450,7 @@ useEffect(() => {
 
       <main className="flex-1">
         <AnimatePresence mode="wait">
-          {currentView === 'auth' && (
+          {currentView === 'auth' && !isLoggedIn && (
             <motion.div
               key="auth"
               initial={{ opacity: 0, x: 20 }}
