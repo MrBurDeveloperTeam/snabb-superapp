@@ -32,8 +32,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
-  const getCurrentPath = () => window.location.pathname || '/';
-  const [path, setPath] = useState(getCurrentPath());
+  const [path, setPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,8 +57,8 @@ const App: React.FC = () => {
   const navigate = useCallback((url: string) => {
     if (window.location.pathname !== url) {
       window.history.pushState({}, '', url);
-      setPath(url);
     }
+    setPath(url);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -147,7 +146,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handlePopState = () => {
-      setPath(getCurrentPath());
+      setPath(window.location.pathname);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -421,151 +420,163 @@ const App: React.FC = () => {
       <Navigation />
 
       <main className="flex-1">
-  <AnimatePresence mode="wait" initial={false}>
-    <motion.div
-      key={path}
-      initial={{ opacity: 0, x: 12 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -12 }}
-      transition={{ duration: 0.2 }}
-      className="h-full"
-    >
-      {isAuthRoute ? (
-        <AuthPage
-          authMode={authMode}
-          setCurrentView={() => {}}
-          onAuthSuccess={handleSuccessfulAuth}
-          setLoggedInUser={setLoggedInUser}
-          setFormData={setAuthFormData}
-        />
-      ) : path === '/privacy' ? (
-        <PrivacyPage />
-      ) : path === '/terms' ? (
-        <TermsPage />
-      ) : (
-        <>
-          <motion.div
-            key="gallery"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="max-w-7xl mx-auto px-6 pb-24"
-          >
-            <section className="pt-12 sm:pt-20 pb-12 text-center flex flex-col items-center border-b border-slate-100/50 mb-8">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-                <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
-                  Snabbb.
-                  <span className="text-blue-600">io</span>
-                </h1>
+        <AnimatePresence mode="wait" initial={false}>
+          {isAuthRoute && (
+            <motion.div
+              key={`auth-${authMode}`}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <AuthPage
+                authMode={authMode}
+                setCurrentView={() => {}}
+                onAuthSuccess={handleSuccessfulAuth}
+                setLoggedInUser={setLoggedInUser}
+                setFormData={setAuthFormData}
+              />
+            </motion.div>
+          )}
 
-                <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
-                  {isLoggedIn
-                    ? `Welcome back, ${user?.fullName.split(' ')[0]}! Discover our premium collection.`
-                    : 'Explore a curated universe of mini-apps designed to streamline your daily tasks.'}
-                </p>
-              </motion.div>
+          {path === '/privacy' && (
+            <motion.div key="privacy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <PrivacyPage />
+            </motion.div>
+          )}
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="w-full max-w-2xl relative px-4"
-              >
-                <div className="relative group">
-                  <i className="fa-solid fa-magnifying-glass absolute left-7 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-blue-500 transition-colors"></i>
-                  <input
-                    type="text"
-                    placeholder="Search for tools..."
-                    className="w-full bg-white border border-slate-100 rounded-[2rem] pl-16 pr-8 py-5 text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-500/50 transition-all text-base md:text-lg font-medium placeholder:text-slate-400 shadow-[0_20px_50px_rgba(0,0,0,0.04)]"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </motion.div>
-            </section>
+          {path === '/terms' && (
+            <motion.div key="terms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <TermsPage />
+            </motion.div>
+          )}
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-1 pt-6">
-              <div className="flex items-center justify-start gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-3 pt-1 sm:pb-3">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 border ${
-                      activeCategory === cat
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/30'
-                        : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200 hover:bg-slate-50 shadow-sm'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              <div className="text-slate-400 text-xs sm:text-sm font-bold whitespace-nowrap bg-slate-100/50 px-4 py-2 rounded-full mb-3 sm:mb-0">
-                Showing <span className="text-slate-900 font-extrabold">{filteredApps.length}</span> apps
-              </div>
-            </div>
-
-            <div className="mt-12">
-              {activeCategory === 'All' ? (
-                ['Shops', 'Productivity', 'Value Added'].map((cat) => {
-                  const appsInCategory = filteredApps.filter((app) => app.category === cat);
-                  if (appsInCategory.length === 0) return null;
-
-                  return (
-                    <div key={cat} className="mb-12">
-                      <div className="flex items-center gap-4 mb-8">
-                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">{cat}</h2>
-                        <div className="flex-1 h-px bg-slate-100" />
-                        <span className="text-xs font-bold text-slate-300">{appsInCategory.length} apps</span>
-                      </div>
-
-                      <motion.div
-                        layout
-                        className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
-                      >
-                        <AnimatePresence mode="popLayout">
-                          {appsInCategory.map((app, index) => (
-                            <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
-                          ))}
-                        </AnimatePresence>
-                      </motion.div>
-                    </div>
-                  );
-                })
-              ) : (
+          {path === '/' && (
+            <motion.div
+              key="gallery"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="max-w-7xl mx-auto px-6 pb-24"
+            >
+              <section className="pt-12 sm:pt-20 pb-12 text-center flex flex-col items-center border-b border-slate-100/50 mb-8">
                 <motion.div
-                  layout
-                  className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
                 >
-                  <AnimatePresence mode="popLayout">
-                    {filteredApps.map((app, index) => (
-                      <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
-                    ))}
-                  </AnimatePresence>
+                  <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
+                    Snabbb.
+                    <span className="text-blue-600">io</span>
+                  </h1>
 
-                  {filteredApps.length === 0 && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="col-span-full py-32 flex flex-col items-center justify-center"
-                    >
-                      <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-2xl mb-4">
-                        <i className="fa-solid fa-search text-slate-300"></i>
-                      </div>
-                      <h3 className="text-slate-900 font-bold text-lg mb-1">No results found</h3>
-                      <p className="text-slate-400 text-sm">Try another category or search term.</p>
-                    </motion.div>
-                  )}
+                  <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
+                    {isLoggedIn
+                      ? `Welcome back, ${user?.fullName.split(' ')[0]}! Discover our premium collection.`
+                      : 'Explore a curated universe of mini-apps designed to streamline your daily tasks.'}
+                  </p>
                 </motion.div>
-              )}
-            </div>
-          </motion.div>
 
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.6 }}
+                  className="w-full max-w-2xl relative px-4"
+                >
+                  <div className="relative group">
+                    <i className="fa-solid fa-magnifying-glass absolute left-7 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-blue-500 transition-colors"></i>
+                    <input
+                      type="text"
+                      placeholder="Search for tools..."
+                      className="w-full bg-white border border-slate-100 rounded-[2rem] pl-16 pr-8 py-5 text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-500/50 transition-all text-base md:text-lg font-medium placeholder:text-slate-400 shadow-[0_20px_50px_rgba(0,0,0,0.04)]"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </motion.div>
+              </section>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-1 pt-6">
+                <div className="flex items-center justify-start gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-3 pt-1 sm:pb-3">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 border ${
+                        activeCategory === cat
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/30'
+                          : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200 hover:bg-slate-50 shadow-sm'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="text-slate-400 text-xs sm:text-sm font-bold whitespace-nowrap bg-slate-100/50 px-4 py-2 rounded-full mb-3 sm:mb-0">
+                  Showing <span className="text-slate-900 font-extrabold">{filteredApps.length}</span> apps
+                </div>
+              </div>
+
+              <div className="mt-12">
+                {activeCategory === 'All' ? (
+                  ['Shops', 'Productivity', 'Value Added'].map((cat) => {
+                    const appsInCategory = filteredApps.filter((app) => app.category === cat);
+                    if (appsInCategory.length === 0) return null;
+
+                    return (
+                      <div key={cat} className="mb-12">
+                        <div className="flex items-center gap-4 mb-8">
+                          <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">{cat}</h2>
+                          <div className="flex-1 h-px bg-slate-100" />
+                          <span className="text-xs font-bold text-slate-300">{appsInCategory.length} apps</span>
+                        </div>
+
+                        <motion.div
+                          layout
+                          className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
+                        >
+                          <AnimatePresence mode="popLayout">
+                            {appsInCategory.map((app, index) => (
+                              <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <motion.div
+                    layout
+                    className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
+                  >
+                    <AnimatePresence mode="popLayout">
+                      {filteredApps.map((app, index) => (
+                        <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
+                      ))}
+                    </AnimatePresence>
+
+                    {filteredApps.length === 0 && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="col-span-full py-32 flex flex-col items-center justify-center"
+                      >
+                        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-2xl mb-4">
+                          <i className="fa-solid fa-search text-slate-300"></i>
+                        </div>
+                        <h3 className="text-slate-900 font-bold text-lg mb-1">No results found</h3>
+                        <p className="text-slate-400 text-sm">Try another category or search term.</p>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {!isAuthRoute && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
             <div className="py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-slate-400 text-sm font-bold">© 2026 Snabbb Apps Gallery.</p>
@@ -591,11 +602,8 @@ const App: React.FC = () => {
               </div>
             </div>
           </footer>
-        </>
-      )}
-    </motion.div>
-  </AnimatePresence>
-</main>
+        )}
+      </main>
     </motion.div>
   );
 };
