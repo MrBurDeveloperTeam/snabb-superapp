@@ -244,33 +244,19 @@ useEffect(() => {
   const run = async () => {
     const loggedIn = await verifySession();
 
-    if (path === '/login') {
-      if (loggedIn) {
-        window.history.replaceState({}, '', '/');
-        setPath('/');
-        setCurrentView('gallery');
-      } else {
-        setIsLoggedIn(false);
-        setAuthMode('login');
-        setCurrentView('auth');
-      }
+    if (path === '/signup' && !loggedIn) {
+      setIsLoggedIn(false);
+      setAuthMode('signup');
+      setCurrentView('auth');
       return;
     }
 
-    if (path === '/signup') {
-      if (loggedIn) {
-        window.history.replaceState({}, '', '/');
-        setPath('/');
-        setCurrentView('gallery');
-      } else {
-        setIsLoggedIn(false);
-        setAuthMode('signup');
-        setCurrentView('auth');
-      }
+    if (path === '/login' && !loggedIn) {
+      setIsLoggedIn(false);
+      setAuthMode('login');
+      setCurrentView('auth');
       return;
     }
-
-    setCurrentView('gallery');
   };
 
   run();
@@ -288,33 +274,6 @@ useEffect(() => {
       return categoryMatch && searchMatch;
     });
   }, [activeCategory, searchQuery]);
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const nextPath = window.location.pathname;
-      setPath(nextPath);
-
-      if (nextPath === '/login') {
-        setAuthMode('login');
-        setCurrentView('auth');
-        return;
-      }
-
-      if (nextPath === '/signup') {
-        setAuthMode('signup');
-        setCurrentView('auth');
-        return;
-      }
-
-      setCurrentView('gallery');
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, []);
 
   const handleSuccessfulAuth = () => {
     const s = getAuthUser();
@@ -340,25 +299,6 @@ useEffect(() => {
     setCurrentView('gallery');
     setPreviousView(null);
   };
-
-  const navigate = useCallback((url: string) => {
-    window.history.pushState({}, '', url);
-    setPath(url);
-
-    if (url === '/login') {
-      setAuthMode('login');
-      setCurrentView('auth');
-      return;
-    }
-
-    if (url === '/signup') {
-      setAuthMode('signup');
-      setCurrentView('auth');
-      return;
-    }
-
-    setCurrentView('gallery');
-  }, []);
 
   const navigateTo = (view: View) => {
     setPreviousView(currentView);
@@ -393,9 +333,9 @@ useEffect(() => {
         <div
           className="flex items-center gap-2 sm:gap-3 cursor-pointer"
           onClick={() => {
-            navigate('/');
+            window.history.pushState({}, '', '/');
+            navigateTo('gallery');
             setActiveCategory('All');
-            setSearchQuery('');
           }}
         >
           <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
@@ -484,7 +424,9 @@ useEffect(() => {
             <>
               <button
                 onClick={() => {
-                  navigate('/login');
+                  setAuthMode('login');
+                  navigateTo('auth');
+                  window.location.href = '/login';
                 }}
                 className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
                   currentView === 'auth' && authMode === 'login'
@@ -499,7 +441,9 @@ useEffect(() => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  navigate('/signup');
+                  window.location.href = '/signup';
+                  setAuthMode('signup');
+                  navigateTo('auth');
                 }}
                 className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
               >
