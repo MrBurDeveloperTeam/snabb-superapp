@@ -84,7 +84,6 @@ const App: React.FC = () => {
     setLoggedInUser(null);
     setAuthFormData(initialFormData);
     setIsProfileMenuOpen(false);
-    // (!path.includes('/login') && !path.includes('/signup')) && setCurrentView('gallery');
     setPreviousView(null);
   }, []);
 
@@ -134,16 +133,14 @@ const App: React.FC = () => {
       lastVerifyAtRef.current = now;
 
       try {
-        if(currentView === 'gallery' &&
-          path !== '/signup' &&
-          path !== '/login'){
+        if (currentView === 'gallery' && path !== '/signup' && path !== '/login') {
           await verifySession();
         }
       } finally {
         checkingSessionRef.current = false;
       }
     },
-    [verifySession, currentView]
+    [verifySession, currentView, path]
   );
 
   useEffect(() => {
@@ -222,36 +219,48 @@ const App: React.FC = () => {
     };
   }, [verifySessionSafe]);
 
-useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
-    if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-      setIsProfileMenuOpen(false);
-    }
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
 
-  const run = async () => {
-    const loggedIn = await verifySession();
+    const run = async () => {
+      const loggedIn = await verifySession();
 
-    if (path === '/signup' && !loggedIn) {
-      setIsLoggedIn(false);
-      setAuthMode('signup');
-      setCurrentView('auth');
-      return;
-    }
+      if (path === '/login') {
+        if (loggedIn) {
+          setCurrentView('gallery');
+          window.history.replaceState({}, '', '/');
+        } else {
+          setIsLoggedIn(false);
+          setAuthMode('login');
+          setCurrentView('auth');
+        }
+        return;
+      }
 
-    if (path === '/login' && !loggedIn) {
-      setIsLoggedIn(false);
-      setAuthMode('login');
-      setCurrentView('auth');
-      return;
-    }
-  };
+      if (path === '/signup') {
+        if (loggedIn) {
+          setCurrentView('gallery');
+          window.history.replaceState({}, '', '/');
+        } else {
+          setIsLoggedIn(false);
+          setAuthMode('signup');
+          setCurrentView('auth');
+        }
+        return;
+      }
 
-  run();
+      setCurrentView('gallery');
+    };
 
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => document.removeEventListener('mousedown', handleClickOutside);
-}, [path, verifySession]);
+    run();
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [path, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {
@@ -286,6 +295,7 @@ useEffect(() => {
     setUser(nextUser);
     setCurrentView('gallery');
     setPreviousView(null);
+    window.history.replaceState({}, '', '/');
   };
 
   const navigateTo = (view: View) => {
@@ -412,6 +422,8 @@ useEffect(() => {
             <>
               <button
                 onClick={() => {
+                  setActiveCategory('All');
+                  setSearchQuery('');
                   setAuthMode('login');
                   navigateTo('auth');
                   window.history.pushState({}, '', '/login');
@@ -429,6 +441,8 @@ useEffect(() => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
+                  setActiveCategory('All');
+                  setSearchQuery('');
                   window.history.pushState({}, '', '/signup');
                   setAuthMode('signup');
                   navigateTo('auth');
@@ -445,20 +459,18 @@ useEffect(() => {
   );
 
   useEffect(() => {
-    console.log('currentView: ',currentView)
-    console.log('authMode: ',authMode)
-    console.log('isLoggedIn: ',isLoggedIn)
-  }, [currentView, authMode, isLoggedIn])
+    console.log('currentView: ', currentView);
+    console.log('authMode: ', authMode);
+    console.log('isLoggedIn: ', isLoggedIn);
+  }, [currentView, authMode, isLoggedIn]);
 
   return (
-    <>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <Navigation />
 
       <main className="flex-1">
         <AnimatePresence mode="wait">
-          s
-          {currentView === 'auth' && !isLoggedIn && (
+          {currentView === 'auth' && (
             <motion.div
               key="auth"
               initial={{ opacity: 0, x: 20 }}
@@ -642,7 +654,6 @@ useEffect(() => {
         )}
       </main>
     </motion.div>
-    </>
   );
 };
 
