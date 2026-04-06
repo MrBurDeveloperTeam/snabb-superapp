@@ -64,6 +64,7 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
 
 return(
   <>
+  s
    <ToastContainer 
         position="top-center"    // Position of the toast
         autoClose={5000}        // Time (ms) before the toast disappears
