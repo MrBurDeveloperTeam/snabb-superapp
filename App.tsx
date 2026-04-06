@@ -12,7 +12,6 @@ import api from './services/api';
 
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
-import type { View } from './types/View';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -33,23 +32,8 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
-  const getInitialPath = () => window.location.pathname;
-
-  const getInitialView = (): View => {
-    const pathname = window.location.pathname;
-    if (pathname === '/login' || pathname === '/signup') return 'auth';
-    return 'gallery';
-  };
-
-  const getInitialAuthMode = (): 'login' | 'signup' => {
-    return window.location.pathname === '/signup' ? 'signup' : 'login';
-  };
-
-  const [path, setPath] = useState(getInitialPath);
+  const [path, setPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-  const [currentView, setCurrentView] = useState<View>(getInitialView);
-  const [previousView, setPreviousView] = useState<View | null>(null);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>(getInitialAuthMode);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -66,6 +50,17 @@ const App: React.FC = () => {
 
   const userName = authFormData?.fullName || 'Guest User';
   const userInitial = userName.charAt(0).toUpperCase();
+
+  const isAuthRoute = path === '/login' || path === '/signup';
+  const authMode: 'login' | 'signup' = path === '/signup' ? 'signup' : 'login';
+
+  const navigate = useCallback((url: string) => {
+    if (window.location.pathname !== url) {
+      window.history.pushState({}, '', url);
+    }
+    setPath(url);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const getAvatarColor = (name: string) => {
     const colors = [
@@ -96,8 +91,6 @@ const App: React.FC = () => {
     setLoggedInUser(null);
     setAuthFormData(initialFormData);
     setIsProfileMenuOpen(false);
-    // (!path.includes('/login') && !path.includes('/signup')) && setCurrentView('gallery');
-    setPreviousView(null);
   }, []);
 
   const verifySession = useCallback(async () => {
@@ -134,29 +127,31 @@ const App: React.FC = () => {
     async (force = false) => {
       const now = Date.now();
 
-      if (!force && now - lastVerifyAtRef.current < 1500) {
-        return;
-      }
-
-      if (checkingSessionRef.current) {
-        return;
-      }
+      if (!force && now - lastVerifyAtRef.current < 1500) return;
+      if (checkingSessionRef.current) return;
 
       checkingSessionRef.current = true;
       lastVerifyAtRef.current = now;
 
       try {
-        if(currentView === 'gallery' &&
-          path !== '/signup' &&
-          path !== '/login'){
+        if (!isAuthRoute) {
           await verifySession();
         }
       } finally {
         checkingSessionRef.current = false;
       }
     },
-    [verifySession, currentView]
+    [verifySession, isAuthRoute]
   );
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setPath(window.location.pathname);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (didInitRef.current) return;
@@ -171,41 +166,36 @@ const App: React.FC = () => {
         return;
       }
 
-      console.log('Received session_id from SSO:', sessionId);
-
       window.history.replaceState({}, document.title, window.location.pathname);
+      setPath(window.location.pathname);
 
       try {
         const { data } = await api.get(`https://sso.snabbb.com/api/redirect?sid=${sessionId}`);
-
-        console.log('the data cookie check response:', data);
 
         if (data?.ok) {
           await verifySessionSafe(true);
         } else {
           clearAuthState();
-          window.location.href = '/login';
+          navigate('/login');
         }
       } catch (error) {
         clearAuthState();
-        window.location.href = '/login';
+        navigate('/login');
       }
     };
 
     bootstrapSession();
-  }, [verifySessionSafe, clearAuthState]);
+  }, [verifySessionSafe, clearAuthState, navigate]);
 
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (!ALLOWED_ORIGINS.includes(event.origin)) return;
 
       if (event.data?.type === 'SSO_LOGOUT') {
-        console.log('Received SSO logout message from:', event.origin);
         clearAuthState();
       }
 
       if (event.data?.type === 'SSO_LOGIN') {
-        console.log('Received SSO login message from:', event.origin);
         await verifySessionSafe(true);
       }
     };
@@ -234,36 +224,32 @@ const App: React.FC = () => {
     };
   }, [verifySessionSafe]);
 
-useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
-    if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-      setIsProfileMenuOpen(false);
-    }
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
 
-  const run = async () => {
-    const loggedIn = await verifySession();
+    const run = async () => {
+      const loggedIn = await verifySession();
 
-    if (path === '/signup' && !loggedIn) {
-      setIsLoggedIn(false);
-      setAuthMode('signup');
-      setCurrentView('auth');
-      return;
-    }
+      if (path === '/login' || path === '/signup') {
+        if (loggedIn) {
+          window.history.replaceState({}, '', '/');
+          setPath('/');
+        } else {
+          setIsLoggedIn(false);
+        }
+        return;
+      }
+    };
 
-    if (path === '/login' && !loggedIn) {
-      setIsLoggedIn(false);
-      setAuthMode('login');
-      setCurrentView('auth');
-      return;
-    }
-  };
+    run();
 
-  run();
-
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => document.removeEventListener('mousedown', handleClickOutside);
-}, [path, verifySession]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [path, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {
@@ -296,14 +282,7 @@ useEffect(() => {
     setIsLoggedIn(true);
     setAuthFormData(nextUser);
     setUser(nextUser);
-    setCurrentView('gallery');
-    setPreviousView(null);
-  };
-
-  const navigateTo = (view: View) => {
-    setPreviousView(currentView);
-    setCurrentView(view);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigate('/');
   };
 
   const logout = async () => {
@@ -317,25 +296,15 @@ useEffect(() => {
     }
   };
 
-  const handleBack = () => {
-    if (previousView) {
-      setCurrentView(previousView);
-      setPreviousView(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      navigateTo('gallery');
-    }
-  };
-
   const Navigation = () => (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
       <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
         <div
           className="flex items-center gap-2 sm:gap-3 cursor-pointer"
           onClick={() => {
-            window.history.pushState({}, '', '/');
-            navigateTo('gallery');
+            navigate('/');
             setActiveCategory('All');
+            setSearchQuery('');
           }}
         >
           <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
@@ -423,15 +392,9 @@ useEffect(() => {
           ) : (
             <>
               <button
-                onClick={() => {
-                  setAuthMode('login');
-                  navigateTo('auth');
-                  window.location.href = '/login';
-                }}
+                onClick={() => navigate('/login')}
                 className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
-                  currentView === 'auth' && authMode === 'login'
-                    ? 'text-blue-600'
-                    : 'text-slate-600 hover:text-slate-900'
+                  path === '/login' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Log In
@@ -440,11 +403,7 @@ useEffect(() => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  window.location.href = '/signup';
-                  setAuthMode('signup');
-                  navigateTo('auth');
-                }}
+                onClick={() => navigate('/signup')}
                 className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
               >
                 Sign Up
@@ -456,22 +415,15 @@ useEffect(() => {
     </header>
   );
 
-  useEffect(() => {
-    console.log('currentView: ',currentView)
-    console.log('authMode: ',authMode)
-    console.log('isLoggedIn: ',isLoggedIn)
-  }, [currentView, authMode, isLoggedIn])
-
   return (
-    <>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <Navigation />
 
       <main className="flex-1">
         <AnimatePresence mode="wait">
-          {currentView === 'auth' && !isLoggedIn && (
+          {isAuthRoute && (
             <motion.div
-              key="auth"
+              key={`auth-${authMode}`}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -479,7 +431,7 @@ useEffect(() => {
             >
               <AuthPage
                 authMode={authMode}
-                setCurrentView={setCurrentView}
+                setCurrentView={() => {}}
                 onAuthSuccess={handleSuccessfulAuth}
                 setLoggedInUser={setLoggedInUser}
                 setFormData={setAuthFormData}
@@ -487,19 +439,19 @@ useEffect(() => {
             </motion.div>
           )}
 
-          {currentView === 'privacy' && (
+          {path === '/privacy' && (
             <motion.div key="privacy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <PrivacyPage onBack={previousView === 'auth' ? handleBack : undefined} />
+              <PrivacyPage />
             </motion.div>
           )}
 
-          {currentView === 'terms' && (
+          {path === '/terms' && (
             <motion.div key="terms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <TermsPage onBack={previousView === 'auth' ? handleBack : undefined} />
+              <TermsPage />
             </motion.div>
           )}
 
-          {currentView === 'gallery' && (
+          {path === '/' && (
             <motion.div
               key="gallery"
               initial={{ opacity: 0 }}
@@ -624,25 +576,25 @@ useEffect(() => {
           )}
         </AnimatePresence>
 
-        {currentView !== 'auth' && (
+        {!isAuthRoute && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
             <div className="py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-slate-400 text-sm font-bold">© 2026 Snabbb Apps Gallery.</p>
 
               <div className="flex gap-8">
                 <button
-                  onClick={() => navigateTo('privacy')}
+                  onClick={() => navigate('/privacy')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    currentView === 'privacy' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/privacy' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
                   }`}
                 >
                   Privacy
                 </button>
 
                 <button
-                  onClick={() => navigateTo('terms')}
+                  onClick={() => navigate('/terms')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    currentView === 'terms' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/terms' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
                   }`}
                 >
                   Terms
@@ -653,7 +605,6 @@ useEffect(() => {
         )}
       </main>
     </motion.div>
-    </>
   );
 };
 
