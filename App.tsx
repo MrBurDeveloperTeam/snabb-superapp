@@ -420,7 +420,7 @@ const App: React.FC = () => {
       <Navigation />
 
       <main className="flex-1">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           {isAuthRoute && (
             <motion.div
               key={`auth-${authMode}`}
