@@ -33,11 +33,23 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
-  const path = window.location.pathname;
+  const getInitialPath = () => window.location.pathname;
+
+  const getInitialView = (): View => {
+    const pathname = window.location.pathname;
+    if (pathname === '/login' || pathname === '/signup') return 'auth';
+    return 'gallery';
+  };
+  
+  const getInitialAuthMode = (): 'login' | 'signup' => {
+    return window.location.pathname === '/signup' ? 'signup' : 'login';
+  };
+  
+  const [path, setPath] = useState(getInitialPath);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-  const [currentView, setCurrentView] = useState<View>('gallery');
+  const [currentView, setCurrentView] = useState<View>(getInitialView);
   const [previousView, setPreviousView] = useState<View | null>(null);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>(getInitialAuthMode);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
