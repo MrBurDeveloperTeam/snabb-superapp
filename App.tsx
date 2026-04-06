@@ -420,15 +420,15 @@ const App: React.FC = () => {
       <Navigation />
 
       <main className="flex-1">
-        <AnimatePresence mode="wait" initial={false}>
+        {/* <AnimatePresence mode="wait" initial={false}> */}
           {isAuthRoute && (
-            <motion.div
-              key={`auth-${authMode}`}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+            // <motion.div
+            //   key={`auth-${authMode}`}
+            //   initial={{ opacity: 0, x: 20 }}
+            //   animate={{ opacity: 1, x: 0 }}
+            //   exit={{ opacity: 0, x: -20 }}
+            //   transition={{ duration: 0.3 }}
+            // >
               <AuthPage
                 authMode={authMode}
                 setCurrentView={() => {}}
@@ -436,7 +436,7 @@ const App: React.FC = () => {
                 setLoggedInUser={setLoggedInUser}
                 setFormData={setAuthFormData}
               />
-            </motion.div>
+            // </motion.div>
           )}
 
           {path === '/privacy' && (
@@ -574,7 +574,7 @@ const App: React.FC = () => {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+        {/* </AnimatePresence> */}
 
         {!isAuthRoute && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
