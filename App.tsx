@@ -225,32 +225,32 @@ const App: React.FC = () => {
     };
   }, [verifySessionSafe]);
 
-  // useEffect(() => {
-  //   const handleClickOutside = (event: MouseEvent) => {
-  //     if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-  //       setIsProfileMenuOpen(false);
-  //     }
-  //   };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
 
-  //   const run = async () => {
-  //     const loggedIn = await verifySession();
+    const run = async () => {
+      const loggedIn = await verifySession();
 
-  //     if (path === '/login' || path === '/signup') {
-  //       if (loggedIn) {
-  //         window.history.replaceState({}, '', '/');
-  //         setPath('/');
-  //       } else {
-  //         setIsLoggedIn(false);
-  //       }
-  //       return;
-  //     }
-  //   };
+      if (path === '/login' || path === '/signup') {
+        if (loggedIn) {
+          window.history.replaceState({}, '', '/');
+          setPath('/');
+        } else {
+          setIsLoggedIn(false);
+        }
+        return;
+      }
+    };
 
-  //   run();
+    run();
 
-  //   document.addEventListener('mousedown', handleClickOutside);
-  //   return () => document.removeEventListener('mousedown', handleClickOutside);
-  // }, [path, verifySession]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [path, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {
