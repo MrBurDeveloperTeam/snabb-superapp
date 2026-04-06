@@ -444,6 +444,10 @@ useEffect(() => {
     </header>
   );
 
+  useEffect(() => {
+    console.log('currentView: ',currentView)
+  }, [currentView])
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <Navigation />
