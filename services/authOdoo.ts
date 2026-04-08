@@ -25,7 +25,6 @@ export const authOdoo = async ({login, password, fullName, jobPosition, customJo
     );
 
     if (response.data.error) {
-      console.log('err res:',response.data.error)
       throw new Error(response.data.error.message);
     }
     await api.post("/auth/create-user", {
