@@ -1,4 +1,4 @@
-import { getSessionInfo } from "@/services/GetSessionInfo"
+import { getSessionInfo, getSessionInfoWithRetry } from "@/services/GetSessionInfo"
 import { useMutation } from "@tanstack/react-query"
 
 const useGetSessionInfo = () => {
@@ -8,6 +8,8 @@ const useGetSessionInfo = () => {
             if(!response) {
                 throw new Error("No session info found")
             }
+            const sessionInfo = await getSessionInfoWithRetry()
+            console.log("Session info with retry:", sessionInfo);
             return { sessionInfo: response };
         },
         onSuccess: (data) => {

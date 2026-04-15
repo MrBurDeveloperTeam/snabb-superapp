@@ -15,8 +15,6 @@ export const useCreateAppLink = () => {
     }) => {
       const company = getActiveCompanyFromOdooSession();
 
-      console.log("active company for shop:", company);
-
       const { data } = await api.post(
         "/v1/sso/app_link",
         {
