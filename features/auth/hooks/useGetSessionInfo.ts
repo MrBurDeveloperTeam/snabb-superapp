@@ -9,8 +9,8 @@ const useGetSessionInfo = () => {
                 throw new Error("No session info found")
             }
             const sessionInfo = await getSessionInfoWithRetry()
-            console.log("Session info with retry:", sessionInfo);
-            return { sessionInfo: response };
+            const res = {...response, ...sessionInfo}
+            return { sessionInfo: res };
         },
         onSuccess: (data) => {
             const { sessionInfo } = data;

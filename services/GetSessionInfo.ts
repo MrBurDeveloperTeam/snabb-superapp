@@ -16,5 +16,5 @@ export const getSessionInfoWithRetry = async (retries = 3, delay = 1000): Promis
 });
 
 const data = await res.json();
-console.log(data);
+return data;
 };
