@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import api from "../services/api";
+import { getActiveCompanyFromOdooSession } from "@/services/getCompanies";
 
 export const useCreateAppLink = () => {
   return useMutation({
@@ -12,18 +13,32 @@ export const useCreateAppLink = () => {
       email: string;
       name: string;
     }) => {
-      const { data } = await api.post("/v1/sso/app_link", {
-        jsonrpc: "2.0",
-        method: "call",
-        params: {
-          app_code: app,
-          email,
-          name,
-          company_id: 2,
-          portal: true,
+      const company = getActiveCompanyFromOdooSession();
+
+      console.log("active company for shop:", company);
+
+      const { data } = await api.post(
+        "/v1/sso/app_link",
+        {
+          jsonrpc: "2.0",
+          method: "call",
+          params: {
+            app_code: app,
+            email,
+            name,
+            company_id: company?.companyId ? Number(company.companyId) : 2,
+            portal: true,
+          },
+          id: 1,
         },
-        id: 1,
-      });
+        {
+          headers: {
+            ...(company?.companyCode ? { "X-Company-Code": company.companyCode } : {}),
+            ...(company?.companyId ? { "X-Company-Id": company.companyId } : {}),
+          },
+          withCredentials: true,
+        }
+      );
 
       return data;
     },
