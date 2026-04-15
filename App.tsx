@@ -102,6 +102,10 @@ const App: React.FC = () => {
         return false;
       }
 
+      const companyCodes = res?.company_codes || {};
+      const firstCompanyCode = Object.values(companyCodes)[0] || "";
+      const firstCompanyId = Object.keys(companyCodes)[0] || "";
+
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
         jobPosition: '',
@@ -115,6 +119,9 @@ const App: React.FC = () => {
       setIsLoggedIn(true);
       setAuthFormData(nextUser);
       setUser(nextUser);
+
+      localStorage.setItem("company_code", String(firstCompanyCode));
+      localStorage.setItem("company_id", String(firstCompanyId));
 
       return true;
     } catch (error) {
