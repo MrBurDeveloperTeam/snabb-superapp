@@ -55,15 +55,15 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
-        // case app.route.includes('shop'): {
-        //   const res = await createAppLink({
-        //     app: 'shop',
-        //     email: user.username,
-        //     name: user.name,
-        //   });
-        //   if (res.result?.url && w) w.location.href = res.result.url;
-        //   break;
-        // }
+        case app.route.includes('shop'): {
+          // const res = await createAppLink({
+          //   app: 'shop',
+          //   email: user.username,
+          //   name: user.name,
+          // });
+          w.location.href = "https://mrbur.shop";
+          break;
+        }
         case app.route.includes('calculator'): {
           const res = await createAppLink({
             app: 'calculator',
