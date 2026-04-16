@@ -4,13 +4,21 @@ import { useMutation } from "@tanstack/react-query"
 const useGetSessionInfo = () => {
     return useMutation({
         mutationFn: async () => {
-            const response = await getSessionInfo()
-            if(!response) {
-                throw new Error("No session info found")
+            try {
+              const response = await getSessionInfo();
+              if (!response) {
+                throw new Error("No session info found");
+              }
+          
+              const sessionInfo = await getSessionInfoWithRetry();
+              const res = { ...response, ...sessionInfo };
+          
+              // Return the session info without blocking the UI
+              return { sessionInfo: res };
+            } catch (error) {
+              console.error("Error fetching session info:", error);
+              // Handle error (e.g., show user-friendly message or fallback)
             }
-            const sessionInfo = await getSessionInfoWithRetry()
-            const res = {...response, ...sessionInfo}
-            return { sessionInfo: res };
         },
         onSuccess: (data) => {
             const { sessionInfo } = data;
