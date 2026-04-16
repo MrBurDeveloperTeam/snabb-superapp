@@ -9,7 +9,7 @@ import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
 import api from './services/api';
-
+import { debounce } from 'lodash';
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
 
@@ -152,6 +152,12 @@ const App: React.FC = () => {
     [verifySession, isAuthRoute]
   );
 
+  // Debounced session check
+  const verifySessionDebounced = useCallback(
+    debounce(async () => {
+      await verifySessionSafe();
+    }, 1000), [verifySessionSafe]);
+
   useEffect(() => {
     const handlePopState = () => {
       setPath(window.location.pathname);
@@ -214,12 +220,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const onFocus = () => {
-      verifySessionSafe();
+      verifySessionDebounced();
     };
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        verifySessionSafe();
+        verifySessionDebounced();
       }
     };
 
@@ -230,38 +236,34 @@ const App: React.FC = () => {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [verifySessionSafe]);
+  }, [verifySessionDebounced]);
 
-useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
-    // Only close the menu if it's open and the click is outside the menu
-    if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-      setIsProfileMenuOpen(false);
-    }
-  };
-
-  const run = async () => {
-    const loggedIn = await verifySession();
-
-    if (path === '/login' || path === '/signup') {
-      if (loggedIn) {
-        window.history.replaceState({}, '', '/');
-        setPath('/'); // Ensure this is not triggering unnecessary re-renders
-      } else {
-        setIsLoggedIn(false);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
       }
-    }
-  };
+    };
 
-  // Execute only once to check session and path
-  run();
+    const run = async () => {
+      const loggedIn = await verifySession();
 
-  // Add click outside handler
-  document.addEventListener('mousedown', handleClickOutside);
+      if (path === '/login' || path === '/signup') {
+        if (loggedIn) {
+          window.history.replaceState({}, '', '/');
+          setPath('/'); 
+        } else {
+          setIsLoggedIn(false);
+        }
+      }
+    };
 
-  // Cleanup the event listener to avoid memory leaks
-  return () => document.removeEventListener('mousedown', handleClickOutside);
-}, [path, verifySession]);
+    run();
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [path, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {
@@ -434,21 +436,13 @@ useEffect(() => {
       <main className="flex-1">
         {/* <AnimatePresence mode="wait" initial={false}> */}
           {isAuthRoute && (
-            // <motion.div
-            //   key={`auth-${authMode}`}
-            //   initial={{ opacity: 0, x: 20 }}
-            //   animate={{ opacity: 1, x: 0 }}
-            //   exit={{ opacity: 0, x: -20 }}
-            //   transition={{ duration: 0.3 }}
-            // >
-              <AuthPage
-                authMode={authMode}
-                setCurrentView={() => {}}
-                onAuthSuccess={handleSuccessfulAuth}
-                setLoggedInUser={setLoggedInUser}
-                setFormData={setAuthFormData}
-              />
-            // </motion.div>
+            <AuthPage
+              authMode={authMode}
+              setCurrentView={() => {}}
+              onAuthSuccess={handleSuccessfulAuth}
+              setLoggedInUser={setLoggedInUser}
+              setFormData={setAuthFormData}
+            />
           )}
 
           {path === '/privacy' && (
