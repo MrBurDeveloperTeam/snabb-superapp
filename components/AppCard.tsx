@@ -61,7 +61,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           //   email: user.username,
           //   name: user.name,
           // });
-          w.location.href = "https://mrbur.shop";
+          if (w) w.location.href = 'https://mrbur.shop';
           break;
         }
         case app.route.includes('calculator'): {
