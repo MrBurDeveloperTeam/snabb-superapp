@@ -102,9 +102,10 @@ const App: React.FC = () => {
         return false;
       }
 
-      const companyCodes = res?.company_codes || {};
-      const firstCompanyCode = Object.values(companyCodes)[0] || "";
-      const firstCompanyId = Object.keys(companyCodes)[0] || "";
+      const companyId = res?.company_id || {};
+      const companyCode = res?.company_code || {};
+      const firstCompanyCode = Object.values(companyCode) || "";
+      const firstCompanyId = Object.keys(companyId) || "";
 
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
