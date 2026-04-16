@@ -10,11 +10,11 @@ export const getSessionInfo = async () => {
 };
 
 export const getSessionInfoWithRetry = async (retries = 3, delay = 1000): Promise<any> => {
-  const res = await fetch("https://app.snabbb.com/api/odoo/session_info", {
-  method: "GET",
-  credentials: "include",
-});
+  const response = await api.get("/odoo/session_info", {});
 
-const data = await res.json();
-return data;
+if(response.data.error) {
+    throw new Error(response.data.error.message);
+  }
+  const data = await response.data;
+  return data.result;
 };
