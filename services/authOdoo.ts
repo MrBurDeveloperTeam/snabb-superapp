@@ -86,6 +86,7 @@ const getSignupCompanyId = async (): Promise<number> => {
 
     const companyCodes = sessionInfo.company_codes || {};
 
+    console.log("Session company codes:", companyCodes);
     const resolvedCompanyId = resolveCompanyIdFromCountry(
       country_code,
       companyCodes
@@ -128,7 +129,7 @@ export const authOdoo = async ({
       ...(fullName && { name: fullName }),
       ...(password && { password: password }),
       ...(name && { name: name || "login" }),
-      ...(fullName && { company_id: companyId }),
+      company_id: companyId 
     },
     id: 1,
   };
