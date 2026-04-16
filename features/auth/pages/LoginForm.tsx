@@ -112,7 +112,7 @@ const LoginForm: React.FC<Props> = ({
           onNavigate?.("gallery");
         }, 1000);
       } else {
-        throw new Error("Session info missing");
+        return new Error("Session info missing");
       }
     } catch (err) {
       setToastMsg?.("Login failed", { type: "error" });

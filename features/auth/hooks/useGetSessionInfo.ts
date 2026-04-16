@@ -31,7 +31,7 @@ const useGetSessionInfo = () => {
     onSuccess: (data) => {
         if (!data || !data.sessionInfo) {
             console.error("Session info not found in the response data");
-            return;
+            return null;
         }
         const { sessionInfo } = data;
         localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
