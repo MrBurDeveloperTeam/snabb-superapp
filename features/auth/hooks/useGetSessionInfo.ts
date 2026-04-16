@@ -39,7 +39,8 @@ const useGetSessionInfo = () => {
     },
     onError: (err: any) => {
         console.error("Failed to get session info:", err.message);
-        throw new Error(err.message || "Failed to get session info");
+        return null; // or handle error as needed
+        // throw new Error(err.message || "Failed to get session info");
     },
     })
 }
