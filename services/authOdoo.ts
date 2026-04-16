@@ -79,6 +79,7 @@ const resolveCompanyIdFromCountry = (
 
 const getSignupCompanyId = async (): Promise<number> => {
   try {
+    console.log("Session company codes");
     const [{ country_code = "MY" }, sessionInfo] = await Promise.all([
       getLocationInfo(),
       getSessionInfo(),
@@ -86,7 +87,6 @@ const getSignupCompanyId = async (): Promise<number> => {
 
     const companyCodes = sessionInfo.company_codes || {};
 
-    console.log("Session company codes");
     const resolvedCompanyId = resolveCompanyIdFromCountry(
       country_code,
       companyCodes
