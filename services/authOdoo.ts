@@ -84,6 +84,7 @@ const getSignupCompanyId = async (): Promise<number> => {
       getLocationInfo(),
       getSessionInfo(),
     ]);
+    console.log("Session country_code: ",country_code);
 
     const companyCodes = sessionInfo.company_codes || {};
 
