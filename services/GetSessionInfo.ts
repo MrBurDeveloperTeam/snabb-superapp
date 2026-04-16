@@ -10,7 +10,7 @@ export const getSessionInfo = async () => {
 };
 
 export const getSessionInfoWithRetry = async (retries = 3, delay = 1000): Promise<any> => {
-  const res = await fetch("/odoo/session_info", {
+  const res = await fetch("/api/odoo/session_info", {
   method: "GET",
   credentials: "include",
   headers: {
