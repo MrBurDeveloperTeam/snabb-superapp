@@ -1,5 +1,6 @@
 import { AuthFormInputs } from "@/features/auth/types/AuthFormInputs";
 import api from "./api";
+import { getSessionInfoWithRetry } from "./GetSessionInfo";
 
 type SessionInfoResponse = {
   ok: boolean;
@@ -35,12 +36,9 @@ const getLocationInfo = async (): Promise<LocationResponse> => {
 };
 
 const getSessionInfo = async (): Promise<SessionInfoResponse> => {
-  const res = await fetch("https://app.snabbb.com/api/odoo/session_info", {
-    method: "GET",
-    credentials: "include",
-  });
+  const res = await getSessionInfoWithRetry();
 
-  if (!res.ok) {
+  if (!res) {
     throw new Error(`session_info failed: ${res.status}`);
   }
 
