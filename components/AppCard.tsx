@@ -260,18 +260,22 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           }
           whileTap={isComingSoon ? {} : { scale: 0.98 }}
           onHoverStart={(e) => {
-            const el = e.currentTarget as HTMLDivElement;
-            Object.assign(
-              el.style,
-              isComingSoon ? comingSoonCardHoverStyle : activeCardHoverStyle
-            );
+              const el = e.currentTarget as HTMLDivElement;
+              if (el) {
+                  Object.assign(
+                      el.style,
+                      isComingSoon ? comingSoonCardHoverStyle : activeCardHoverStyle
+                  );
+              }
           }}
           onHoverEnd={(e) => {
-            const el = e.currentTarget as HTMLDivElement;
-            Object.assign(
-              el.style,
-              isComingSoon ? comingSoonCardStyle : activeCardStyle
-            );
+              const el = e.currentTarget as HTMLDivElement;
+              if (el) {
+                  Object.assign(
+                      el.style,
+                      isComingSoon ? comingSoonCardStyle : activeCardStyle
+                  );
+              }
           }}
           className={cardClass}
           style={isComingSoon ? comingSoonCardStyle : activeCardStyle}
