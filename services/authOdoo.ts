@@ -86,7 +86,7 @@ const getSignupCompanyId = async (): Promise<number> => {
 
     const companyCodes = sessionInfo.company_codes || {};
 
-    console.log("Session company codes:", companyCodes);
+    console.log("Session company codes");
     const resolvedCompanyId = resolveCompanyIdFromCountry(
       country_code,
       companyCodes
