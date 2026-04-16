@@ -13,6 +13,12 @@ export const getSessionInfoWithRetry = async (retries = 3, delay = 1000): Promis
   const res = await fetch("/odoo/session_info", {
   method: "GET",
   credentials: "include",
+  headers: {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "X-Requested-With": "XMLHttpRequest",
+    "X-SSO-API-KEY": "my-sso-secret-123",
+  },
 });
 
 const data = await res.json();
