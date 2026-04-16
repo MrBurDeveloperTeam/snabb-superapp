@@ -18,10 +18,10 @@ export const loginOdoo = async (email: string, password: string) => {
     });
 
     if (response.data.error) {
-      throw new Error(response.data.error.message);
+      return Promise.reject(new Error(response.data.error.message));
     }
     return response.data; 
   } catch (err: any) {
-    throw new Error(err.message || "Odoo login failed");
+    return Promise.reject(new Error(err.message || "Odoo login failed"));
   }
 };

@@ -52,7 +52,7 @@ export async function loginWithOdoo(params: {
     portal: params.portal ?? true,
   });
 
-  if (!result.ok) throw new Error("Login failed: ok=false");
+  if (!result.ok) return Promise.reject(new Error("Login failed: ok=false"));
 
   const user: LoggedInUser = {
     email: params.email,
@@ -75,7 +75,7 @@ export async function loginWithOdoo(params: {
  */
 export async function launchMiniApp(app_code: string): Promise<void> {
   const user = getStoredUser();
-  if (!user) throw new Error("Not logged in");
+  if (!user) return Promise.reject(new Error("Not logged in"));
 
   const result = await jsonRpcCall<AppLinkResult>(client, "/api/v1/sso/app_link", {
     app_code,
@@ -85,6 +85,6 @@ export async function launchMiniApp(app_code: string): Promise<void> {
     portal: true,
   });
 
-  if (!result.ok || !result.url) throw new Error("Failed to get app link");
+  if (!result.ok || !result.url) return Promise.reject(new Error("Failed to get app link"));
   window.location.href = result.url; // Odoo issues JWT and redirects to app /sso/login?token=...
 }

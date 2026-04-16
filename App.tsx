@@ -232,32 +232,36 @@ const App: React.FC = () => {
     };
   }, [verifySessionSafe]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setIsProfileMenuOpen(false);
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    // Only close the menu if it's open and the click is outside the menu
+    if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      setIsProfileMenuOpen(false);
+    }
+  };
+
+  const run = async () => {
+    const loggedIn = await verifySession();
+
+    if (path === '/login' || path === '/signup') {
+      if (loggedIn) {
+        window.history.replaceState({}, '', '/');
+        setPath('/'); // Ensure this is not triggering unnecessary re-renders
+      } else {
+        setIsLoggedIn(false);
       }
-    };
+    }
+  };
 
-    const run = async () => {
-      const loggedIn = await verifySession();
+  // Execute only once to check session and path
+  run();
 
-      if (path === '/login' || path === '/signup') {
-        if (loggedIn) {
-          window.history.replaceState({}, '', '/');
-          setPath('/');
-        } else {
-          setIsLoggedIn(false);
-        }
-        return;
-      }
-    };
+  // Add click outside handler
+  document.addEventListener('mousedown', handleClickOutside);
 
-    run();
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [path, verifySession]);
+  // Cleanup the event listener to avoid memory leaks
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, [path, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {

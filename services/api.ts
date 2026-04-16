@@ -28,7 +28,8 @@ export const redirection = async (app: string, email: string, name: string) => {
     return res.data;
   } catch (err: any) {
     console.error("Redirection error:", err);
-    throw new Error(err.message || "SSO redirection failed");
+    return new Error(err.message || "SSO redirection failed");
+    //throw new Error(err.message || "SSO redirection failed");
   }
 }
 

@@ -75,10 +75,10 @@ export async function jsonRpcCall<T>(
   try {
     const payload = { jsonrpc: "2.0", method: "call", params, id };
     const { data } = await client.post<JsonRpcResponse<T>>(path, payload);
-    if (data.error) throw new Error(data.error.message || "JSON-RPC error");
-    if (!data.result) throw new Error("Missing JSON-RPC result");
+    if (data.error) return  Promise.reject(new Error(data.error.message || "JSON-RPC error"));
+    if (!data.result) return Promise.reject(new Error("Missing JSON-RPC result"));
     return data.result;
   } catch (e) {
-    throw new Error(getErrorMessage(e));
+    return Promise.reject(getErrorMessage(e));
   }
 }

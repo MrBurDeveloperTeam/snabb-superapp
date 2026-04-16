@@ -25,7 +25,7 @@ const getLocationInfo = async (): Promise<LocationResponse> => {
     });
 
     if (!res.ok) {
-      throw new Error(`Failed to get location: ${res.status}`);
+      return  Promise.reject(new Error(`Failed to get location: ${res.status}`));
     }
 
     return await res.json();
@@ -39,7 +39,7 @@ const getSessionInfo = async (): Promise<SessionInfoResponse> => {
   const res = await getSessionInfoWithRetry();
 
   if (!res) {
-    throw new Error(`session_info failed: ${res.status}`);
+    return Promise.reject(new Error(`session_info failed: ${res.status}`));
   }
 
   return await res.json();
@@ -139,7 +139,7 @@ export const authOdoo = async ({
     const response = await api.post("/v1/users", requestData);
 
     if (response.data.error) {
-      throw new Error(response.data.error.message);
+      return Promise.reject(new Error(response.data.error.message));
     }
 
     await api.post("/auth/create-user", {
@@ -153,6 +153,6 @@ export const authOdoo = async ({
     return response;
   } catch (err: any) {
     console.log("err:", err);
-    throw new Error(err.message || "Odoo login failed");
+    return Promise.reject(new Error(err.message || "Odoo login failed"));
   }
 };

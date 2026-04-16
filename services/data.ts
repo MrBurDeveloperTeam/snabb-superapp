@@ -6,6 +6,6 @@ export const fetchSomeData = async () => {
     return response.data;
   } catch (err: any) {
     console.error("Failed to fetch data:", err);
-    throw err;
+    return Promise.reject(err);
   }
 };
