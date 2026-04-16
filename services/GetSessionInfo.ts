@@ -17,13 +17,16 @@ export const getSessionInfo = async () => {
 
 export const getLocationInfo = async (): Promise<LocationResponse> => {
   try {
-    const res = await api.get("/api/location", {});
+    const res = await fetch("/api/location", {
+      method: "GET",
+      credentials: "include",
+    });
 
-    if (!res.data) {
+    if (!res.ok) {
       throw new Error(`Failed to get location: ${res.status}`);
     }
 
-    return await res.data;
+    return await res.json();
   } catch (error) {
     console.error("location error:", error);
     return { country_code: "MY" };
