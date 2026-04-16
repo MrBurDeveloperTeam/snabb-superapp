@@ -133,7 +133,7 @@ export const authOdoo = async ({
     },
     id: 1,
   };
-
+  console.log('sign up here')
   try {
     const response = await api.post("/v1/users", requestData);
 
