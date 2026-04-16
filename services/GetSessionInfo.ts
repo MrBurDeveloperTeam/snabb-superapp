@@ -1,11 +1,5 @@
 import api from "./api";
 
-type LocationResponse = {
-  ip?: string;
-  country_code?: string;
-};
-
-
 export const getSessionInfo = async () => {
   const response = await api.post('/web/session/get_session_info', {});
   if(response.data.error) {
@@ -15,20 +9,12 @@ export const getSessionInfo = async () => {
   return data.result;
 };
 
-export const getLocationInfo = async (): Promise<LocationResponse> => {
-  try {
-    const res = await fetch("/api/location", {
-      method: "GET",
-      credentials: "include",
-    });
+export const getSessionInfoWithRetry = async (retries = 3, delay = 1000): Promise<any> => {
+  const res = await fetch("/odoo/session_info", {
+  method: "GET",
+  credentials: "include",
+});
 
-    if (!res.ok) {
-      throw new Error(`Failed to get location: ${res.status}`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.error("location error:", error);
-    return { country_code: "MY" };
-  }
+const data = await res.json();
+return data;
 };
