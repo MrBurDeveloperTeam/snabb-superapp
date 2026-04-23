@@ -91,6 +91,15 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
+        case app.route.includes('e-learning'): {
+          const res = await createAppLink({
+            app: 'e-learning',
+            email: user.username,
+            name: user.name,
+          });
+          if (res.result?.url && w) w.location.href = res.result.url;
+          break;
+        }
         default:
           break;
       }
