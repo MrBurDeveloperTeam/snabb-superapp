@@ -1,7 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { env } from "process";
 
 // Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: env.VITE_GEMINI_API_KEY });
 const modelId = "gemini-3-flash-preview";
 export type ChatHistory = {
   role: "user" | "model";
