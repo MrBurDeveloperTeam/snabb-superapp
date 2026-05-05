@@ -12,6 +12,12 @@ import api from './services/api';
 import { debounce } from 'lodash';
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
+import { CatMascot } from './components/CatMascot';
+import { MolarChat } from './components/MolarChat';
+import type { ChatHistory } from './components/MolarChat';
+import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
+import { chatWithGemini } from './services/geminiService';
+import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -41,10 +47,35 @@ const App: React.FC = () => {
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
 
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [userChatContext, setUserChatContext] = useState<string>('');
+
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const didInitRef = useRef(false);
   const checkingSessionRef = useRef(false);
   const lastVerifyAtRef = useRef(0);
+  const handleClearChat = () => setChatHistory([]);
+  const [badgeText, setBadgeText] = useState("Ask Me");
+
+  useEffect(() => {
+    const texts = !isLoggedIn 
+      ? ['Log In', 'Get Started']
+      : ['Ask Me', 'Try Me!', 'SNAI'];
+      
+    let i = 0;
+    setBadgeText(texts[0]);
+
+    const interval = setInterval(() => {
+      i = (i + 1) % texts.length;
+      setBadgeText(texts[i]);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
 
   const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
@@ -61,6 +92,32 @@ const App: React.FC = () => {
     setPath(url);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMsg = chatInput.trim();
+    setChatInput("");
+    setChatHistory((prev) => [...prev, { role: "user", parts: [{ text: userMsg }] }]);
+    setIsChatLoading(true);
+
+    try {
+      const response = await chatWithGemini(
+        chatHistory,
+        userMsg,
+        "SuperApp Gallery context.",
+        "",
+        "",
+        userChatContext || undefined,
+      );
+      setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: response }] }]);
+    } catch (error) {
+    } finally {
+      setIsChatLoading(false);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  };
 
   const getAvatarColor = (name: string) => {
     const colors = [
@@ -91,6 +148,7 @@ const App: React.FC = () => {
     setLoggedInUser(null);
     setAuthFormData(initialFormData);
     setIsProfileMenuOpen(false);
+    setUserChatContext('');
   }, []);
 
   const verifySession = useCallback(async () => {
@@ -120,6 +178,14 @@ const App: React.FC = () => {
       setIsLoggedIn(true);
       setAuthFormData(nextUser);
       setUser(nextUser);
+
+      // Fetch personalized context for Molar AI
+      try {
+        const ctx = await fetchUserChatContext(nextUser.email);
+        setUserChatContext(buildUserContextString(ctx));
+      } catch (e) {
+        console.warn('[MolarAI] Context fetch failed:', e);
+      }
 
       localStorage.setItem("company_code", String(firstCompanyCode));
       localStorage.setItem("company_id", String(firstCompanyId));
@@ -433,7 +499,50 @@ const App: React.FC = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <Navigation />
 
-      <main className="flex-1">
+      <main className="flex-1 relative">
+        {!isVirtualPetOpen && <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />}
+        
+        <MolarChat
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          chatHistory={chatHistory}
+          isChatLoading={isChatLoading}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          onSendMessage={handleSendMessage}
+          onClearChat={handleClearChat}
+          chatEndRef={chatEndRef}
+        />
+        
+        <VirtualPetContainer isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
+
+        {!isChatOpen && !isVirtualPetOpen && (
+          <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
+             <div className="relative flex items-center justify-center">
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
+                   <AnimatePresence mode="wait">
+                      <motion.div
+                        key={badgeText}
+                        initial={{ opacity: 0, y: 5, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -5, scale: 0.9 }}
+                        className="bg-white text-emerald-500 text-[12px] font-bold tracking-wider px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 whitespace-nowrap"
+                      >
+                        {badgeText}
+                      </motion.div>
+                   </AnimatePresence>
+                </div>
+                <button
+                  onClick={() => setIsChatOpen(true)}
+                  disabled={!isLoggedIn}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg transition-all relative overflow-hidden ${!isLoggedIn ? 'bg-slate-300 grayscale cursor-not-allowed opacity-70 shadow-none' : 'bg-[#1F7A6F] hover:scale-105 hover:shadow-xl shadow-[#1F7A6F]/30'}`}
+                >
+                  <img src="/icons/ai_logo.png" alt="Molar AI" className={`w-10 h-10 object-contain drop-shadow-sm transition-transform ${!isLoggedIn ? 'brightness-80' : ''}`} />
+                </button>
+             </div>
+          </div>
+        )}
+
         {/* <AnimatePresence mode="wait" initial={false}> */}
           {isAuthRoute && (
             <AuthPage
