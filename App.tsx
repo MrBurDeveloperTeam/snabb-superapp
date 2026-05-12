@@ -12,12 +12,13 @@ import api from './services/api';
 import { debounce } from 'lodash';
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
-import { CatMascot } from './components/CatMascot';
+import CatMascot from './components/CatMascot';
 import { MolarChat } from './components/MolarChat';
 import type { ChatHistory } from './components/MolarChat';
 import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
 import { chatWithGemini } from './services/geminiService';
 import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
+import { supabase } from './services/supabaseClient';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -103,16 +104,54 @@ const App: React.FC = () => {
     setIsChatLoading(true);
 
     try {
-      const response = await chatWithGemini(
-        chatHistory,
-        userMsg,
-        "SuperApp Gallery context.",
-        "",
-        "",
-        userChatContext || undefined,
-      );
-      setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: response }] }]);
+      let response = null;
+
+      // 1. Check custom responses first
+      const { data: apps } = await supabase
+        .from('aiboard_response_target_apps')
+        .select('response_id')
+        .in('app_name', ['Snabbb.io', 'All']);
+
+      if (apps && apps.length > 0) {
+        const responseIds = apps.map(a => a.response_id);
+        const { data: keywords } = await supabase
+          .from('aiboard_response_keywords')
+          .select('keyword, response_id')
+          .in('response_id', responseIds);
+
+        if (keywords && keywords.length > 0) {
+          const matchedKeyword = keywords.find(k => userMsg.toLowerCase().includes(k.keyword.toLowerCase()));
+
+          if (matchedKeyword) {
+            const { data: respData } = await supabase
+              .from('aiboard_responses')
+              .select('response')
+              .eq('id', matchedKeyword.response_id)
+              .single();
+
+            if (respData) {
+              response = respData.response;
+            }
+          }
+        }
+      }
+
+      // 2. Fallback to Gemini
+      if (!response) {
+        response = await chatWithGemini(
+          chatHistory,
+          userMsg,
+          "SuperApp Gallery context.",
+          "",
+          "",
+          userChatContext || undefined,
+        );
+      }
+      
+      setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: response as string }] }]);
     } catch (error) {
+      console.error(error);
+      setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "SNAI Error: Unable to process request." }] }]);
     } finally {
       setIsChatLoading(false);
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -151,11 +190,14 @@ const App: React.FC = () => {
     setUserChatContext('');
   }, []);
 
-  const verifySession = useCallback(async () => {
+    const verifySession = useCallback(async () => {
+    if (user && (user as any).isSimulated) return true;
+
     try {
       const res = (await getSessionInfo()) as any;
 
       if (!res?.sessionInfo) {
+        if (user && (user as any).isSimulated) return true;
         clearAuthState();
         return false;
       }
@@ -311,6 +353,11 @@ const App: React.FC = () => {
       }
     };
 
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
     const run = async () => {
       const loggedIn = await verifySession();
 
@@ -325,10 +372,6 @@ const App: React.FC = () => {
     };
 
     run();
-
-    document.addEventListener('mousedown', handleClickOutside);
-
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [path, verifySession]);
 
   const filteredApps = useMemo(() => {
@@ -376,134 +419,153 @@ const App: React.FC = () => {
     }
   };
 
-  const Navigation = () => (
-    <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
-      <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
-        <div
-          className="flex items-center gap-2 sm:gap-3 cursor-pointer"
-          onClick={() => {
-            navigate('/');
-            setActiveCategory('All');
-            setSearchQuery('');
-          }}
-        >
-          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-            <i className="fa-solid fa-layer-group text-xs sm:text-lg"></i>
-          </div>
-          <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
-            Snabbb.
-            <span className="text-blue-600">io</span>
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-8">
-          {isLoggedIn === null ? (
-            <div className="w-24 h-11 bg-gray-200 rounded-xl animate-pulse"></div>
-          ) : isLoggedIn ? (
-            <div className="relative" ref={profileMenuRef}>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="block relative"
-              >
-                <div
-                  className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full shadow-md flex items-center justify-center ${avatarBgColor} text-white font-black text-sm sm:text-base hover:border-blue-500/30 transition-all`}
-                >
-                  {userInitial}
-                </div>
-              </motion.button>
-
-              <AnimatePresence>
-                {isProfileMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.12)] overflow-hidden"
-                  >
-                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-                        Profile Info
-                      </p>
-
-                      <div className="flex flex-col gap-3">
-                        <div>
-                          <p className="text-base font-bold text-slate-900 truncate leading-tight">
-                            {authFormData?.fullName}
-                          </p>
-
-                          {authFormData?.jobPosition && (
-                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-wider border border-blue-100/50">
-                              {authFormData.jobPosition}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 text-slate-500">
-                            <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
-                            <p className="text-xs font-semibold truncate">{authFormData?.email}</p>
-                          </div>
-
-                          {authFormData?.phone && (
-                            <div className="flex items-center gap-2 text-slate-500">
-                              <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
-                              <p className="text-xs font-semibold truncate">{authFormData?.phone}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-2">
-                      <button
-                        onClick={logout}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-2xl transition-all group text-left"
-                      >
-                        <i className="fa-solid fa-arrow-right-from-bracket w-5"></i>
-                        Log Out
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <>
-              <button
-                onClick={() => navigate('/login')}
-                className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
-                  path === '/login' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Log In
-              </button>
-
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/signup')}
-                className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
-              >
-                Sign Up
-              </motion.button>
-            </>
-          )}
-        </div>
-      </div>
-    </header>
-  );
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
-      <Navigation />
+      <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
+        <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
+          <div
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer"
+            onClick={() => {
+              navigate('/');
+              setActiveCategory('All');
+              setSearchQuery('');
+            }}
+          >
+            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
+              <i className="fa-solid fa-layer-group text-xs sm:text-lg"></i>
+            </div>
+            <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
+              Snabbb.
+              <span className="text-blue-600">io</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-8">
+            {isLoggedIn === null ? (
+              <div className="w-24 h-11 bg-gray-200 rounded-xl animate-pulse"></div>
+            ) : isLoggedIn ? (
+              <div className="relative" ref={profileMenuRef}>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                  className="block relative"
+                >
+                  <div
+                    className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full shadow-md flex items-center justify-center ${avatarBgColor} text-white font-black text-sm sm:text-base hover:border-blue-500/30 transition-all`}
+                  >
+                    {userInitial}
+                  </div>
+                </motion.button>
+
+                <AnimatePresence>
+                  {isProfileMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.12)] overflow-hidden"
+                    >
+                      <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                          Profile Info
+                        </p>
+
+                        <div className="flex flex-col gap-3">
+                          <div>
+                            <p className="text-base font-bold text-slate-900 truncate leading-tight">
+                              {authFormData?.fullName}
+                            </p>
+
+                            {authFormData?.jobPosition && (
+                              <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-wider border border-blue-100/50">
+                                {authFormData.jobPosition}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 text-slate-500">
+                              <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
+                              <p className="text-xs font-semibold truncate">{authFormData?.email}</p>
+                            </div>
+
+                            {authFormData?.phone && (
+                              <div className="flex items-center gap-2 text-slate-500">
+                                <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
+                                <p className="text-xs font-semibold truncate">{authFormData?.phone}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-2">
+                        <button
+                          onClick={logout}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-2xl transition-all group text-left"
+                        >
+                          <i className="fa-solid fa-arrow-right-from-bracket w-5"></i>
+                          Log Out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    const mockUser: AuthFormData = {
+                      fullName: 'Ziming',
+                      jobPosition: 'Lead Developer',
+                      phone: '+60 12-345 6789',
+                      email: 'ziming@snabbb.io',
+                      password: '',
+                      confirmPassword: '',
+                      agreedToTerms: true,
+                    };
+                    (mockUser as any).isSimulated = true;
+                    setIsLoggedIn(true);
+                    setAuthFormData(mockUser);
+                    setUser(mockUser);
+                    navigate('/');
+                  }}
+                  className="hidden sm:block px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-200 transition-all border border-slate-200/50"
+                >
+                  Sign In
+                </button>
+
+                <button
+                  onClick={() => navigate('/login')}
+                  className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
+                    path === '/login' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Log In
+                </button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/signup')}
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                >
+                  Sign Up
+                </motion.button>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
 
       <main className="flex-1 relative">
-        {!isVirtualPetOpen && <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />}
+        {!isVirtualPetOpen && <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} disabled={!isLoggedIn} />}
         
         <MolarChat
-          isOpen={isChatOpen}
+          isOpen={isChatOpen && !isVirtualPetOpen}
           onClose={() => setIsChatOpen(false)}
           chatHistory={chatHistory}
           isChatLoading={isChatLoading}
@@ -512,6 +574,7 @@ const App: React.FC = () => {
           onSendMessage={handleSendMessage}
           onClearChat={handleClearChat}
           chatEndRef={chatEndRef}
+          onPetToggle={() => setIsVirtualPetOpen(true)}
         />
         
         <VirtualPetContainer isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
