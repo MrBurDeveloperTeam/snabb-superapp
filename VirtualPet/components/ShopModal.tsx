@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { FoodItem } from '../types';
+import { useGameState } from '../hooks/useGameState';
 
 // Icons for stats
 const IconHunger = () => (
@@ -28,6 +29,7 @@ interface ShopModalProps {
   coins: number;
   currentLevel: number;
   onBuy: (item: FoodItem) => void;
+  isLoading?: boolean;
 }
 
 const CATEGORY_STYLES: Record<string, { icon: string; bg: string; border: string; text: string }> = {
@@ -46,9 +48,18 @@ const ShopModal: React.FC<ShopModalProps> = ({
   inventory, 
   coins,
   currentLevel, 
-  onBuy 
+  onBuy,
+  isLoading = false
 }) => {
+  const { currencyCode, currencyRate } = useGameState();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Format price in local currency
+  const formatPrice = (baseUSD: number) => {
+    const converted = baseUSD * currencyRate;
+    // Show up to 2 decimal places, strip trailing zeros
+    return converted % 1 === 0 ? converted.toFixed(0) : converted.toFixed(2).replace(/\.?0+$/, '');
+  };
 
   // Extract unique categories from items
   const categories = useMemo(() => {
@@ -114,8 +125,16 @@ const ShopModal: React.FC<ShopModalProps> = ({
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4 bg-orange-50 no-scrollbar">
           
+          {/* LOADING VIEW */}
+          {isLoading && (
+              <div className="flex flex-col items-center justify-center h-full gap-4">
+                  <div className="w-12 h-12 rounded-full border-4 border-orange-200 border-t-orange-500 animate-spin" />
+                  <p className="text-orange-600 font-bold text-lg">Loading items...</p>
+              </div>
+          )}
+
           {/* CATEGORY VIEW */}
-          {!selectedCategory && (
+          {!isLoading && !selectedCategory && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 h-full content-start animate-in slide-in-from-left-4 fade-in duration-300">
                   {categories.map(cat => {
                       const style = CATEGORY_STYLES[cat] || CATEGORY_STYLES['Default'];
@@ -142,7 +161,8 @@ const ShopModal: React.FC<ShopModalProps> = ({
                 {filteredItems.map((item) => {
                 const ownedCount = inventory[item.id] || 0;
                 const isLocked = (item.levelReq || 1) > currentLevel;
-                const canAfford = coins >= item.price;
+                const actualPrice = item.price * currencyRate;
+                const canAfford = coins >= actualPrice;
                 const isDisabled = isLocked || !canAfford;
 
                 return (
@@ -198,12 +218,7 @@ const ShopModal: React.FC<ShopModalProps> = ({
                              <span className="font-semibold text-sm">Locked</span>
                         ) : (
                             <>
-                                {/* SVG Dollar Icon */}
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33" />
-                                </svg>
-                                
-                                <span className="font-semibold text-lg">{item.price}</span>
+                                <span className="font-semibold text-base">{currencyCode} {formatPrice(item.price)}</span>
                             </>
                         )}
                     </button>

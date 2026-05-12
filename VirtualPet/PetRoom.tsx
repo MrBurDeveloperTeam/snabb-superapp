@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RoomType, FoodItem, Bubble, ToolType } from './types';
-import { ROOM_THEMES, FOOD_ITEMS, TOY_ITEMS } from './constants';
+import { ROOM_THEMES, TOY_ITEMS } from './constants';
 import Pet from './components/Pet';
 import StatsBar from './components/StatsBar';
 import BottomControls from './components/BottomControls';
@@ -32,7 +32,8 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
     isEating, setIsEating,
     isPlaying, setIsPlaying,
     inventory, buyItem, consumeItem,
-    addXP, activeBallId, setActiveBallId
+    addXP, activeBallId, setActiveBallId,
+    foodItems, isFoodLoading, currencyRate
   } = useGameState();
 
   const {
@@ -412,6 +413,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
           inventory={inventory}
           onOpenShop={() => setShowShopModal(true)}
           onOpenFridge={() => setShowFridgeModal(true)}
+          items={foodItems}
         />
       )}
 
@@ -453,17 +455,18 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
       <ShopModal
         isOpen={showShopModal}
         onClose={() => setShowShopModal(false)}
-        items={FOOD_ITEMS}
+        items={foodItems}
         inventory={inventory}
         coins={stats.coins}
         currentLevel={stats.level}
-        onBuy={(item) => buyItem(item.id, item.price)}
+        onBuy={(item) => buyItem(item.id, item.price * currencyRate)}
+        isLoading={isFoodLoading}
       />
 
       <FridgeModal
         isOpen={showFridgeModal}
         onClose={() => setShowFridgeModal(false)}
-        items={FOOD_ITEMS}
+        items={foodItems}
         inventory={inventory}
         onFeed={onFeed}
         onOpenShop={() => {

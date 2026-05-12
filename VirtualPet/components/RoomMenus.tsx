@@ -1,20 +1,20 @@
 
 import React, { useRef } from 'react';
 import { FoodItem, ToolType } from '../types';
-import { FOOD_ITEMS } from '../constants';
 
 interface FoodMenuProps {
     onDragStart: (e: React.PointerEvent, item: FoodItem) => void;
     inventory: Record<string, number>;
     onOpenShop: () => void;
     onOpenFridge: () => void;
+    items: FoodItem[];
 }
 
-export const FoodMenu: React.FC<FoodMenuProps> = ({ onDragStart, inventory, onOpenShop, onOpenFridge }) => {
+export const FoodMenu: React.FC<FoodMenuProps> = ({ onDragStart, inventory, onOpenShop, onOpenFridge, items }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Filter items to show only if user has at least 1
-    const availableItems = FOOD_ITEMS.filter(item => (inventory[item.id] || 0) > 0);
+    const availableItems = items.filter(item => (inventory[item.id] || 0) > 0);
 
     const handleWheel = (e: React.WheelEvent) => {
         if (scrollRef.current) {
