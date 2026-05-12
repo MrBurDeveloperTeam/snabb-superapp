@@ -516,27 +516,6 @@ const App: React.FC = () => {
               </div>
             ) : (
               <>
-                <button
-                  onClick={() => {
-                    const mockUser: AuthFormData = {
-                      fullName: 'Ziming',
-                      jobPosition: 'Lead Developer',
-                      phone: '+60 12-345 6789',
-                      email: 'ziming@snabbb.io',
-                      password: '',
-                      confirmPassword: '',
-                      agreedToTerms: true,
-                    };
-                    (mockUser as any).isSimulated = true;
-                    setIsLoggedIn(true);
-                    setAuthFormData(mockUser);
-                    setUser(mockUser);
-                    navigate('/');
-                  }}
-                  className="hidden sm:block px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-200 transition-all border border-slate-200/50"
-                >
-                  Sign In
-                </button>
 
                 <button
                   onClick={() => navigate('/login')}
