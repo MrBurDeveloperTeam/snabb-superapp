@@ -426,14 +426,14 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <div
-            className="flex items-center gap-2 sm:gap-3 cursor-pointer"
+            className="inline-flex items-center gap-1 cursor-pointer"
             onClick={() => {
               navigate('/');
               setActiveCategory('All');
               setSearchQuery('');
             }}
           >
-            <span className="inline-flex items-center gap-1 font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
+            <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
               App.
               <SnabbbIcon />
             </span>
