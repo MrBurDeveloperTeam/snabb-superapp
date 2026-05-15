@@ -19,6 +19,7 @@ import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
 import { chatWithGemini } from './services/geminiService';
 import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
+import { SnabbbIcon } from './public/icons/SnabbbIcon';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -432,12 +433,9 @@ const App: React.FC = () => {
               setSearchQuery('');
             }}
           >
-            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-              <i className="fa-solid fa-layer-group text-xs sm:text-lg"></i>
-            </div>
             <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
               App.
-              <span className="text-blue-600">Snabbb</span>
+              <SnabbbIcon />
             </span>
           </div>
 
