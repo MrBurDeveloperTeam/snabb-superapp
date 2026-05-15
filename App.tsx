@@ -659,7 +659,7 @@ const App: React.FC = () => {
                       onClick={() => setActiveCategory(cat)}
                       className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 border ${
                         activeCategory === cat
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/30'
+                          ? 'bg-tiffany-600 text-white border-tiffany-600 shadow-md shadow-tiffany-600/30'
                           : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200 hover:bg-slate-50 shadow-sm'
                       }`}
                     >
