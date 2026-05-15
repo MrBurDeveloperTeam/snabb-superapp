@@ -149,8 +149,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   };
 
   const activeIconWrapStyle: React.CSSProperties = {
-    background:
-      'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.95), rgba(255,255,255,0.45) 35%, transparent 60%), linear-gradient(145deg, #dff2ef 0%, #d5ebe6 35%, #c7e2db 100%)',
+    backgroundColor:
+      '#fff',
     boxShadow:
       'inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 18px rgba(95,111,148,0.10)',
     borderRadius: '1.65rem',
