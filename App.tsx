@@ -622,8 +622,8 @@ const App: React.FC = () => {
                 >
                   <h1 style={{transform: 'skewX(353deg)'}} className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
                     App.
-                    <SnabbbIcon />
                   </h1>
+                  <SnabbbIcon />
 
                   <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
                     {isLoggedIn
