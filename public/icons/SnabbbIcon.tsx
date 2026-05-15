@@ -5,7 +5,7 @@ export const SnabbbIcon = () => {
         <img 
             src={Snabbb} 
             alt="Snabbb Icon"
-            style={{ height: '1.58em', width: 'auto', display: 'inline-block', verticalAlign: 'middle' }} 
+            style={{ height: '1.59em', width: 'auto', display: 'inline-block', verticalAlign: 'middle' }} 
         />
     );
 }
