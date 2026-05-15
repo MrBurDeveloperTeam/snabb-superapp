@@ -434,7 +434,7 @@ const App: React.FC = () => {
             }}
           >
             <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
-              <span style={{ transform: 'skewX(351deg)', display: 'inline-block' }}>App.</span>
+              <span style={{ transform: 'skewX(353deg)', display: 'inline-block' }}>App.</span>
               <SnabbbIcon />
             </span>
           </div>
