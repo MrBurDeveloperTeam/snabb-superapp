@@ -367,14 +367,14 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
             I agree to the{" "}
             <span
               onClick={(e) => handleLegalClick(e, "terms")}
-              className="text-blue-600 font-bold hover:underline"
+              className="text-tiffany-600 font-bold hover:underline"
             >
               Terms of Service
             </span>{" "}
             and{" "}
             <span
               onClick={(e) => handleLegalClick(e, "privacy")}
-              className="text-blue-600 font-bold hover:underline"
+              className="text-tiffany-600 font-bold hover:underline"
             >
               Privacy Policy
             </span>
