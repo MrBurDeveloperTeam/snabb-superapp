@@ -620,8 +620,8 @@ const App: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}
                 >
-                  <span style={{transform: 'skewX(348deg)'}} className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
-                    App.
+                  <span className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
+                    <h1 style={{transform: 'skewX(348deg)'}}>App.</h1>
                   <SnabbbIcon />
                   </span>
 
