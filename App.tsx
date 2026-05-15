@@ -436,8 +436,8 @@ const App: React.FC = () => {
               <i className="fa-solid fa-layer-group text-xs sm:text-lg"></i>
             </div>
             <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
-              Snabbb.
-              <span className="text-blue-600">io</span>
+              App.
+              <span className="text-blue-600">Snabbb</span>
             </span>
           </div>
 
@@ -623,8 +623,8 @@ const App: React.FC = () => {
                   transition={{ duration: 0.6 }}
                 >
                   <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
-                    Snabbb.
-                    <span className="text-blue-600">io</span>
+                    App.
+                    <span className="text-blue-600">Snabbb</span>
                   </h1>
 
                   <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
