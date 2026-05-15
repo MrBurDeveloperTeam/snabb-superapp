@@ -518,7 +518,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/login')}
                   className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
-                    path === '/login' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-900'
+                    path === '/login' ? 'text-tiffany-600' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Log In
@@ -528,7 +528,7 @@ const App: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate('/signup')}
-                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-tiffany-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-tiffany-600/20 hover:bg-tiffany-700 transition-all"
                 >
                   Sign Up
                 </motion.button>
