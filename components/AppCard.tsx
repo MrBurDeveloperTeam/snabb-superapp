@@ -116,20 +116,14 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
   const activeCardStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background:
-      'linear-gradient(145deg, #f6f9fc 0%, #eef3f8 45%, #e5edf5 100%)',
     boxShadow:
       '0 10px 30px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.75)',
-    border: '1px solid rgba(255,255,255,0.7)',
   };
 
   const activeCardHoverStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background:
-      'linear-gradient(145deg, #f6f9fc 0%, #eef3f8 45%, #e5edf5 100%)',
     boxShadow:
       '0 20px 40px rgba(95,111,148,0.14), inset 0 1px 0 rgba(255,255,255,0.8)',
-    border: '1px solid rgba(255,255,255,0.72)',
   };
 
   const comingSoonCardStyle: React.CSSProperties = {
