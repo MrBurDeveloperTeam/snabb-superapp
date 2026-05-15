@@ -621,8 +621,8 @@ const App: React.FC = () => {
                   transition={{ duration: 0.6 }}
                 >
                   <span className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
-                    <h1 style={{transform: 'skewX(348deg)'}}>App.</h1>
-                  <SnabbbIcon />
+                    <h1 style={{transform: 'skewX(348deg)', display: 'inline-block'}}>App.</h1>
+                    <SnabbbIcon />
                   </span>
 
                   <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
