@@ -110,7 +110,7 @@ const App: React.FC = () => {
       const { data: apps } = await supabase
         .from('aiboard_response_target_apps')
         .select('response_id')
-        .in('app_name', ['Snabbb.io', 'All']);
+        .in('app_name', ['App.Snabbb', 'All']);
 
       if (apps && apps.length > 0) {
         const responseIds = apps.map(a => a.response_id);
