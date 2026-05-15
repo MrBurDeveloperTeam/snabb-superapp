@@ -134,7 +134,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
   const comingSoonCardStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background: 'linear-gradient(145deg, #f7f7f9 0%, #f1f2f5 100%)',
     boxShadow:
       '0 8px 24px rgba(15,23,42,0.04), inset 0 1px 0 rgba(255,255,255,0.7)',
     border: '1px solid rgba(255,255,255,0.6)',
@@ -142,7 +141,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
   const comingSoonCardHoverStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background: 'linear-gradient(145deg, #f7f7f9 0%, #f1f2f5 100%)',
     boxShadow:
       '0 12px 24px rgba(148,163,184,0.08), inset 0 1px 0 rgba(255,255,255,0.72)',
     border: '1px solid rgba(255,255,255,0.62)',
@@ -157,7 +155,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   };
 
   const comingSoonIconWrapStyle: React.CSSProperties = {
-    background: 'linear-gradient(145deg, #ececf1 0%, #e3e5eb 100%)',
     boxShadow:
       'inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 14px rgba(148,163,184,0.10)',
     borderRadius: '1.65rem',
