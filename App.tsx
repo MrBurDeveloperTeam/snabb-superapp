@@ -433,7 +433,7 @@ const App: React.FC = () => {
               setSearchQuery('');
             }}
           >
-            <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
+            <span className="inline-flex items-center gap-1 font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
               App.
               <SnabbbIcon />
             </span>
