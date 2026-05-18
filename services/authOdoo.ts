@@ -117,6 +117,7 @@ export const authOdoo = async ({
   jobPosition,
   customJobPosition,
   phone,
+  dob,
   redirect,
   name,
 }: AuthFormInputs) => {
@@ -130,6 +131,7 @@ export const authOdoo = async ({
       ...(fullName && { name: fullName }),
       ...(password && { password: password }),
       ...(name && { name: name || "login" }),
+      ...(dob && { date_of_birth: dob }),
       company_id: companyId 
     },
     id: 1,
@@ -147,6 +149,7 @@ export const authOdoo = async ({
       password: password,
       name: name,
       phone: phone,
+      dob: dob,
       position: jobPosition,
     });
 

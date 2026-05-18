@@ -6,6 +6,7 @@ export interface AuthFormInputs {
   jobPosition?: string;
   customJobPosition?: string;
   phone?: string;
+  dob?: string;
   password?: string;
   confirmPassword?: string;
   agreedToTerms?: boolean;

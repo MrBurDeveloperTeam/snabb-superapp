@@ -250,6 +250,39 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
         )}
       </div>
 
+    {/* Date of Birth */}
+    <div>
+      <label className={labelClasses}>Date of Birth</label>
+
+      <div className="relative group">
+        <i className="fa-regular fa-calendar absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-base transition-colors group-focus-within:text-blue-500" />
+
+        <Controller
+          name="dob"
+          control={control}
+          render={({ field }) => (
+            <input
+              {...field}
+              type="date"
+              className={inputClasses}
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => {
+                try { (e.target as HTMLInputElement).showPicker(); } catch {}
+              }}
+              onChange={(e) => {
+                field.onChange(e);
+                onChange(e);
+              }}
+              required
+            />
+          )}
+        />
+      </div>
+        
+      {error.dob && (
+        <p className="mt-1 text-xs text-red-500">{error.dob.message}</p>
+      )}
+    </div>
           
     {/* Password */}
     <div>
