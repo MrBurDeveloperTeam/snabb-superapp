@@ -132,6 +132,7 @@ export const authOdoo = async ({
       ...(password && { password: password }),
       ...(name && { name: name || "login" }),
       ...(dob && { date_of_birth: dob }),
+      ...(phone && { phone: phone }),
       company_id: companyId 
     },
     id: 1,
