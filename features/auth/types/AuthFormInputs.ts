@@ -16,6 +16,8 @@ export interface AuthFormInputs {
 
   password: string;
   confirmPassword: string;
+  rememberMe?: boolean;
+
 
   agreedToTerms: boolean;
 }

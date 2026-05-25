@@ -28,8 +28,32 @@ interface Props {
 
 export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData}: Props) {
   const [loggedIn, setLoggedIn] = useState(!!getStoredUser());
-  const { control: controlLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorslogin, isSubmitting }, setValue: setValueLogin } = useForm<AuthFormInputs>({
-    defaultValues: { email: "", password: "", name: "login"}
+  const {
+    control: controlLogin,
+    handleSubmit: handleSubmitLogin,
+    formState: { errors: errorslogin, isSubmitting },
+    setValue: setValueLogin,
+  } = useForm<AuthFormInputs>({
+    defaultValues: {
+      accountType: 'individual',
+    
+      login: '',
+      fullName: '',
+      companyName: '',
+      companyEmail: '',
+    
+      phone: '',
+      jobPosition: '',
+      customJobPosition: '',
+      country: '',
+    
+      dob: '',
+    
+      password: '',
+      confirmPassword: '',
+    
+      agreedToTerms: false,
+    },
   });
 
   const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<AuthFormInputs>({
