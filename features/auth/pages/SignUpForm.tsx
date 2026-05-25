@@ -34,7 +34,6 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
   const [isLoginMode, setIsLoginMode] = useState('login');
   const [showTermsError, setShowTermsError] = useState(false);
   const [isOtherMode, setIsOtherMode] = useState(false);
-  const [tempOtherValue, setTempOtherValue] = useState('');
   const [accountType, setAccountType] = useState<'individual' | 'company'>('individual');
 
     const signupMutation = useAuthMutation();
@@ -113,7 +112,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
             }}
             className={`py-3 text-sm font-bold transition-all ${
               accountType === 'individual'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-tiffany-600 text-white'
                 : 'bg-white text-slate-500 hover:bg-slate-50'
             }`}
           >
@@ -129,7 +128,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
             }}
             className={`py-3 text-sm font-bold transition-all ${
               accountType === 'company'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-tiffany-600 text-white'
                 : 'bg-white text-slate-500 hover:bg-slate-50'
             }`}
           >
@@ -603,34 +602,28 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
             : 'Unlock specialized tools built to accelerate your workflow.'}
         </p>
       </motion.div>
-    </div>  
-          <motion.div 
-            initial="hidden"
-            animate="visible"
-            variants={{
-              visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } }
-            }}
-            className="grid grid-cols-3 gap-y-10 gap-x-6"
-          >
-            {MINI_APPS.map((app, i) => {
-              if(i <= 5) {
+      </div>  
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={{
+            visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } }
+          }}
+          className="grid grid-cols-3 gap-y-10 gap-x-6"
+        >
+          {MINI_APPS.map((app, i) => {
+            if(i <= 5) {
               return(<AppIcon
                 key={app.id}
                 icon={app.icon}
                 label={app.title}
                 color={app.colorScheme.bg}
               />)
-              }
             }
-            )}
-            {/* <AppIcon icon="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s" label="SHOP" color="bg-blue-600" />
-            <AppIcon icon="fa-solid fa-boxes-stacked" label="INVENTORY" color="bg-[#fff1e6] text-[#b91c1c]" />
-            <AppIcon icon="fa-solid fa-calendar-check" label="EVENT" color="bg-[#ecfeff] text-[#0891b2]" />
-            <AppIcon icon="fa-solid fa-wand-magic-sparkles" label="IMAGE STUDIO" color="bg-[#f2e9ff] text-[#7e22ce]" />
-            <AppIcon icon="fa-solid fa-calendar-plus" label="APPOINTMENT" color="bg-[#f0fdf4] text-[#15803d]" />
-            <AppIcon icon="fa-solid fa-calculator" label="CALCULATOR" color="bg-[#fffbeb] text-[#b45309]" /> */}
-          </motion.div>
-        </div>
-        </>
+          }
+          )}
+        </motion.div>
+      </div>
+    </>
   );
 };
