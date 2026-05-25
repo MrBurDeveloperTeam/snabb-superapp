@@ -50,9 +50,9 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
       
         if (res.result.created) {
           setToastMsg?.('Registration successful! Email for verification sent.', { type: 'success' });
-          // setTimeout(() => {
-          //   onNavigate && onNavigate('gallery');
-          // }, 5000);
+          setTimeout(() => {
+            onNavigate && onNavigate('login');
+          }, 2000);
         } else {
           setToastMsg?.('User already exists, please log in.', { type: 'error' });
         }

@@ -90,9 +90,8 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
 return(
   <>
    <ToastContainer 
-        position="top-center"    // Position of the toast
-        autoClose={5000}        // Time (ms) before the toast disappears
-        hideProgressBar={false} // Option to show progress bar
+        position="top-center"  // Position of the toast
+        hideProgressBar={true} // Option to show progress bar
       />
   <Portal>
     <LoadingOverlay isLoading={isSubmittingSignup} message={"Registering..."} />
