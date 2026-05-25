@@ -47,6 +47,7 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
 
   const navigateTo = (view: View) => {
     setCurrentView(view);
+    window.location.href = `/${view}`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
