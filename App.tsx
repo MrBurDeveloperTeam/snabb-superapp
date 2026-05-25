@@ -587,7 +587,7 @@ const App: React.FC = () => {
           {isAuthRoute && (
             <AuthPage
               authMode={authMode}
-              setCurrentView={() => {}}
+              setCurrentView={setPath}
               onAuthSuccess={handleSuccessfulAuth}
               setLoggedInUser={setLoggedInUser}
               setFormData={setAuthFormData}
