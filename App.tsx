@@ -20,6 +20,7 @@ import { chatWithGemini } from './services/geminiService';
 import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
 import { SnabbbIcon } from './public/icons/SnabbbIcon';
+import { toast, ToastContainer } from 'react-toastify';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -420,8 +421,24 @@ const App: React.FC = () => {
     }
   };
 
+  const toastMessage = useCallback(
+    (msg: string, options: { type: 'success' | 'error' }) => {
+      if (options.type === 'success') {
+        toast.success(msg);
+      } else {
+        toast.error(msg);
+      }
+    },
+    []
+  );
+
 
   return (
+    <>
+    <ToastContainer 
+      position="top-center"  // Position of the toast
+      hideProgressBar={true} // Option to show progress bar
+    />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
@@ -591,6 +608,7 @@ const App: React.FC = () => {
               onAuthSuccess={handleSuccessfulAuth}
               setLoggedInUser={setLoggedInUser}
               setFormData={setAuthFormData}
+              setToastMsg={toastMessage}
             />
           )}
 
@@ -760,6 +778,7 @@ const App: React.FC = () => {
         )}
       </main>
     </motion.div>
+    </>
   );
 };
 

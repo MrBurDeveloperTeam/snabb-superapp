@@ -12,8 +12,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { containerVariants } from '@/shared/styles/variants';
 import { View } from '@/types/View.ts';
 import LoadingOverlay from '@/components/LoadingOverlay.tsx';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 // import LoginForm from '@/components/LoginForm.tsx';
 import { getStoredUser } from '@/features/lib/auth.ts';
 import { AuthFormData } from '@/types/AuthFormData.ts';
@@ -24,9 +22,10 @@ interface Props {
   onAuthSuccess: () => void;
   setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData>>;
   setFormData: Dispatch<SetStateAction<Partial<LoginFormInputs>>>;
+  setToastMsg: (msg: string, options: { type: 'success' | 'error' }) => void;
 }
 
-export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData}: Props) {
+export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData, setToastMsg}: Props) {
   const [loggedIn, setLoggedIn] = useState(!!getStoredUser());
   const {
     control: controlLogin,
@@ -70,17 +69,11 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
 });
 
   const navigateTo = (view: View) => {
-    // setCurrentView(view);
-    window.location.href = `/${view}`;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+    const nextPath = view === 'login' ? '/login' : `/${view}`;
 
-  const toastMessage = (msg: string, options: { type: 'success' | 'error' }) => {
-    if (options.type === 'success') {
-      toast.success(msg);
-    } else if (options.type === 'error') {
-      toast.error(msg);
-    }
+    window.history.pushState({}, '', nextPath);
+    setCurrentView(nextPath as View);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const setExternalUserId = (id: string) => {
@@ -89,10 +82,6 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
 
 return(
   <>
-   <ToastContainer 
-        position="top-center"  // Position of the toast
-        hideProgressBar={true} // Option to show progress bar
-      />
   <Portal>
     <LoadingOverlay isLoading={isSubmittingSignup} message={"Registering..."} />
   </Portal>
@@ -121,7 +110,7 @@ return(
               handleSubmit={handleSubmitLogin}
               error={errorslogin}
               onNavigate={navigateTo}
-              setToastMsg={toastMessage}
+              setToastMsg={setToastMsg}
               setExternalUserId={setExternalUserId}
               setFormData={setFormData}
             />
@@ -132,23 +121,10 @@ return(
               handleSubmit={handleSubmitSignUp}
               onChange={(e) => handleInputChangeSignup(e, setValueSignup)}
               onNavigate={navigateTo}
-              setToastMsg={toastMessage}
+              setToastMsg={setToastMsg}
             />
           )}
           </AnimatePresence>
-
-
-
-    {/* Toggle */}
-    {/* <AuthToggle
-      isLoginMode={isLoginMode}
-      onToggle={() => {
-        setIsLoginMode(!isLoginMode);
-        setError(null);
-        setShowTermsError(false);
-        setFormData(prev => ({ ...prev, agreedToTerms: false }));
-      }}
-    /> */}
 
   <Showcase isLoginMode={authMode} />
   </Box>
