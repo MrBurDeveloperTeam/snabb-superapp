@@ -108,9 +108,6 @@ const LoginForm: React.FC<Props> = ({
           login: result.sessionInfo.email,
         }));
 
-        setTimeout(() => {
-          onNavigate?.("gallery");
-        }, 1000);
       } else {
         return new Error("Session info missing");
       }
@@ -199,7 +196,7 @@ const LoginForm: React.FC<Props> = ({
 
                 <div style={{ display: "none" }}>
                   <Controller
-                    name="name"
+                    name="fullName"
                     control={control}
                     render={({ field }) => (
                       <input
