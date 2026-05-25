@@ -400,7 +400,6 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
             <option value="Philippines">Philippines</option>
             <option value="United Kingdom">United Kingdom</option>
             <option value="United States">United States</option>
-            <option value="Other">Other</option>
           </select>
         )}
       />
