@@ -96,6 +96,7 @@ const LoginForm: React.FC<Props> = ({
             password: "",
             confirmPassword: "",
             agreedToTerms: true,
+            country: "",
           }),
           fullName: result.sessionInfo.name,
           email: result.sessionInfo.email,

@@ -21,6 +21,7 @@ import { fetchUserChatContext, buildUserContextString, type UserChatContext } fr
 import { supabase } from './services/supabaseClient';
 import { SnabbbIcon } from './public/icons/SnabbbIcon';
 import { toast, ToastContainer } from 'react-toastify';
+import { AnnouncementBar } from "./components/AnnouncementBar";
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -30,6 +31,7 @@ const initialFormData: AuthFormData = {
   password: '',
   confirmPassword: '',
   agreedToTerms: false,
+  country: '',
 };
 
 const ALLOWED_ORIGINS = [
@@ -216,6 +218,7 @@ const App: React.FC = () => {
         email: res.sessionInfo.username || '',
         password: '',
         confirmPassword: '',
+        country: '',
         agreedToTerms: true,
       };
 
@@ -402,6 +405,7 @@ const App: React.FC = () => {
       password: '',
       confirmPassword: '',
       agreedToTerms: true,
+      country: '',
     };
 
     setIsLoggedIn(true);
@@ -435,6 +439,10 @@ const App: React.FC = () => {
 
   return (
     <>
+    <AnnouncementBar
+        isLoggedIn={!!user}
+        profileComplete={!!(user?.phone && user?.country)}
+      />
     <ToastContainer 
       position="top-center"  // Position of the toast
       hideProgressBar={true} // Option to show progress bar
