@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: AnnouncementBarConfig = {
   link: "",
   textLoggedIn: "",
   linkLoggedIn: "",
-  targetIncomplete: false,
+  targetIncomplete: true,
   textIncomplete:
     "Your profile is incomplete. Complete it now to unlock all features!",
   linkIncomplete: "/profile",
