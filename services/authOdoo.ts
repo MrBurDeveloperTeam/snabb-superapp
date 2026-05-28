@@ -17,6 +17,18 @@ type LocationResponse = {
   country_code?: string;
 };
 
+// Odoo country IDs — add more as needed
+const COUNTRY_ID_MAP: Record<string, number> = {
+  "Malaysia": 157,
+  "Singapore": 197,
+  "Thailand": 216,
+  "Indonesia": 101,
+  "Vietnam": 241,
+  "Philippines": 175,
+  "United Kingdom": 235,
+  "United States": 233,
+};
+
 const getLocationInfo = async (): Promise<LocationResponse> => {
   try {
     const res = await fetch("/api/location", {
@@ -87,6 +99,7 @@ export const authOdoo = async ({
   phone,
   dob,
   account_type,
+  country,
 }: AuthFormInputs) => {
   const companyId = await getSignupCompanyId();
 
@@ -94,6 +107,7 @@ export const authOdoo = async ({
   const effectiveEmail = isCompany ? (companyEmail || login) : login;
   const effectiveName = isCompany ? companyName : fullName;
   const effectivePosition = jobPosition === "OTHER" ? customJobPosition : jobPosition;
+  const countryId = country ? COUNTRY_ID_MAP[country] : undefined;
 
   const requestData = {
     jsonrpc: "2.0",
@@ -101,19 +115,20 @@ export const authOdoo = async ({
     params: {
       email: effectiveEmail,
       name: effectiveName,
-      ...(isCompany && { company_type: "company" }),           // ← backend uses this
-      ...(isCompany && fullName && { contact_name: fullName }), // ← person's name
-      ...(!isCompany && { company_type: "person" }),            // ← individual
+      ...(isCompany && { company_type: "company" }),
+      ...(isCompany && fullName && { contact_name: fullName }),
+      ...(!isCompany && { company_type: "person" }),
       ...(password && { password }),
       ...(phone && { phone }),
       ...(!isCompany && dob && { date_of_birth: dob }),
+      ...(countryId && { country_id: countryId }),
       ...(effectivePosition && { job_position: effectivePosition }),
       company_id: companyId,
     },
     id: 1,
   };
 
-  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail, requestData });
+  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail, country, countryId });
 
   try {
     const response = await api.post("/v1/users", requestData);

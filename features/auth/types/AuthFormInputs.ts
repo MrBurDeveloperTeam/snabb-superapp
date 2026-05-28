@@ -6,6 +6,7 @@ export interface AuthFormInputs {
 
   companyName?: string;
   companyEmail?: string;
+
   position: string;
   phone: string;
   jobPosition: string;
@@ -17,7 +18,6 @@ export interface AuthFormInputs {
   password: string;
   confirmPassword: string;
   rememberMe?: boolean;
-
 
   agreedToTerms: boolean;
 }
