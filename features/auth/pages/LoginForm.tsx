@@ -219,7 +219,7 @@ const LoginForm: React.FC<Props> = ({
                       <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-pointer">
                         <input
                           type="checkbox"
-                            className="h-4 w-4 accent-tiffany-500 appearance-none border-2 border-tiffany-500 rounded checked:bg-tiffany-500 checked:border-tiffany-500 relative checked:after:absolute checked:after:text-white checked:after:text-xs checked:after:font-bold checked:after:inset-0 checked:after:flex checked:after:items-center checked:after:justify-center"
+                          className="h-4 w-4 appearance-none border-2 border-tiffany-500 rounded checked:bg-tiffany-500 checked:border-tiffany-500 cursor-pointer checked:bg-[url('data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22white%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M3%208l3.5%203.5L13%205%22%20stroke%3D%22white%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] checked:bg-no-repeat checked:bg-center"
                           checked={!!field.value}
                           onChange={(e) => field.onChange(e.target.checked)}
                         />
