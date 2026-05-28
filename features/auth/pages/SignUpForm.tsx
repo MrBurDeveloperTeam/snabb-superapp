@@ -40,19 +40,25 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
   
     const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
       try {
-        const payload = {
+        const isCompany = accountType === 'company';
+      
+        const payload: AuthFormInputs = {
           ...data,
           accountType,
-          login: accountType === 'company' ? data.companyEmail || data.login : data.login,
+          // For company: use companyEmail as login, companyName as the record name
+          login: isCompany ? (data.companyEmail || data.login) : data.login,
+          companyName: data.companyName,
+          companyEmail: data.companyEmail,
+          fullName: data.fullName,
         };
+      
+        console.log('payload being sent:', payload); // ← verify before removing
       
         const res = await signupMutation.mutateAsync(payload);
       
         if (res.result.created) {
           setToastMsg?.('Registration successful! Email for verification sent.', { type: 'success' });
-          setTimeout(() => {
-            onNavigate && onNavigate('login');
-          }, 2000);
+          setTimeout(() => onNavigate && onNavigate('login'), 2000);
         } else {
           setToastMsg?.('User already exists, please log in.', { type: 'error' });
         }
@@ -149,6 +155,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           <i className="fa-solid fa-building absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
           <Controller
             name="companyName"
+            defaultValue=""
             control={control}
             render={({ field }) => (
               <input
@@ -173,6 +180,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           <i className="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
           <Controller
             name="companyEmail"
+            defaultValue=""
             control={control}
             render={({ field }) => (
               <input
