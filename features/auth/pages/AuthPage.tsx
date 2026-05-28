@@ -33,45 +33,43 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
     formState: { errors: errorslogin, isSubmitting },
     setValue: setValueLogin,
   } = useForm<AuthFormInputs>({
+    shouldUnregister: false,
     defaultValues: {
-      account_type: 'individual',
-    
-      login: '',
-      fullName: '',
-      companyName: '',
+      account_type: 'individual',  
+      fullName: "",
+      login: "",
+      companyName: '',     
       companyEmail: '',
-    
-      phone: '',
-      jobPosition: '',
-      customJobPosition: '',
+      jobPosition: "",
+      customJobPosition: "",
+      phone: "",
       country: '',
-    
       dob: '',
-    
-      password: '',
-      confirmPassword: '',
-    
+      password: "",
+      confirmPassword: "",
       agreedToTerms: false,
-    },
+      position: "",  
+    }
   });
 
   const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<AuthFormInputs>({
     shouldUnregister: false,
     defaultValues: {
-    account_type: 'individual',
-    fullName: "",
-    login: "",
-    companyName: '',     
-    companyEmail: '',
-    jobPosition: "",
-    customJobPosition: "",
-    phone: "",
-    country: '',            
-    dob: '',
-    password: "",
-    confirmPassword: "",
-    agreedToTerms: false
-  }
+      account_type: 'individual',  
+      fullName: "",
+      login: "",
+      companyName: '',     
+      companyEmail: '',
+      jobPosition: "",
+      customJobPosition: "",
+      phone: "",
+      country: '',
+      dob: '',
+      password: "",
+      confirmPassword: "",
+      agreedToTerms: false,
+      position: "",  
+    }
 });
 
   const navigateTo = (view: View) => {

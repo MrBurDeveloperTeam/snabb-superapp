@@ -101,7 +101,8 @@ export const authOdoo = async ({
     method: "call",
     params: {
       email: effectiveEmail,
-      name: effectiveName,
+      name: effectiveName,                                    // company name
+      ...(isCompany && fullName && { contact_name: fullName }), // ← person's name
       ...(password && { password }),
       ...(phone && { phone }),
       ...(!isCompany && dob && { date_of_birth: dob }),
