@@ -56,12 +56,22 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           break;
         }
         case app.route.includes('shop'): {
-          // const res = await createAppLink({
-          //   app: 'shop',
-          //   email: user.username,
-          //   name: user.name,
-          // });
-          if (w) w.location.href = 'https://mrbur.shop';
+          const companyCode = localStorage.getItem("company_code") || "MMY";
+          const companyId = localStorage.getItem("company_id") || "2";
+                
+          const res = await createAppLink({
+            app: 'shop',
+            email: user.username,
+            name: user.name,
+          });
+        
+          if (res.result?.url && w) {
+            // Append company info to the SSO URL
+            const ssoUrl = new URL(res.result.url);
+            ssoUrl.searchParams.set("company_code", companyCode);
+            ssoUrl.searchParams.set("company_id", companyId);
+            w.location.href = ssoUrl.toString();
+          }
           break;
         }
         case app.route.includes('calculator'): {
