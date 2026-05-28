@@ -39,17 +39,16 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
     const signupMutation = useAuthMutation();
   
     const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
-       console.log('form data:', JSON.stringify(data)); // verify companyName is there
-        console.log('accountType state:', accountType);
       try {
         const isCompany = accountType === 'company';
       
         const payload: AuthFormInputs = {
           ...data,
-          accountType,
-          // For company: use companyEmail as login, companyName as the record name
+          account_type: accountType,
           login: isCompany ? (data.companyEmail || data.login) : data.login,
           companyName: data.companyName,
+          dob: data.dob,
+          position: data.jobPosition === 'OTHER' ? data.customJobPosition || '' : data.jobPosition,
           companyEmail: data.companyEmail,
           fullName: data.fullName,
         };
@@ -107,7 +106,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
     <label className={labelClasses}>Account Type</label>
 
     <Controller
-      name="accountType"
+      name="account_type"
       control={control}
       defaultValue="individual"
       render={({ field }) => (

@@ -34,7 +34,7 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
     setValue: setValueLogin,
   } = useForm<AuthFormInputs>({
     defaultValues: {
-      accountType: 'individual',
+      account_type: 'individual',
     
       login: '',
       fullName: '',
@@ -58,7 +58,7 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
   const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<AuthFormInputs>({
     shouldUnregister: false,
     defaultValues: {
-    accountType: 'individual',
+    account_type: 'individual',
     fullName: "",
     login: "",
     companyName: '',     

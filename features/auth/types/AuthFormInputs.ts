@@ -1,12 +1,12 @@
 export interface AuthFormInputs {
-  accountType: 'individual' | 'company';
+  account_type: 'individual' | 'company';
 
   login: string;
   fullName: string;
 
   companyName?: string;
   companyEmail?: string;
-
+  position: string;
   phone: string;
   jobPosition: string;
   customJobPosition?: string;
