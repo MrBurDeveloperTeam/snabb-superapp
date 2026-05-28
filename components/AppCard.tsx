@@ -57,16 +57,20 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
         }
         case app.route.includes('mrbur.shop'): {
           const companyCode = localStorage.getItem("company_code") || "MMY";
-                
+
           const res = await createAppLink({
             app: 'shop',
             email: user.username,
             name: user.name,
           });
         
+          console.log("shop SSO res:", JSON.stringify(res));  // ← add this
+
           if (res.result?.url && w) {
             const ssoUrl = new URL(res.result.url);
             const token = ssoUrl.searchParams.get("token");
+            console.log("token:", token);  // ← and this
+            console.log("ssoUrl:", ssoUrl.toString()); 
           
             if (token) {
               w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${token}&company_code=${companyCode}`;
