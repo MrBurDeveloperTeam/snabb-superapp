@@ -19,9 +19,9 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           onClick={onBack}
-          className="mb-8 flex items-center gap-2 text-slate-500 hover:text-blue-600 font-bold transition-all group"
+          className="mb-8 flex items-center gap-2 text-slate-500 hover:text-tiffany-600 font-bold transition-all group"
         >
-          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
+          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-tiffany-50 transition-colors">
             <i className="fa-solid fa-arrow-left text-xs"></i>
           </div>
           <span className="text-sm">Back to Sign Up</span>
@@ -92,10 +92,10 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
         </section>
       </div>
 
-      <div className="mt-20 p-8 bg-blue-50 rounded-[2rem] border border-blue-100/50">
-        <p className="text-blue-900 font-bold text-center">
+      <div className="mt-20 p-8 bg-tiffany-50 rounded-[2rem] border border-tiffany-100/50">
+        <p className="text-tiffany-900 font-bold text-center">
           Questions about our privacy practices? 
-          <a href="mailto:privacy@snabbb.com" className="ml-2 text-blue-600 underline underline-offset-4">Contact our DPO</a>
+          <a href="mailto:privacy@snabbb.com" className="ml-2 text-tiffany-600 underline underline-offset-4">Contact our DPO</a>
         </p>
       </div>
     </motion.div>
