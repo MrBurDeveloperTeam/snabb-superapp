@@ -38,7 +38,7 @@ const DEFAULT_CONFIG: AnnouncementBarConfig = {
   textColor: "#ffffff",
   dismissible: false,
   audience: "everyone",
-  text: "Welcome to Snabbb! Discover our premium collection.",
+  text: "",
   link: "",
   textLoggedIn: "",
   linkLoggedIn: "",
