@@ -219,7 +219,7 @@ const LoginForm: React.FC<Props> = ({
                       <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-pointer">
                         <input
                           type="checkbox"
-                          className="h-4 w-4 accent-tiffany-500"
+                            className="h-4 w-4 accent-tiffany-500 appearance-none border-2 border-tiffany-500 rounded checked:bg-tiffany-500 checked:border-tiffany-500 relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-xs checked:after:font-bold checked:after:inset-0 checked:after:flex checked:after:items-center checked:after:justify-center"
                           checked={!!field.value}
                           onChange={(e) => field.onChange(e.target.checked)}
                         />
