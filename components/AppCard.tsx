@@ -55,9 +55,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
-        case app.route.includes('shop'): {
+        case app.route.includes('mrbur.shop'): {
           const companyCode = localStorage.getItem("company_code") || "MMY";
-          const companyId = localStorage.getItem("company_id") || "2";
                 
           const res = await createAppLink({
             app: 'shop',
@@ -66,11 +65,14 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           });
         
           if (res.result?.url && w) {
-            // Append company info to the SSO URL
             const ssoUrl = new URL(res.result.url);
-            ssoUrl.searchParams.set("company_code", companyCode);
-            ssoUrl.searchParams.set("company_id", companyId);
-            w.location.href = ssoUrl.toString();
+            const token = ssoUrl.searchParams.get("token");
+          
+            if (token) {
+              w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${token}&company_code=${companyCode}`;
+            } else {
+              w.location.href = res.result.url;
+            }
           }
           break;
         }
