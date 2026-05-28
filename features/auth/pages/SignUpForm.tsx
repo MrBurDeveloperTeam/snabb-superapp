@@ -40,20 +40,20 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
   
     const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
       try {
-        const isCompany = accountType === 'company';
+        const isCompany = data.account_type === 'company'; // ← read from data, not local state
       
         const payload: AuthFormInputs = {
           ...data,
           account_type: accountType,
           login: isCompany ? (data.companyEmail || data.login) : data.login,
           companyName: data.companyName,
-          dob: data.dob,
-          position: data.jobPosition === 'OTHER' ? data.customJobPosition || '' : data.jobPosition,
           companyEmail: data.companyEmail,
           fullName: data.fullName,
+          dob: data.dob,
+          position: data.jobPosition === 'OTHER' 
+            ? data.customJobPosition || '' 
+            : data.jobPosition,
         };
-      
-        console.log('payload being sent:', payload); // ← verify before removing
       
         const res = await signupMutation.mutateAsync(payload);
       

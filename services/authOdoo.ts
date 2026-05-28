@@ -65,7 +65,6 @@ const getSignupCompanyId = async (): Promise<number> => {
       getLocationInfo(),
       getSessionInfo(),
     ]);
-
     const companyCodes = sessionInfo.company_codes || {};
     const resolvedCompanyId = resolveCompanyIdFromCountry(country_code, companyCodes);
     if (resolvedCompanyId) return resolvedCompanyId;
@@ -101,8 +100,10 @@ export const authOdoo = async ({
     method: "call",
     params: {
       email: effectiveEmail,
-      name: effectiveName,                                    // company name
+      name: effectiveName,
+      ...(isCompany && { company_type: "company" }),           // ← backend uses this
       ...(isCompany && fullName && { contact_name: fullName }), // ← person's name
+      ...(!isCompany && { company_type: "person" }),            // ← individual
       ...(password && { password }),
       ...(phone && { phone }),
       ...(!isCompany && dob && { date_of_birth: dob }),
@@ -112,7 +113,7 @@ export const authOdoo = async ({
     id: 1,
   };
 
-  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail });
+  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail, requestData });
 
   try {
     const response = await api.post("/v1/users", requestData);
@@ -128,7 +129,7 @@ export const authOdoo = async ({
       phone,
       dob,
       position: effectivePosition,
-      account_type: account_type,
+      account_type,
       company_name: isCompany ? companyName : undefined,
     });
 
