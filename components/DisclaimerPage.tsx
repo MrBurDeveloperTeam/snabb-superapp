@@ -35,64 +35,15 @@ const DisclaimerPage: React.FC<DisclaimerPageProps> = ({ onBack }) => {
 
       <div className="prose prose-slate max-w-none space-y-12">
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">1. Introduction</h2>
-          <p className="text-slate-600 leading-relaxed">
-            Welcome to App.Snabbb (“Platform”). By accessing or using the Platform, you agree to comply with and be bound by these Terms of Use.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">2. ⁠Purpose of Platform</h2>
-          <p className="text-slate-600 leading-relaxed">
-            The Platform provides general productivity, workflow support, educational, and operational tools for users and businesses.
-            <br/>
-            The Platform is not intended to replace certified accounting systems, medical record systems, audit systems, clinical management software, or regulatory compliance systems.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">3. User Responsibility</h2>
-          <p className="text-slate-600 leading-relaxed">
-            Users are solely responsible for verifying the accuracy, completeness, and suitability of any data, schedules, calculations, inventory records, appointments, or information generated or stored through the Platform.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">4. No Warranty</h2>
-          <p className="text-slate-600 leading-relaxed">
-            The Platform and its services are provided on an “as-is” and “as-available” basis without warranties of any kind.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">5. Limitation of Liability</h2>
-          <p className="text-slate-600 leading-relaxed">
-            The Company shall not be liable for any loss, damages, operational interruption, business decisions, compliance issues, or claims arising from the use or inability to use the Platform or its tools.
-          </p>
-        </section>
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">6. Data & Privacy</h2>
-          <p className="text-slate-600 leading-relaxed">
-            Users are responsible for maintaining their own backups and ensuring compliance with applicable data protection and privacy regulations.
-          </p>
-        </section>
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">7. Platform Availability</h2>
-          <p className="text-slate-600 leading-relaxed">
-            The Company may modify, suspend, or discontinue any part of the Platform or its features at any time without prior notice.
-          </p>
-        </section>
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">8. Intellectual Property</h2>
-          <p className="text-slate-600 leading-relaxed">
-            All Platform content, branding, software, designs, and materials remain the intellectual property of the Company unless otherwise stated.
-          </p>
-        </section>
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">9. Account Termination</h2>
-          <p className="text-slate-600 leading-relaxed">
-            The Company reserves the right to suspend or terminate accounts that misuse the Platform or violate these Terms of Use.
-          </p>
+          The tools, calculators, schedules, inventory functions, educational content, and other features available on this Platform are provided for general productivity, workflow support, operational convenience, and informational purposes only.
+          <br/>
+          The Platform is not intended to replace certified accounting systems, clinical management software, medical record systems, audit systems, or professional regulatory compliance systems.
+          <br/>
+          Any results, calculations, schedules, records, or information generated through the Platform should be independently reviewed and verified by users before reliance or implementation.
+          <br/>
+          The Company makes no guarantees regarding the accuracy, completeness, reliability, or suitability of the Platform or its tools for any specific purpose.
+          <br/>
+          Users are solely responsible for their own business, operational, clinical, financial, and compliance decisions.
         </section>
       </div>
     </motion.div>
