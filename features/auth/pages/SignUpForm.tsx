@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { View } from '@/types/View';
@@ -46,7 +45,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
         fullName: data.fullName,
         phone: data.phone,
         country: data.country,
-        dob: isCompany ? undefined : data.dob,
+        dob: data.dob,  // ← always pass dob for both individual and company
         position: effectivePosition,
       };
 
@@ -245,6 +244,33 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 {error.phone && <p className="mt-1 text-xs text-red-500">{error.phone.message}</p>}
               </div>
 
+              {/* Date of Birth — both individual and company */}
+              <div>
+                <label className={labelClasses}>Date of Birth</label>
+                <div className="relative group">
+                  <i className="fa-regular fa-calendar absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <Controller
+                    name="dob"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="date"
+                        className={inputClasses}
+                        style={{ cursor: 'pointer' }}
+                        onClick={(e) => { try { (e.target as HTMLInputElement).showPicker(); } catch {} }}
+                        onChange={(e) => { field.onChange(e); onChange(e); }}
+                        required
+                      />
+                    )}
+                  />
+                </div>
+                {accountType === 'company' && (
+                  <p className="mt-1 text-xs text-slate-400 italic">Date of birth of the company representative.</p>
+                )}
+                {error.dob && <p className="mt-1 text-xs text-red-500">{error.dob.message}</p>}
+              </div>
+
               {/* Job Position */}
               <div>
                 <label className={labelClasses}>Job Position</label>
@@ -335,32 +361,6 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] pointer-events-none" />
                 </div>
               </div>
-
-              {/* Date of Birth — Individual only */}
-              {accountType === 'individual' && (
-                <div>
-                  <label className={labelClasses}>Date of Birth</label>
-                  <div className="relative group">
-                    <i className="fa-regular fa-calendar absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                    <Controller
-                      name="dob"
-                      control={control}
-                      render={({ field }) => (
-                        <input
-                          {...field}
-                          type="date"
-                          className={inputClasses}
-                          style={{ cursor: 'pointer' }}
-                          onClick={(e) => { try { (e.target as HTMLInputElement).showPicker(); } catch {} }}
-                          onChange={(e) => { field.onChange(e); onChange(e); }}
-                          required
-                        />
-                      )}
-                    />
-                  </div>
-                  {error.dob && <p className="mt-1 text-xs text-red-500">{error.dob.message}</p>}
-                </div>
-              )}
 
               {/* Password */}
               <div>
