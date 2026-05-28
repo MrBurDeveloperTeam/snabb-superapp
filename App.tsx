@@ -227,7 +227,7 @@ const App: React.FC = () => {
 
       try {
         const partnerRes = await api.get(
-          `/api/partner/profile?partner_id=${res.sessionInfo.partner_id}`
+          `/partner/profile?partner_id=${res.sessionInfo.partner_id}`
         );
         const profileComplete = partnerRes?.data?.profileComplete ?? false;
         setUser({ ...nextUser, profileComplete } as any);
