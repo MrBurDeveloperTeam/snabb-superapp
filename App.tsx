@@ -812,7 +812,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/privacy')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    path === '/privacy' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/privacy' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
                   }`}
                 >
                   Privacy
@@ -821,7 +821,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/terms')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    path === '/terms' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/terms' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
                   }`}
                 >
                   Terms
@@ -830,7 +830,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/disclaimer')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    path === '/disclaimer' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/disclaimer' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
                   }`}
                 >
                   Disclaimer
