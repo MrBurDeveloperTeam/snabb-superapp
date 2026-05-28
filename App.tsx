@@ -833,7 +833,7 @@ const App: React.FC = () => {
                     path === '/disclaimer' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
                   }`}
                 >
-                  Terms
+                  Disclaimer
                 </button>
               </div>
             </div>
