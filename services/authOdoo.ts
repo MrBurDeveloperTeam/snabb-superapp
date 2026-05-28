@@ -25,7 +25,7 @@ const getLocationInfo = async (): Promise<LocationResponse> => {
     });
 
     if (!res.ok) {
-      return  Promise.reject(new Error(`Failed to get location: ${res.status}`));
+      return Promise.reject(new Error(`Failed to get location: ${res.status}`));
     }
 
     return await res.json();
@@ -37,23 +37,17 @@ const getLocationInfo = async (): Promise<LocationResponse> => {
 
 const getSessionInfo = async (): Promise<SessionInfoResponse> => {
   const res = await getSessionInfoWithRetry();
-
-  if (!res) {
-    return Promise.reject(new Error(`session_info failed: ${res.status}`));
+  if (!res) return Promise.reject(new Error("session_info failed"));
+  if (typeof res.json === "function") {
+    return await res.json();
   }
-
-  return await res.json();
+  return res as SessionInfoResponse;
 };
 
 const normalizeCountryCandidates = (countryCode: string): string[] => {
   const cc = (countryCode || "").toUpperCase();
-
-  // Primary country code first, then known aliases if needed
   const candidates = [cc];
-
-  // Indonesia is often ID, but your company code appears to use IN
   if (cc === "ID") candidates.push("IN");
-
   return candidates;
 };
 
@@ -84,7 +78,7 @@ const getSignupCompanyId = async (): Promise<number> => {
       getLocationInfo(),
       getSessionInfo(),
     ]);
-    console.log("Session country_code: ",country_code);
+    console.log("Session country_code: ", country_code);
 
     const companyCodes = sessionInfo.company_codes || {};
 
@@ -97,12 +91,10 @@ const getSignupCompanyId = async (): Promise<number> => {
       return resolvedCompanyId;
     }
 
-    // fallback to current session company_id if available
     if (sessionInfo.company_id) {
       return Number(sessionInfo.company_id);
     }
 
-    // final fallback
     return 2;
   } catch (error) {
     console.error("company_id resolve error:", error);
@@ -112,29 +104,41 @@ const getSignupCompanyId = async (): Promise<number> => {
 
 export const authOdoo = async ({
   login,
+  companyEmail,
+  companyName,
   password,
   fullName,
   jobPosition,
   customJobPosition,
   phone,
   dob,
+  accountType,
 }: AuthFormInputs) => {
   const companyId = await getSignupCompanyId();
+
+  const isCompany = accountType === "company";
+  const effectiveEmail = isCompany ? companyEmail || login : login;
+  const effectiveName = isCompany ? companyName : fullName;
+  const effectivePosition =
+    jobPosition === "OTHER" ? customJobPosition : jobPosition;
 
   const requestData = {
     jsonrpc: "2.0",
     method: "call",
     params: {
-      email: login,
-      ...(fullName && { name: fullName }),
-      ...(password && { password: password }),
-      ...(dob && { date_of_birth: dob }),
-      ...(phone && { phone: phone }),
-      company_id: companyId 
+      email: effectiveEmail,
+      name: effectiveName,
+      ...(password && { password }),
+      ...(phone && { phone }),
+      ...(!isCompany && dob && { date_of_birth: dob }),
+      ...(effectivePosition && { job_position: effectivePosition }),
+      company_id: companyId,
     },
     id: 1,
   };
-  console.log('sign up here')
+
+  console.log("sign up here", { isCompany, effectiveName, effectiveEmail });
+
   try {
     const response = await api.post("/v1/users", requestData);
 
@@ -143,17 +147,17 @@ export const authOdoo = async ({
     }
 
     await api.post("/auth/create-user", {
-      email: login,
-      password: password,
-      name: name,
-      phone: phone,
-      dob: dob,
-      position: jobPosition,
+      email: effectiveEmail,
+      password,
+      name: fullName,
+      phone,
+      dob,
+      position: effectivePosition,
     });
 
     return response;
   } catch (err: any) {
     console.log("err:", err);
-    return Promise.reject(new Error(err.message || "Odoo login failed"));
+    return Promise.reject(new Error(err.message || "Signup failed"));
   }
 };
