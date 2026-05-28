@@ -37,11 +37,15 @@ const DisclaimerPage: React.FC<DisclaimerPageProps> = ({ onBack }) => {
         <section>
           The tools, calculators, schedules, inventory functions, educational content, and other features available on this Platform are provided for general productivity, workflow support, operational convenience, and informational purposes only.
           <br/>
+          <br/>
           The Platform is not intended to replace certified accounting systems, clinical management software, medical record systems, audit systems, or professional regulatory compliance systems.
+          <br/>
           <br/>
           Any results, calculations, schedules, records, or information generated through the Platform should be independently reviewed and verified by users before reliance or implementation.
           <br/>
+          <br/>
           The Company makes no guarantees regarding the accuracy, completeness, reliability, or suitability of the Platform or its tools for any specific purpose.
+          <br/>
           <br/>
           Users are solely responsible for their own business, operational, clinical, financial, and compliance decisions.
         </section>
