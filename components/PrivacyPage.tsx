@@ -30,44 +30,64 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
 
       <div className="mb-12">
         <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">Privacy Policy</h1>
-        <p className="text-slate-500 font-medium">Last Updated: May 20, 2025</p>
+        <p className="text-slate-500 font-medium">Last Updated: May 28, 2026</p>
       </div>
 
       <div className="prose prose-slate max-w-none space-y-12">
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">1. Information We Collect</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">1. Introduction</h2>
           <p className="text-slate-600 leading-relaxed">
-            At Snabbb Apps, we value your privacy. We collect minimal information required to provide our services, 
-            including account details (name, email) and usage data to improve our mini-app ecosystem.
+            App.Snabbb (“Platform”) respects your privacy and is committed to protecting your information. By using the Platform, you agree to the collection and use of information in accordance with this Privacy Policy.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">2. How We Use Data</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">2. Information Collection</h2>
           <p className="text-slate-600 leading-relaxed mb-4">
-            The data we collect is used primarily to:
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-slate-600">
-            <li>Personalize your app gallery experience.</li>
-            <li>Enable AI-driven suggestions and tool discovery.</li>
-            <li>Maintain account security and workspace preferences.</li>
-            <li>Communicate essential updates regarding our services.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">3. AI and Third Parties</h2>
-          <p className="text-slate-600 leading-relaxed">
-            Some features utilize the Gemini API for generative tasks. Data sent to these services is handled 
-            according to Google's strict enterprise privacy standards. We do not sell your personal data to advertisers.
+            The Platform may collect information including account details, usage data, inventory records, schedules, appointments, and other information voluntarily submitted by users.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">4. Your Rights</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">3. ⁠Purpose of Information</h2>
           <p className="text-slate-600 leading-relaxed">
-            You have the right to access, export, or delete your account information at any time through your 
-            profile settings. For any privacy-related inquiries, please contact our support team.
+            Information collected may be used to operate, improve, maintain, personalize, and support the Platform and its services.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">4. ⁠User Responsibility</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Users are responsible for ensuring that any information uploaded, stored, or shared through the Platform complies with applicable laws and regulations.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">5. No Guarantee of Data Security</h2>
+          <p className="text-slate-600 leading-relaxed">
+            While reasonable efforts may be taken to protect information, the Company does not guarantee that the Platform will always be secure, uninterrupted, or free from unauthorized access.          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">6. Third-Party Services</h2>
+          <p className="text-slate-600 leading-relaxed">
+            The Platform may use third-party services, hosting providers, analytics tools, or integrations. The Company is not responsible for the privacy practices or content of third-party services.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">7. Data Storage & Backup</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Users are responsible for maintaining their own backups and copies of important information stored on the Platform.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">8. Changes to the Platform</h2>
+          <p className="text-slate-600 leading-relaxed">
+            The Company reserves the right to modify, suspend, or discontinue any part of the Platform or its services at any time without prior notice.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">9. Changes to Privacy Policy</h2>
+          <p className="text-slate-600 leading-relaxed">
+            The Company may update this Privacy Policy from time to time. Continued use of the Platform constitutes acceptance of any updated terms.
           </p>
         </section>
       </div>
