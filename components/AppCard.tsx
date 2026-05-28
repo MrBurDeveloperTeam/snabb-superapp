@@ -56,30 +56,28 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           break;
         }
         case app.route.includes('mrbur.shop'): {
-          const companyCode = localStorage.getItem("company_code") || "MMY";
+  const companyCode = localStorage.getItem("company_code") || "MMY";
 
-          const res = await createAppLink({
-            app: 'shop',
-            email: user.username,
-            name: user.name,
-          });
-        
-          console.log("shop SSO res:", JSON.stringify(res));  // ← add this
+  const res = await createAppLink({
+    app: 'shop',
+    email: user.username,
+    name: user.name,
+  });
 
-          if (res.result?.url && w) {
-            const ssoUrl = new URL(res.result.url);
-            const token = ssoUrl.searchParams.get("token");
-            console.log("token:", token);  // ← and this
-            console.log("ssoUrl:", ssoUrl.toString()); 
-          
-            if (token) {
-              w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${token}&company_code=${companyCode}`;
-            } else {
-              w.location.href = res.result.url;
-            }
-          }
-          break;
-        }
+  console.log("shop SSO res:", JSON.stringify(res));
+
+  if (res.result?.url && w) {
+    const ssoUrl = new URL(res.result.url);
+    const token = ssoUrl.searchParams.get("token");
+
+    if (token) {
+      w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(token)}&company_code=${companyCode}`;
+    } else {
+      w.location.href = res.result.url;
+    }
+  }
+  break;
+}
         case app.route.includes('calculator'): {
           const res = await createAppLink({
             app: 'calculator',
