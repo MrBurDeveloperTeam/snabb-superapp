@@ -56,12 +56,18 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
   });
 
   const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<AuthFormInputs>({
-  defaultValues: {
+    shouldUnregister: false,
+    defaultValues: {
+    accountType: 'individual',
     fullName: "",
     login: "",
+    companyName: '',     
+    companyEmail: '',
     jobPosition: "",
     customJobPosition: "",
     phone: "",
+    country: '',            
+    dob: '',
     password: "",
     confirmPassword: "",
     agreedToTerms: false

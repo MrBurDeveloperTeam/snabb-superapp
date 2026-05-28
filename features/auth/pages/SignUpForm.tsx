@@ -39,6 +39,8 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
     const signupMutation = useAuthMutation();
   
     const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
+       console.log('form data:', JSON.stringify(data)); // verify companyName is there
+        console.log('accountType state:', accountType);
       try {
         const isCompany = accountType === 'company';
       
