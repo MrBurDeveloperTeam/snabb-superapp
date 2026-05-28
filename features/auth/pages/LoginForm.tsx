@@ -217,12 +217,30 @@ const LoginForm: React.FC<Props> = ({
                     defaultValue={true}
                     render={({ field }) => (
                       <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-white border-2 border-tiffany-500 rounded cursor-pointer"
-                          checked={!!field.value}
-                          onChange={(e) => field.onChange(e.target.checked)}
-                        />
+                        <div className="relative h-4 w-4 flex-shrink-0">
+                          <input
+                            type="checkbox"
+                            className="peer absolute opacity-0 h-4 w-4 cursor-pointer"
+                            checked={!!field.value}
+                            onChange={(e) => field.onChange(e.target.checked)}
+                          />
+                          <div className="h-4 w-4 rounded border-2 border-tiffany-500 peer-checked:bg-tiffany-500 peer-checked:border-tiffany-500 transition-colors" />
+                          {!!field.value && (
+                            <svg
+                              className="absolute inset-0 h-4 w-4 text-white pointer-events-none"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                            >
+                              <path
+                                d="M3 8l3.5 3.5L13 5"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
                         Remember me
                       </label>
                     )}
