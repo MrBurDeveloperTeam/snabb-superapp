@@ -22,6 +22,7 @@ import { supabase } from './services/supabaseClient';
 import { SnabbbIcon } from './public/icons/SnabbbIcon';
 import { toast, ToastContainer } from 'react-toastify';
 import { AnnouncementBar } from "./components/AnnouncementBar";
+import { useAnnouncementBarStore } from './store/announcementBarStore';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -59,6 +60,7 @@ const App: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [userChatContext, setUserChatContext] = useState<string>('');
+  const setConfig = useAnnouncementBarStore((s) => s.setConfig);
 
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const didInitRef = useRef(false);
@@ -206,10 +208,7 @@ const App: React.FC = () => {
         return false;
       }
 
-      const companyId = res?.company_id || {};
-      const companyCode = res?.company_code || {};
-      const firstCompanyCode = Object.values(companyCode) || "";
-      const firstCompanyId = Object.keys(companyId) || "";
+
 
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
@@ -226,6 +225,24 @@ const App: React.FC = () => {
       setAuthFormData(nextUser);
       setUser(nextUser);
 
+      const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
+        MMY: "my", MSG: "sg", MTH: "th", MID: "id",
+        MUSA: "us", MUK: "uk", MAU: "au", MVN: "vn",
+        MPH: "ph", MKR: "kr", MCA: "ca", MAE: "ae",
+        MSA: "sa", MNZ: "nz", MEU: "eu",
+      };
+      
+      // After setIsLoggedIn(true)...
+      const companyCodes = res?.company_codes || {}; // { "2": "MMY" }
+      const companyCode = Object.values(companyCodes)[0] as string; // "MMY"
+      const subdomain = COMPANY_SUBDOMAIN_MAP[companyCode];
+      
+      if (subdomain) {
+        setConfig({
+          linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
+        });
+      }
+
       // Fetch personalized context for Molar AI
       try {
         const ctx = await fetchUserChatContext(nextUser.email);
@@ -234,8 +251,8 @@ const App: React.FC = () => {
         console.warn('[MolarAI] Context fetch failed:', e);
       }
 
-      localStorage.setItem("company_code", String(firstCompanyCode));
-      localStorage.setItem("company_id", String(firstCompanyId));
+      localStorage.setItem("company_code", String(companyCode));
+      // localStorage.setItem("company_id", String(firstCompanyId));
 
       return true;
     } catch (error) {
