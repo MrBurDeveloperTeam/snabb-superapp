@@ -225,6 +225,32 @@ const App: React.FC = () => {
       setAuthFormData(nextUser);
       setUser(nextUser);
 
+      try {
+        const partnerRes = await api.post("/api/web/dataset/call_kw", {
+          jsonrpc: "2.0",
+          method: "call",
+          params: {
+            model: "res.partner",
+            method: "read",
+            args: [[res.sessionInfo.partner_id], ["phone", "country_id", "birthdate_date", "image_128"]],
+            kwargs: {},
+          },
+          id: 1,
+        });
+      
+        const partner = partnerRes?.data?.result?.[0];
+        const profileComplete = !!(
+          partner?.phone &&
+          partner?.country_id &&
+          partner?.birthdate_date &&
+          partner?.image_128
+        );
+      
+        setUser({ ...nextUser, profileComplete } as any);
+      } catch (e) {
+        console.warn("Failed to fetch partner profile:", e);
+      }
+
      const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
         MMY: "my", MSG: "sg", MTH: "th", MID: "id",
         MUSA: "us", MUK: "uk", MAU: "au", MVN: "vn",
@@ -469,7 +495,7 @@ const App: React.FC = () => {
     <>
     <AnnouncementBar
         isLoggedIn={!!user}
-        profileComplete={!!(user?.phone && user?.country)}
+        profileComplete={(user as any)?.profileComplete}
       />
     <ToastContainer 
       position="top-center"  // Position of the toast
