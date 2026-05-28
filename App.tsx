@@ -23,6 +23,7 @@ import { SnabbbIcon } from './public/icons/SnabbbIcon';
 import { toast, ToastContainer } from 'react-toastify';
 import { AnnouncementBar } from "./components/AnnouncementBar";
 import { useAnnouncementBarStore } from './store/announcementBarStore';
+import DisclaimerPage from './components/DisclaimerPage';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -671,6 +672,12 @@ const App: React.FC = () => {
             </motion.div>
           )}
 
+          {path === '/disclaimer' && (
+            <motion.div key="disclaimer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <DisclaimerPage />
+            </motion.div>
+          )}
+
           {path === '/' && (
             <motion.div
               key="gallery"
@@ -815,6 +822,15 @@ const App: React.FC = () => {
                   onClick={() => navigate('/terms')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
                     path === '/terms' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                  }`}
+                >
+                  Terms
+                </button>
+
+                <button
+                  onClick={() => navigate('/disclaimer')}
+                  className={`transition-colors text-xs font-black uppercase tracking-widest ${
+                    path === '/disclaimer' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
                   }`}
                 >
                   Terms
