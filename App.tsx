@@ -226,26 +226,10 @@ const App: React.FC = () => {
       setUser(nextUser);
 
       try {
-        const partnerRes = await api.post("/api/web/dataset/call_kw", {
-          jsonrpc: "2.0",
-          method: "call",
-          params: {
-            model: "res.partner",
-            method: "read",
-            args: [[res.sessionInfo.partner_id], ["phone", "country_id", "birthdate_date", "image_128"]],
-            kwargs: {},
-          },
-          id: 1,
-        });
-      
-        const partner = partnerRes?.data?.result?.[0];
-        const profileComplete = !!(
-          partner?.phone &&
-          partner?.country_id &&
-          partner?.birthdate_date &&
-          partner?.image_128
+        const partnerRes = await api.get(
+          `/api/partner/profile?partner_id=${res.sessionInfo.partner_id}`
         );
-      
+        const profileComplete = partnerRes?.data?.profileComplete ?? false;
         setUser({ ...nextUser, profileComplete } as any);
       } catch (e) {
         console.warn("Failed to fetch partner profile:", e);
