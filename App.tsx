@@ -227,7 +227,7 @@ const App: React.FC = () => {
 
       try {
         const partnerRes = await api.get(
-          `/api/partner/profile?email=${encodeURIComponent(nextUser.email)}`
+          `/partner/profile?email=${encodeURIComponent(nextUser.email)}`
         );
         const profileComplete = partnerRes?.data?.profileComplete ?? false;
         setUser({ ...nextUser, profileComplete } as any);
