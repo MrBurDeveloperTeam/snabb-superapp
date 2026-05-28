@@ -225,23 +225,34 @@ const App: React.FC = () => {
       setAuthFormData(nextUser);
       setUser(nextUser);
 
-      const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
+     const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
         MMY: "my", MSG: "sg", MTH: "th", MID: "id",
         MUSA: "us", MUK: "uk", MAU: "au", MVN: "vn",
         MPH: "ph", MKR: "kr", MCA: "ca", MAE: "ae",
         MSA: "sa", MNZ: "nz", MEU: "eu",
       };
-      
-      // After setIsLoggedIn(true)...
-      const companyCodes = res?.company_codes || {}; // { "2": "MMY" }
-      const companyCode = Object.values(companyCodes)[0] as string; // "MMY"
-      const subdomain = COMPANY_SUBDOMAIN_MAP[companyCode];
-      
-      if (subdomain) {
-        setConfig({
-          linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
-        });
+
+      try {
+        const raw = localStorage.getItem("odoo_session");
+        if (raw) {
+          const session = JSON.parse(raw);
+          const companyCode = session?.company_code as string;
+          const subdomain = COMPANY_SUBDOMAIN_MAP[companyCode];
+          if (subdomain) {
+            setConfig({
+              linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
+            });
+          }
+          if (subdomain) {
+            setConfig({
+              linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse odoo_session:", e);
       }
+      
 
       // Fetch personalized context for Molar AI
       try {
@@ -251,7 +262,7 @@ const App: React.FC = () => {
         console.warn('[MolarAI] Context fetch failed:', e);
       }
 
-      localStorage.setItem("company_code", String(companyCode));
+      // localStorage.setItem("company_code", String(companyCode));
       // localStorage.setItem("company_id", String(firstCompanyId));
 
       return true;
