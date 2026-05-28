@@ -1,1 +1,1 @@
-export type View = 'login' | 'auth' | 'privacy' | 'terms';
+export type View = 'login' | 'auth' | 'privacy' | 'terms' | 'disclaimer';

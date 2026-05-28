@@ -548,13 +548,20 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 className="text-tiffany-600 font-bold hover:underline"
               >
                 Terms of Service
-              </span>{' '}
-              and{' '}
+              </span>
+              ,{' '}
               <span
                 onClick={(e) => handleLegalClick(e, 'privacy')}
                 className="text-tiffany-600 font-bold hover:underline"
               >
                 Privacy Policy
+              </span>
+              and{' '}
+              <span
+                onClick={(e) => handleLegalClick(e, 'disclaimer')}
+                className="text-tiffany-600 font-bold hover:underline"
+              >
+                Disclaimer
               </span>
               .
             </label>
