@@ -479,7 +479,11 @@ const App: React.FC = () => {
 
   return (
     <>
-    <Toaster position="top-right" />
+    <Toaster position="top-right" toastOptions={{
+        classNames: {
+          error: "bg-red-50 text-red-700 border border-red-300",
+        },
+      }} />
     <AnnouncementBar
         isLoggedIn={!!user}
         profileComplete={(user as any)?.profileComplete}
