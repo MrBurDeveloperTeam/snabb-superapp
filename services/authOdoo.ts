@@ -205,7 +205,9 @@ export const authOdoo = async ({
       errorMessage = serverError.error;
     }
 
-    toast.error(errorMessage);
+    toast.error(errorMessage, {
+      icon: "🔴",
+    });
     return Promise.reject(new Error(errorMessage));
   }
 };
