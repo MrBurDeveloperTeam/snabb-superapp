@@ -24,6 +24,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import { AnnouncementBar } from "./components/AnnouncementBar";
 import { useAnnouncementBarStore } from './store/announcementBarStore';
 import DisclaimerPage from './components/DisclaimerPage';
+import { Toaster } from "sonner";
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -478,6 +479,7 @@ const App: React.FC = () => {
 
   return (
     <>
+    <Toaster position="top-right" />
     <AnnouncementBar
         isLoggedIn={!!user}
         profileComplete={(user as any)?.profileComplete}

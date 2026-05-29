@@ -1,6 +1,7 @@
 import { AuthFormInputs } from "@/features/auth/types/AuthFormInputs";
 import api from "./api";
 import { getSessionInfoWithRetry } from "./GetSessionInfo";
+import { toast } from "sonner";
 
 type SessionInfoResponse = {
   ok: boolean;
@@ -189,7 +190,29 @@ export const authOdoo = async ({
 
     return response;
   } catch (err: any) {
-    console.log("err:", err);
-    return Promise.reject(new Error(err.message || "Signup failed"));
+    const serverError = err?.response?.data;
+    let errorMessage = err.message || "Signup failed";
+
+    if (serverError) {
+      try {
+        const parsed = typeof serverError === "string"
+          ? JSON.parse(serverError)
+          : serverError;
+
+        errorMessage = parsed?.error?.message ?? parsed?.message ?? errorMessage;
+      } catch {}
+    }
+
+    // Extract inner JSON from messages like "Supabase auth create failed: {...}"
+    const innerJsonMatch = errorMessage.match(/:\s*(\{.*\})$/);
+    if (innerJsonMatch) {
+      try {
+        const inner = JSON.parse(innerJsonMatch[1]);
+        errorMessage = inner?.msg ?? inner?.message ?? errorMessage;
+      } catch {}
+    }
+
+    toast.error(errorMessage);
+    return Promise.reject(new Error(errorMessage));
   }
 };
