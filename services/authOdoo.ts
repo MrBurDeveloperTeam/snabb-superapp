@@ -192,25 +192,17 @@ export const authOdoo = async ({
   } catch (err: any) {
     const serverError = err?.response?.data;
     console.log('the inner: ', serverError);
-    let errorMessage = err.message || "Signup failed";
-
-    if (serverError) {
-      try {
-        const parsed = typeof serverError === "string"
-          ? JSON.parse(serverError)
-          : serverError;
-
-        errorMessage = parsed?.error?.message ?? parsed?.message ?? errorMessage;
-      } catch {}
-    }
-
-    // Extract inner JSON from messages like "Supabase auth create failed: {...}"
-    const innerJsonMatch = errorMessage.match(/:\s*(\{.*\})$/);
+    const innerJsonMatch = serverError.error.match(/:\s*(\{.*\})$/);
+    let errorMessage: any;
     if (innerJsonMatch) {
       try {
         const inner = JSON.parse(innerJsonMatch[1]);
-        errorMessage = inner?.msg ?? inner?.message ?? errorMessage;
-      } catch {}
+        errorMessage = inner?.msg ?? inner?.message ?? serverError.error;
+      } catch {
+        errorMessage = serverError.error; // fallback to full string
+      }
+    } else {
+      errorMessage = serverError.error;
     }
 
     toast.error(errorMessage);
