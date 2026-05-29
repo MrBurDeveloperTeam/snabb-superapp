@@ -191,10 +191,10 @@ export const authOdoo = async ({
     return response;
   } catch (err: any) {
     const serverError = err?.response?.data;
-    console.log('the inner: ', serverError);
     const innerJsonMatch = serverError.error.match(/:\s*(\{.*\})$/);
     let errorMessage: any;
     if (innerJsonMatch) {
+      console.log('the inner: ', innerJsonMatch);
       try {
         const inner = JSON.parse(innerJsonMatch[1]);
         errorMessage = inner?.msg ?? inner?.message ?? serverError.error;
