@@ -17,7 +17,7 @@ type LocationResponse = {
   country_code?: string;
 };
 
-// Odoo country IDs — add more as needed
+// Odoo country IDs for portal profile
 const COUNTRY_ID_MAP: Record<string, number> = {
   "Malaysia": 157,
   "Singapore": 197,
@@ -27,6 +27,28 @@ const COUNTRY_ID_MAP: Record<string, number> = {
   "Philippines": 175,
   "United Kingdom": 235,
   "United States": 233,
+  "Japan": 109,
+  "South Korea": 116,
+};
+
+// User's selected country → Odoo company ID
+const COUNTRY_TO_COMPANY_ID: Record<string, number> = {
+  "Malaysia": 2,    // MR. BUR (M) SDN. BHD.
+  "Singapore": 3,   // MR. BUR (SG) PTE. LTD.
+  "Indonesia": 4,   // PT. MRBUR GLOBAL INDONESIA
+  "Thailand": 7,    // MR. BUR (TH) LTD.
+  "South Korea": 8, // MR. BUR KOREA LLC
+  "Japan": 39,      // KANEIKO INTERNATIONAL CO., LTD
+};
+
+// IP country code → Odoo company ID (fallback)
+const COUNTRY_CODE_TO_COMPANY_ID: Record<string, number> = {
+  MY: 2,   // MR. BUR (M) SDN. BHD.
+  SG: 3,   // MR. BUR (SG) PTE. LTD.
+  ID: 4,   // PT. MRBUR GLOBAL INDONESIA
+  TH: 7,   // MR. BUR (TH) LTD.
+  KR: 8,   // MR. BUR KOREA LLC
+  JP: 39,  // KANEIKO INTERNATIONAL CO., LTD
 };
 
 const getLocationInfo = async (): Promise<LocationResponse> => {
@@ -71,17 +93,33 @@ const resolveCompanyIdFromCountry = (
   return null;
 };
 
-const getSignupCompanyId = async (): Promise<number> => {
+const getSignupCompanyId = async (selectedCountry?: string): Promise<number> => {
+  // 1. Use the user's selected country first (most accurate)
+  if (selectedCountry && COUNTRY_TO_COMPANY_ID[selectedCountry]) {
+    return COUNTRY_TO_COMPANY_ID[selectedCountry];
+  }
+
   try {
     const [{ country_code = "MY" }, sessionInfo] = await Promise.all([
       getLocationInfo(),
       getSessionInfo(),
     ]);
+
+    const cc = (country_code || "MY").toUpperCase();
+
+    // 2. Try dynamic session company_codes
     const companyCodes = sessionInfo.company_codes || {};
-    const resolvedCompanyId = resolveCompanyIdFromCountry(country_code, companyCodes);
+    const resolvedCompanyId = resolveCompanyIdFromCountry(cc, companyCodes);
     if (resolvedCompanyId) return resolvedCompanyId;
+
+    // 3. Static fallback by IP country code
+    const staticId = COUNTRY_CODE_TO_COMPANY_ID[cc];
+    if (staticId) return staticId;
+
+    // 4. Session fallback
     if (sessionInfo.company_id) return Number(sessionInfo.company_id);
-    return 2;
+
+    return 2; // final fallback → MR. BUR (M)
   } catch (error) {
     console.error("company_id resolve error:", error);
     return 2;
@@ -101,7 +139,8 @@ export const authOdoo = async ({
   account_type,
   country,
 }: AuthFormInputs) => {
-  const companyId = await getSignupCompanyId();
+  // Pass selected country for accurate company resolution
+  const companyId = await getSignupCompanyId(country);
 
   const isCompany = account_type === "company";
   const effectiveEmail = isCompany ? (companyEmail || login) : login;
@@ -128,7 +167,7 @@ export const authOdoo = async ({
     id: 1,
   };
 
-  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail, country, countryId });
+  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail, country, countryId, companyId });
 
   try {
     const response = await api.post("/v1/users", requestData);
