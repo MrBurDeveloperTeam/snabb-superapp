@@ -209,6 +209,7 @@ export const authOdoo = async ({
       try {
         const inner = JSON.parse(innerJsonMatch[1]);
         errorMessage = inner?.msg ?? inner?.message ?? errorMessage;
+        console.log('the inner: ', inner);
       } catch {}
     }
 
