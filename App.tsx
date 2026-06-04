@@ -19,6 +19,12 @@ import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
 import { chatWithGemini } from './services/geminiService';
 import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
+import { SnabbbIcon } from './public/icons/SnabbbIcon';
+import { toast, ToastContainer } from 'react-toastify';
+import { AnnouncementBar } from "./components/AnnouncementBar";
+import { useAnnouncementBarStore } from './store/announcementBarStore';
+import DisclaimerPage from './components/DisclaimerPage';
+import { Toaster } from "sonner";
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -28,6 +34,7 @@ const initialFormData: AuthFormData = {
   password: '',
   confirmPassword: '',
   agreedToTerms: false,
+  country: '',
 };
 
 const ALLOWED_ORIGINS = [
@@ -55,6 +62,7 @@ const App: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [userChatContext, setUserChatContext] = useState<string>('');
+  const setConfig = useAnnouncementBarStore((s) => s.setConfig);
 
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const didInitRef = useRef(false);
@@ -110,7 +118,7 @@ const App: React.FC = () => {
       const { data: apps } = await supabase
         .from('aiboard_response_target_apps')
         .select('response_id')
-        .in('app_name', ['Snabbb.io', 'All']);
+        .in('app_name', ['App.Snabbb', 'All']);
 
       if (apps && apps.length > 0) {
         const responseIds = apps.map(a => a.response_id);
@@ -202,10 +210,7 @@ const App: React.FC = () => {
         return false;
       }
 
-      const companyId = res?.company_id || {};
-      const companyCode = res?.company_code || {};
-      const firstCompanyCode = Object.values(companyCode) || "";
-      const firstCompanyId = Object.keys(companyId) || "";
+
 
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
@@ -214,12 +219,52 @@ const App: React.FC = () => {
         email: res.sessionInfo.username || '',
         password: '',
         confirmPassword: '',
+        country: '',
         agreedToTerms: true,
       };
 
       setIsLoggedIn(true);
       setAuthFormData(nextUser);
       setUser(nextUser);
+
+      try {
+        const partnerRes = await api.get(
+          `/partner/profile?email=${encodeURIComponent(nextUser.email)}`
+        );
+        const profileComplete = partnerRes?.data?.profileComplete ?? false;
+        setUser({ ...nextUser, profileComplete } as any);
+      } catch (e) {
+        console.warn("Failed to fetch partner profile:", e);
+      }
+
+     const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
+        MMY: "my", MSG: "sg", MTH: "th", MID: "id",
+        MUSA: "us", MUK: "uk", MAU: "au", MVN: "vn",
+        MPH: "ph", MKR: "kr", MCA: "ca", MAE: "ae",
+        MSA: "sa", MNZ: "nz", MEU: "eu",
+      };
+
+      try {
+        const raw = localStorage.getItem("odoo_session");
+        if (raw) {
+          const session = JSON.parse(raw);
+          const companyCode = session?.company_code as string;
+          const subdomain = COMPANY_SUBDOMAIN_MAP[companyCode];
+          if (subdomain) {
+            setConfig({
+              linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
+            });
+          }
+          if (subdomain) {
+            setConfig({
+              linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse odoo_session:", e);
+      }
+      
 
       // Fetch personalized context for Molar AI
       try {
@@ -229,8 +274,8 @@ const App: React.FC = () => {
         console.warn('[MolarAI] Context fetch failed:', e);
       }
 
-      localStorage.setItem("company_code", String(firstCompanyCode));
-      localStorage.setItem("company_id", String(firstCompanyId));
+      // localStorage.setItem("company_code", String(companyCode));
+      // localStorage.setItem("company_id", String(firstCompanyId));
 
       return true;
     } catch (error) {
@@ -400,6 +445,7 @@ const App: React.FC = () => {
       password: '',
       confirmPassword: '',
       agreedToTerms: true,
+      country: '',
     };
 
     setIsLoggedIn(true);
@@ -419,8 +465,39 @@ const App: React.FC = () => {
     }
   };
 
+  const toastMessage = useCallback(
+    (msg: string, options: { type: 'success' | 'error' }) => {
+      if (options.type === 'success') {
+        toast.success(msg);
+      } else {
+        toast.error(msg);
+      }
+    },
+    []
+  );
+
 
   return (
+    <>
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        style: {
+          background: "#fef2f2",
+          color: "#b91c1c",
+          border: "1px solid #fca5a5",
+        },
+      }}
+    />
+    <AnnouncementBar
+        isLoggedIn={!!user}
+        profileComplete={(user as any)?.profileComplete}
+      />
+    <ToastContainer 
+      position="top-center"  // Position of the toast
+      hideProgressBar={true} // Option to show progress bar
+      autoClose={false}
+    />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
@@ -435,12 +512,9 @@ const App: React.FC = () => {
             }}
             aria-label="Return to Snabbb.io gallery"
           >
-            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-              <i className="fa-solid fa-layer-group text-xs sm:text-lg"></i>
-            </div>
             <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
-              Snabbb.
-              <span className="text-blue-600">io</span>
+              <span style={{ transform: 'skewX(353deg)', display: 'inline-block' }}>App.</span>
+              <SnabbbIcon />
             </span>
           </button>
 
@@ -523,7 +597,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/login')}
                   className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
-                    path === '/login' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-900'
+                    path === '/login' ? 'text-tiffany-600' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Log In
@@ -533,7 +607,7 @@ const App: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate('/signup')}
-                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-tiffany-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-tiffany-600/20 hover:bg-tiffany-700 transition-all"
                 >
                   Sign Up
                 </motion.button>
@@ -600,10 +674,11 @@ const App: React.FC = () => {
           {isAuthRoute && (
             <AuthPage
               authMode={authMode}
-              setCurrentView={() => {}}
+              setCurrentView={setPath}
               onAuthSuccess={handleSuccessfulAuth}
               setLoggedInUser={setLoggedInUser}
               setFormData={setAuthFormData}
+              setToastMsg={toastMessage}
             />
           )}
 
@@ -616,6 +691,12 @@ const App: React.FC = () => {
           {path === '/terms' && (
             <motion.div key="terms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <TermsPage />
+            </motion.div>
+          )}
+
+          {path === '/disclaimer' && (
+            <motion.div key="disclaimer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <DisclaimerPage />
             </motion.div>
           )}
 
@@ -633,10 +714,10 @@ const App: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}
                 >
-                  <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
-                    Snabbb.
-                    <span className="text-blue-600">io</span>
-                  </h1>
+                  <span className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
+                    <h1 style={{transform: 'skewX(353deg)', display: 'inline-block'}}>App.</h1>
+                    <SnabbbIcon />
+                  </span>
 
                   <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
                     {isLoggedIn
@@ -672,7 +753,7 @@ const App: React.FC = () => {
                       onClick={() => setActiveCategory(cat)}
                       className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 border ${
                         activeCategory === cat
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/30'
+                          ? 'bg-tiffany-600 text-white border-tiffany-600 shadow-md shadow-tiffany-600/30'
                           : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200 hover:bg-slate-50 shadow-sm'
                       }`}
                     >
@@ -753,7 +834,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/privacy')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    path === '/privacy' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/privacy' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
                   }`}
                 >
                   Privacy
@@ -762,10 +843,19 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/terms')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    path === '/terms' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/terms' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
                   }`}
                 >
                   Terms
+                </button>
+
+                <button
+                  onClick={() => navigate('/disclaimer')}
+                  className={`transition-colors text-xs font-black uppercase tracking-widest ${
+                    path === '/disclaimer' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
+                  }`}
+                >
+                  Disclaimer
                 </button>
               </div>
             </div>
@@ -773,6 +863,7 @@ const App: React.FC = () => {
         )}
       </main>
     </motion.div>
+    </>
   );
 };
 

@@ -89,7 +89,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
   };
 
   const [dialogSteps, setDialogSteps] = useState([
-    "👋 Hi there! I'm your AI assistant for Snabbb.io.\nI'm here to help you explore and understand all the features available.",
+    "👋 Hi there! I'm your AI assistant for App.Snabbb.\nI'm here to help you explore and understand all the features available.",
     "Click on me to open the Virtual Pet ecosystem, or ask me any questions about the app!"
   ]);
 
@@ -220,12 +220,12 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
 
       // Default fallback dialogs
       const fallbackPreLogin = [
-        "👋 Welcome to Snabbb.io!",
+        "👋 Welcome to App.Snabbb!",
         "Please sign in to access your modules, or ask me any questions."
       ];
       
       const fallbackPostLogin = [
-        "👋 Welcome back! I'm your Snabbb.io Assistant.",
+        "👋 Welcome back! I'm your App.Snabbb Assistant.",
         "Click on me to open the Virtual Pet ecosystem, or ask me for help!"
       ];
 
@@ -233,7 +233,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
         const { data: configs } = await supabase
           .from('aiboard_simulator_configs')
           .select('id')
-          .eq('module_name', 'Snabbb.io')
+          .eq('module_name', 'App.Snabbb')
           .limit(1);
 
         if (configs && configs.length > 0) {

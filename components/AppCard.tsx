@@ -55,13 +55,26 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
-        case app.route.includes('shop'): {
-          // const res = await createAppLink({
-          //   app: 'shop',
-          //   email: user.username,
-          //   name: user.name,
-          // });
-          if (w) w.location.href = 'https://mrbur.shop';
+        case app.route.includes('mrbur.shop'): {
+          const res = await createAppLink({
+            app: 'shop',
+            email: user.username,
+            name: user.name,
+          });
+        
+        
+          if (res.result?.url && w) {
+            const ssoUrl = new URL(res.result.url);
+            const token = ssoUrl.searchParams.get("token");
+            const companyCode = ssoUrl.searchParams.get("company_code") || "MMY";
+          
+            if (token) {
+              w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(token)}&company_code=${encodeURIComponent(companyCode)}`;
+            } else {
+              w.location.href = res.result.url;
+            }
+          }
+        
           break;
         }
         case app.route.includes('calculator'): {
@@ -116,25 +129,18 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
   const activeCardStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background:
-      'linear-gradient(145deg, #f6f9fc 0%, #eef3f8 45%, #e5edf5 100%)',
     boxShadow:
       '0 10px 30px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.75)',
-    border: '1px solid rgba(255,255,255,0.7)',
   };
 
   const activeCardHoverStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background:
-      'linear-gradient(145deg, #f6f9fc 0%, #eef3f8 45%, #e5edf5 100%)',
     boxShadow:
       '0 20px 40px rgba(95,111,148,0.14), inset 0 1px 0 rgba(255,255,255,0.8)',
-    border: '1px solid rgba(255,255,255,0.72)',
   };
 
   const comingSoonCardStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background: 'linear-gradient(145deg, #f7f7f9 0%, #f1f2f5 100%)',
     boxShadow:
       '0 8px 24px rgba(15,23,42,0.04), inset 0 1px 0 rgba(255,255,255,0.7)',
     border: '1px solid rgba(255,255,255,0.6)',
@@ -142,22 +148,20 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
   const comingSoonCardHoverStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background: 'linear-gradient(145deg, #f7f7f9 0%, #f1f2f5 100%)',
     boxShadow:
       '0 12px 24px rgba(148,163,184,0.08), inset 0 1px 0 rgba(255,255,255,0.72)',
     border: '1px solid rgba(255,255,255,0.62)',
   };
 
   const activeIconWrapStyle: React.CSSProperties = {
-    background:
-      'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.95), rgba(255,255,255,0.45) 35%, transparent 60%), linear-gradient(145deg, #dff2ef 0%, #d5ebe6 35%, #c7e2db 100%)',
+    backgroundColor:
+      '#fff',
     boxShadow:
       'inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 18px rgba(95,111,148,0.10)',
     borderRadius: '1.65rem',
   };
 
   const comingSoonIconWrapStyle: React.CSSProperties = {
-    background: 'linear-gradient(145deg, #ececf1 0%, #e3e5eb 100%)',
     boxShadow:
       'inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 14px rgba(148,163,184,0.10)',
     borderRadius: '1.65rem',

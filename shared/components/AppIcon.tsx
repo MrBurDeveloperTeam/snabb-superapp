@@ -1,8 +1,9 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export const AppIcon = ({ icon, label, color }: { icon: string, label: string, color: string }) => {
   const isImageUrl = icon.startsWith('http');
-  
+  const isMrBur = label === 'Mr.Bur';
+
   return (
     <motion.div 
       variants={{
@@ -13,12 +14,20 @@ export const AppIcon = ({ icon, label, color }: { icon: string, label: string, c
       className="flex flex-col items-center gap-3"
     >
       <div className={`${
-          label === 'Mr.Bur' ? '' : 'p-2'
-        } w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30 relative overflow-hidden group/icon ${color}`}>
-        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10" />
+          isMrBur ? '' : 'p-2'
+        } w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30 relative overflow-hidden group/icon ${isMrBur ? '' : color}`}>
+        {!isMrBur && (
+          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10" />
+        )}
         
         {isImageUrl ? (
-          <img src={icon} alt={label} className="w-full h-full object-cover relative z-10 transition-transform duration-500 group-hover/icon:scale-110" />
+          <img
+            src={icon}
+            alt={label}
+            className={`relative z-10 transition-transform duration-500 group-hover/icon:scale-110 ${
+              isMrBur ? 'w-full h-full object-contain' : 'w-full h-full object-cover'
+            }`}
+          />
         ) : (
           <i className={`${icon} text-2xl sm:text-3xl relative z-10 transition-transform duration-500 group-hover/icon:scale-110`}></i>
         )}
