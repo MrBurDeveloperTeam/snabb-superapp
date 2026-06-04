@@ -45,7 +45,7 @@ const DEFAULT_CONFIG: AnnouncementBarConfig = {
   targetIncomplete: true,
   textIncomplete:
     "Please fill up your profile to get a extra coupon from us. Click Here Edit.",
-  linkIncomplete: "https://mrbur.shop/my/account",
+  linkIncomplete: "https://account.snabbb.com",
 };
 
 export const useAnnouncementBarStore = create<AnnouncementBarStore>()(
