@@ -501,19 +501,22 @@ const App: React.FC = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
-          <div
-            className="inline-flex items-center gap-1 cursor-pointer"
-            onClick={() => {
+          <button
+            type="button"
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer text-left"
+            onClick={(event) => {
+              event.stopPropagation();
               navigate('/');
               setActiveCategory('All');
               setSearchQuery('');
             }}
+            aria-label="Return to Snabbb.io gallery"
           >
             <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
               <span style={{ transform: 'skewX(353deg)', display: 'inline-block' }}>App.</span>
               <SnabbbIcon />
             </span>
-          </div>
+          </button>
 
           <div className="flex items-center gap-2 sm:gap-8">
             {isLoggedIn === null ? (
@@ -615,7 +618,13 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 relative">
-        {!isVirtualPetOpen && <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} disabled={!isLoggedIn} />}
+        <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
+          <CatMascot
+            onCatClick={() => setIsVirtualPetOpen(true)}
+            disabled={!isLoggedIn}
+            isHidden={isAuthRoute || isVirtualPetOpen}
+          />
+        </div>
         
         <MolarChat
           isOpen={isChatOpen && !isVirtualPetOpen}
@@ -632,30 +641,32 @@ const App: React.FC = () => {
         
         <VirtualPetContainer isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
 
-        {!isChatOpen && !isVirtualPetOpen && (
-          <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
-             <div className="relative flex items-center justify-center">
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
-                   <AnimatePresence mode="wait">
-                      <motion.div
-                        key={badgeText}
-                        initial={{ opacity: 0, y: 5, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -5, scale: 0.9 }}
-                        className="bg-white text-emerald-500 text-[12px] font-bold tracking-wider px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 whitespace-nowrap"
-                      >
-                        {badgeText}
-                      </motion.div>
-                   </AnimatePresence>
-                </div>
-                <button
-                  onClick={() => setIsChatOpen(true)}
-                  disabled={!isLoggedIn}
-                  className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg transition-all relative overflow-hidden ${!isLoggedIn ? 'bg-slate-300 grayscale cursor-not-allowed opacity-70 shadow-none' : 'bg-[#1F7A6F] hover:scale-105 hover:shadow-xl shadow-[#1F7A6F]/30'}`}
-                >
-                  <img src="/icons/ai_logo.png" alt="Molar AI" className={`w-10 h-10 object-contain drop-shadow-sm transition-transform ${!isLoggedIn ? 'brightness-80' : ''}`} />
-                </button>
-             </div>
+        {!isChatOpen && (
+          <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
+            <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
+               <div className="relative flex items-center justify-center">
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
+                     <AnimatePresence mode="wait">
+                        <motion.div
+                          key={badgeText}
+                          initial={{ opacity: 0, y: 5, scale: 0.9 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -5, scale: 0.9 }}
+                          className="bg-white text-emerald-500 text-[12px] font-bold tracking-wider px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 whitespace-nowrap"
+                        >
+                          {badgeText}
+                        </motion.div>
+                     </AnimatePresence>
+                  </div>
+                  <button
+                    onClick={() => setIsChatOpen(true)}
+                    disabled={!isLoggedIn}
+                    className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg transition-all relative overflow-hidden ${!isLoggedIn ? 'bg-slate-300 grayscale cursor-not-allowed opacity-70 shadow-none' : 'bg-[#1F7A6F] hover:scale-105 hover:shadow-xl shadow-[#1F7A6F]/30'}`}
+                  >
+                    <img src="/icons/ai_logo.png" alt="Molar AI" className={`w-10 h-10 object-contain drop-shadow-sm transition-transform ${!isLoggedIn ? 'brightness-80' : ''}`} />
+                  </button>
+               </div>
+            </div>
           </div>
         )}
 
