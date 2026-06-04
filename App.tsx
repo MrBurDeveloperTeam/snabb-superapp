@@ -252,12 +252,8 @@ const App: React.FC = () => {
           const subdomain = COMPANY_SUBDOMAIN_MAP[companyCode];
           if (subdomain) {
             setConfig({
-              linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
-            });
-          }
-          if (subdomain) {
-            setConfig({
-              linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
+              linkIncomplete: `https://account.snabbb.com`,
+              // linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
             });
           }
         }
