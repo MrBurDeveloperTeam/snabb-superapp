@@ -52,6 +52,23 @@ const COUNTRY_CODE_TO_COMPANY_ID: Record<string, number> = {
   JP: 39,  // KANEIKO INTERNATIONAL CO., LTD
 };
 
+const COMPANY_CODE_TO_MRBUR_URL: Record<string, string> = {
+  MY: 'https://my.mrbur.shop',
+  SG: 'https://sg.mrbur.shop',
+  TH: 'https://th.mrbur.shop',
+  ID: 'https://id.mrbur.shop',
+  VN: 'https://vn.mrbur.shop',
+  JP: 'https://jp.mrbur.shop',
+  KR: 'https://kr.mrbur.shop',
+}
+
+export function getMrBurUrlFromCompanyCode(companyCode?: string | null): string {
+  if (!companyCode) return 'https://my.mrbur.shop'
+  // company_code is like "MMY", "MSG", "MTH" — last 2 chars are country code
+  const countryCode = companyCode.slice(-2).toUpperCase()
+  return COMPANY_CODE_TO_MRBUR_URL[countryCode] ?? 'https://my.mrbur.shop'
+}
+
 const getLocationInfo = async (): Promise<LocationResponse> => {
   try {
     const res = await fetch("/api/location", {

@@ -1,4 +1,19 @@
+import { getMrBurUrlFromCompanyCode } from './services/authOdoo';
 import { MiniApp } from './types';
+
+function getOdooCompanyCode(): string | null {
+  try {
+    const raw = localStorage.getItem('odoo_session')
+    if (!raw) return null
+    const session = JSON.parse(raw)
+    return session?.company_code ?? null
+  } catch {
+    return null
+  }
+}
+
+// In your app config array:
+const companyCode = getOdooCompanyCode()
 
 export const MINI_APPS: MiniApp[] = [
   // ======= SHOPS =======
@@ -7,7 +22,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Mr.Bur',
     category: 'Shops',
     icon: 'https://app.snabbb.com/icons/mr_bur.png',
-    route: `https://mrbur.shop`,
+    route: getMrBurUrlFromCompanyCode(companyCode),
     colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#4338ca]', icon: '#4338ca' }
   },
   // {
