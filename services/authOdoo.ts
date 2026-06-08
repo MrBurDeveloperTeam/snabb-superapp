@@ -22,7 +22,7 @@ type LocationResponse = {
 const COUNTRY_ID_MAP: Record<string, number> = {
   "Malaysia": 157,
   "Singapore": 197,
-  "Thailand": 216,
+  "Thailand": 217,
   "Indonesia": 100,
   "Vietnam": 241,
   "Philippines": 175,
