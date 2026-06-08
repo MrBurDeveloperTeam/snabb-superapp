@@ -11,6 +11,7 @@ import { SubmitButton } from '@/shared/ui/SubmitButton';
 import { useAuthMutation } from '../hooks/useAuthMutation';
 import { MINI_APPS } from '@/constants';
 import { AppIcon } from '@/shared/components/AppIcon';
+import { DOBPicker } from '@/components/DOBPicker';
 
 interface Props {
   control: Control<AuthFormInputs, any, AuthFormInputs>;
@@ -246,23 +247,15 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
 
               {/* Date of Birth — both individual and company */}
               <div>
-                <label className={labelClasses}>Date of Birth</label>
-                <div className="relative group">
-                  <i className="fa-regular fa-calendar absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                  <Controller
-                    name="dob"
+                <div>
+                  <label className={labelClasses}>Date of Birth</label>
+                  <DOBPicker
                     control={control}
-                    render={({ field }) => (
-                      <input
-                        {...field}
-                        type="date"
-                        className={inputClasses}
-                        style={{ cursor: 'pointer' }}
-                        onClick={(e) => { try { (e.target as HTMLInputElement).showPicker(); } catch {} }}
-                        onChange={(e) => { field.onChange(e); onChange(e); }}
-                        required
-                      />
-                    )}
+                    name="dob"
+                    labelClasses={labelClasses}
+                    inputClasses={inputClasses}
+                    onChange={onChange}
+                    required
                   />
                 </div>
                 {accountType === 'company' && (
