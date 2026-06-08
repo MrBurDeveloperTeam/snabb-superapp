@@ -238,7 +238,7 @@ const App: React.FC = () => {
       }
 
      const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
-        MMY: "my", MSG: "sg", MTH: "th", MID: "id",
+        MMY: "my", MSG: "sg", MTH: "th", MIN: "id",
         MUSA: "us", MUK: "uk", MAU: "au", MVN: "vn",
         MPH: "ph", MKR: "kr", MCA: "ca", MAE: "ae",
         MSA: "sa", MNZ: "nz", MEU: "eu",

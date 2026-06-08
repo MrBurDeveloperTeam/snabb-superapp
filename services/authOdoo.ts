@@ -46,7 +46,7 @@ const COUNTRY_TO_COMPANY_ID: Record<string, number> = {
 const COUNTRY_CODE_TO_COMPANY_ID: Record<string, number> = {
   MY: 2,   // MR. BUR (M) SDN. BHD.
   SG: 3,   // MR. BUR (SG) PTE. LTD.
-  ID: 4,   // PT. MRBUR GLOBAL INDONESIA
+  IN: 4,   // PT. MRBUR GLOBAL INDONESIA
   TH: 7,   // MR. BUR (TH) LTD.
   KR: 8,   // MR. BUR KOREA LLC
   JP: 39,  // KANEIKO INTERNATIONAL CO., LTD
@@ -56,7 +56,7 @@ const COMPANY_CODE_TO_MRBUR_URL: Record<string, string> = {
   MY: 'https://my.mrbur.shop',
   SG: 'https://sg.mrbur.shop',
   TH: 'https://th.mrbur.shop',
-  ID: 'https://id.mrbur.shop',
+  IN: 'https://id.mrbur.shop',
   VN: 'https://vn.mrbur.shop',
   JP: 'https://jp.mrbur.shop',
   KR: 'https://kr.mrbur.shop',
