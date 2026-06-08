@@ -23,7 +23,7 @@ const COUNTRY_ID_MAP: Record<string, number> = {
   "Malaysia": 157,
   "Singapore": 197,
   "Thailand": 216,
-  "Indonesia": 101,
+  "Indonesia": 100,
   "Vietnam": 241,
   "Philippines": 175,
   "United Kingdom": 235,
