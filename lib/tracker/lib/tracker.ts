@@ -3,7 +3,7 @@
  * Sends events to MR. BUR Odoo backend /web/tracker/event
  */
 
-const ENDPOINT = 'https://mrbur.odoo.com/web/tracker/event';
+const ENDPOINT = '/api/tracker/event'; // proxied via Cloudflare Worker to avoid CORS
 
 export type EventType =
   | 'page_view'
