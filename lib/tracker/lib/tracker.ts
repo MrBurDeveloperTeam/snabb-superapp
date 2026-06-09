@@ -25,13 +25,28 @@ export interface TrackEvent {
   metadata?: Record<string, unknown>;
 }
 
+export interface TrackerUser {
+  partner_id?: number;
+  email?: string;
+  name?: string;
+}
+
 class SnabbbTracker {
   private sessionId: string;
   private pageStart: number = Date.now();
+  private user: TrackerUser = {};
 
   constructor() {
     this.sessionId = this.getOrCreateSessionId();
     this.setupPageViewBeacon();
+  }
+
+  setUser(user: TrackerUser) {
+    this.user = user;
+  }
+
+  clearUser() {
+    this.user = {};
   }
 
   private getOrCreateSessionId(): string {
@@ -74,6 +89,8 @@ class SnabbbTracker {
         referrer: typeof document !== 'undefined' ? document.referrer || '' : '',
         session_id: this.sessionId,
         source: 'snabbb',
+        snabbb_user: this.user.email || null,
+        snabbb_partner_id: this.user.partner_id || null,
         ...extra,
       },
     });
