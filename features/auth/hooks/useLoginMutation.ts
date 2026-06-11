@@ -5,10 +5,10 @@ import { AuthFormInputs } from "../types/AuthFormInputs";
 export const useLoginMutation = (onAuthSuccess: () => void) => {
   return useMutation({
     mutationFn: async (data: AuthFormInputs) => {
-      const { data: loginResult } = await loginOdoo(data.login, data.password);
+      const loginResult = await loginOdoo(data.login, data.password);
       console.log("loginResult:", loginResult); 
       return {
-        sessionInfo: loginResult.result,
+        sessionInfo: loginResult.data.result,
         seed_entry_url: loginResult.seed_entry_url ?? null,
       };
     },
