@@ -53,7 +53,7 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
 
       if (loginResult.ok && loginResult.sessionInfo) {
         // Plant the cookie on mrbur.shop in the background
-        await plantMrBurCookie(loginResult.sessionInfo.session_id); // or however you get the sid
+        await plantMrBurCookie(loginResult.session_id); // or however you get the sid
       }
 
       return {
