@@ -25,6 +25,7 @@ import { AnnouncementBar } from "./components/AnnouncementBar";
 import { useAnnouncementBarStore } from './store/announcementBarStore';
 import DisclaimerPage from './components/DisclaimerPage';
 import { Toaster } from "sonner";
+import { plantMrBurCookie } from './services/plantCookies';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -300,6 +301,23 @@ const App: React.FC = () => {
     },
     [verifySession, isAuthRoute]
   );
+  
+  async function syncSessionToMrBur() {
+    // Get the current session_id from Odoo
+    const res = await fetch("https://app.snabbb.com/api/web/session/get_session_info", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: 1 }),
+    });
+
+    const data = await res.json();
+    const sid = data?.result?.session_id;  // Odoo includes this in session_info
+
+    if (sid) {
+      await plantMrBurCookie(sid);
+    }
+  }
 
   // Debounced session check
   const verifySessionDebounced = useCallback(
@@ -311,7 +329,7 @@ const App: React.FC = () => {
     const handlePopState = () => {
       setPath(window.location.pathname);
     };
-
+    syncSessionToMrBur();
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
