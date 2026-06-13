@@ -26,6 +26,7 @@ import { useAnnouncementBarStore } from './store/announcementBarStore';
 import DisclaimerPage from './components/DisclaimerPage';
 import { Toaster } from "sonner";
 import { plantMrBurCookie } from './services/plantCookies';
+import SsoCheck from './components/SsoCheck';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -694,6 +695,10 @@ const App: React.FC = () => {
               setFormData={setAuthFormData}
               setToastMsg={toastMessage}
             />
+          )}
+
+          {path === '/sso/check' && (
+            <SsoCheck />
           )}
 
           {path === '/privacy' && (
