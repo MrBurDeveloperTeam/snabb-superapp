@@ -1,15 +1,15 @@
-export async function plantMrBurCookie(sessionId) {
+export async function plantMrBurCookie(sessionId: string) {
   try {
+    // Route through app.snabbb.com Worker which proxies to my.mrbur.shop
+    // This avoids CORS since app.snabbb.com is in our Cloudflare zone
     await fetch(
-      `https://my.mrbur.shop/sso/plant-cookie?sid=${sessionId}`,
+      `https://app.snabbb.com/api/sso/plant-mrbur-cookie?sid=${encodeURIComponent(sessionId)}`,
       {
         method: "GET",
-        credentials: "include", // essential — sends/receives cookies cross-origin
-        mode: "cors",
+        credentials: "include",
       }
     );
   } catch (e) {
-    // non-fatal, user can still browse
     console.warn("plantMrBurCookie failed", e);
   }
 }
