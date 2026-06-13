@@ -3,7 +3,11 @@
  * Place at: src/components/SsoCheck.tsx
  *
  * Loaded inside a hidden iframe by mrbur.shop.
- * Checks Odoo session → requests one-time token → postMessages it back.
+ * Checks Odoo session server-side → requests one-time token → postMessages it back.
+ *
+ * Uses /api/sso/check-snabbb-session instead of /api/web/session/get_session_info
+ * because the iframe context blocks cookie sending in some browsers.
+ * The check-snabbb-session endpoint reads cookies server-side from the Worker.
  */
 
 import { useEffect } from 'react';
@@ -17,31 +21,16 @@ const ALLOWED_PARENT_ORIGINS = [
   'https://mrbur.odoo.com',
 ];
 
-// This is the Snabbb Worker endpoint that checks the Odoo session
-// and returns a one-time token
+// Server-side session check — Worker reads .snabbb.com cookie and validates with Odoo
+const CHECK_SESSION_ENDPOINT = 'https://app.snabbb.com/api/sso/check-snabbb-session';
+
+// Worker proxies this to mrbur.odoo.com/sso/generate_token using the snabbb session cookie
 const GENERATE_TOKEN_ENDPOINT = 'https://app.snabbb.com/api/sso/generate_token';
-
-// Session info endpoint — proxied through app.snabbb.com Worker
-const SESSION_INFO_ENDPOINT = 'https://app.snabbb.com/api/web/session/get_session_info';
-
-async function odooJsonRpc(url: string, params: Record<string, unknown> = {}) {
-  const res = await fetch(url, {
-    method: 'POST',
-    credentials: 'include', // sends Odoo session_id cookie
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || 'rpc_error');
-  return data.result;
-}
 
 function getParentOrigin(): string | null {
   try {
     const ref = document.referrer;
     if (ref) return new URL(ref).origin;
-    // Fallback for Chrome
     if (window.location.ancestorOrigins?.length > 0) {
       return window.location.ancestorOrigins[0];
     }
@@ -67,29 +56,62 @@ export default function SsoCheck() {
       };
 
       try {
-        // 1. Check Odoo session via the Worker proxy
-        const sessionInfo = await odooJsonRpc(SESSION_INFO_ENDPOINT);
-        console.log('[Snabbb SSO] Odoo session uid:', sessionInfo?.uid);
+        // 1. Check Odoo session server-side via Worker
+        // Worker reads .snabbb.com session_id cookie and validates with Odoo
+        console.log('[Snabbb SSO] Checking session server-side...');
+        const sessionRes = await fetch(CHECK_SESSION_ENDPOINT, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
 
-        if (!sessionInfo?.uid || sessionInfo.uid === false) {
+        if (!sessionRes.ok) {
+          console.warn('[Snabbb SSO] Session check HTTP error:', sessionRes.status);
           postToParent({ type: 'SSO_UNAUTHENTICATED' });
           return;
         }
 
-        // 2. User has active Odoo session — request one-time token
-        // This calls mrbur.odoo.com directly with the session cookie
-        console.log('[Snabbb SSO] Calling generate_token...');
-        const result = await odooJsonRpc(GENERATE_TOKEN_ENDPOINT);
-        console.log('[Snabbb SSO] generate_token result:', result);
+        const sessionData = await sessionRes.json();
+        const uid = sessionData?.result?.uid;
+        console.log('[Snabbb SSO] Odoo session uid:', uid);
 
-        if (result?.token) {
-          postToParent({ type: 'SSO_TOKEN', token: result.token });
+        if (!uid || uid === false) {
+          console.log('[Snabbb SSO] No active session');
+          postToParent({ type: 'SSO_UNAUTHENTICATED' });
+          return;
+        }
+
+        // 2. Request one-time token — Worker forwards with snabbb session cookie
+        console.log('[Snabbb SSO] Calling generate_token...');
+        const tokenRes = await fetch(GENERATE_TOKEN_ENDPOINT, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: {} }),
+        });
+
+        if (!tokenRes.ok) {
+          console.warn('[Snabbb SSO] generate_token HTTP error:', tokenRes.status);
+          postToParent({ type: 'SSO_UNAUTHENTICATED' });
+          return;
+        }
+
+        const tokenData = await tokenRes.json();
+        console.log('[Snabbb SSO] generate_token result:', tokenData);
+
+        const token = tokenData?.result?.token;
+
+        if (token) {
+          console.log('[Snabbb SSO] Token received, posting to parent');
+          postToParent({ type: 'SSO_TOKEN', token });
         } else {
+          console.warn('[Snabbb SSO] No token in response:', tokenData);
           postToParent({ type: 'SSO_UNAUTHENTICATED' });
         }
       } catch (err) {
         console.error('[Snabbb SSO] Error:', err);
-        window.parent.postMessage({ type: 'SSO_UNAUTHENTICATED' }, parentOrigin);
+        postToParent({ type: 'SSO_UNAUTHENTICATED' });
       }
     }
 
