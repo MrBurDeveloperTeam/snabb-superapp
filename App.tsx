@@ -491,6 +491,9 @@ const App: React.FC = () => {
     []
   );
 
+  if(path === '/sso/check') {
+    return <SsoCheck />;
+  }
 
   return (
     <>
@@ -697,9 +700,6 @@ const App: React.FC = () => {
             />
           )}
 
-          {path === '/sso/check' && (
-            <SsoCheck />
-          )}
 
           {path === '/privacy' && (
             <motion.div key="privacy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
