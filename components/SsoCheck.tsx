@@ -65,47 +65,25 @@ function getParentOrigin(): string | null {
 export default function SsoCheck() {
   useEffect(() => {
     async function run() {
-      const parentOrigin = getParentOrigin();
-
-      // Reject unknown parent origins
-      if (!parentOrigin || !ALLOWED_PARENT_ORIGINS.includes(parentOrigin)) {
-        console.warn('[Snabbb SSO] Rejected parent origin:', parentOrigin);
-        return;
-      }
-
-      const postToParent = (message: Record<string, unknown>) => {
-        window.parent.postMessage(message, parentOrigin);
+      // Temporarily show debug info
+      const div = document.createElement('div');
+      div.style.cssText = 'position:fixed;top:0;left:0;background:white;padding:10px;font-size:12px;z-index:9999;max-width:100%;overflow:auto;';
+      document.body.appendChild(div);
+      
+      const log = (msg: string) => {
+        console.log('[Snabbb SSO]', msg);
+        div.innerHTML += msg + '<br>';
       };
 
-      try {
-        // 1. Check Supabase session
-        const { data: { session } } = await supabase.auth.getSession();
+      const parentOrigin = getParentOrigin();
+      log('parentOrigin: ' + parentOrigin);
 
-        if (!session) {
-          postToParent({ type: 'SSO_UNAUTHENTICATED' });
-          return;
-        }
+      const { data: { session } } = await supabase.auth.getSession();
+      log('supabase session: ' + (session ? 'EXISTS uid=' + session.user?.id : 'NULL'));
 
-        // 2. Request one-time token from Odoo
-        // Requires an active Odoo session cookie on mrbur.odoo.com
-        // (planted during original Snabbb login via mrbur_sso_idp)
-        const result = await odooJsonRpc(GENERATE_TOKEN_ENDPOINT);
-
-        if (result?.token) {
-          postToParent({ type: 'SSO_TOKEN', token: result.token });
-        } else {
-          postToParent({ type: 'SSO_UNAUTHENTICATED' });
-        }
-      } catch (err) {
-        console.error('[Snabbb SSO] Error during SSO check:', err);
-        // Fail silently — mrbur.shop will just show the normal login page
-        window.parent.postMessage({ type: 'SSO_UNAUTHENTICATED' }, parentOrigin);
-      }
+      // ... rest of your code
     }
-
     run();
   }, []);
-
-  // Render nothing — only ever loaded in a hidden iframe
   return null;
 }
