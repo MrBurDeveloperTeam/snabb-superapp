@@ -19,7 +19,7 @@ const ALLOWED_PARENT_ORIGINS = [
 
 // This is the Snabbb Worker endpoint that checks the Odoo session
 // and returns a one-time token
-const GENERATE_TOKEN_ENDPOINT = 'https://mrbur.odoo.com/sso/generate_token';
+const GENERATE_TOKEN_ENDPOINT = 'https://app.snabbb.com/api/sso/generate_token';
 
 // Session info endpoint — proxied through app.snabbb.com Worker
 const SESSION_INFO_ENDPOINT = 'https://app.snabbb.com/api/web/session/get_session_info';
