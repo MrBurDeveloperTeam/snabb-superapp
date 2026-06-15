@@ -39,7 +39,7 @@ function getRedirectParam(): string | null {
     const decoded = decodeURIComponent(raw);
  
     // Safety: only redirect to mrbur.shop or mrbur.odoo.com domains
-    const allowed = ["mrbur.shop", "mrbur.odoo.com"];
+    const allowed = ["mrbur.shop", "mrbur.odoo.com", "mrburstudio.com"];
     const { hostname } = new URL(decoded);
     if (!allowed.some((d) => hostname === d || hostname.endsWith("." + d))) {
       console.warn("[SSO] Ignoring untrusted redirect param:", decoded);
