@@ -54,50 +54,46 @@ function getRedirectParam(): string | null {
 
 export const useLoginMutation = (onAuthSuccess: () => void) => {
   return useMutation({
-    mutationFn: async (data: AuthFormInputs) => {
-      const loginResult = await loginOdoo(data.login, data.password);
+   mutationFn: async (data: AuthFormInputs) => {
+  const loginResult = await loginOdoo(data.login, data.password);
 
-      console.log("loginResult keys:", loginResult);
-      console.log("seed_entry_url:", loginResult.seed_entry_url);
-      console.log("sessionInfo:", loginResult.sessionInfo);
+  console.log("loginResult:", JSON.stringify(loginResult));
 
-      if (loginResult.ok && loginResult.sessionInfo) {
-        // Plant the cookie on mrbur.shop in the background
-        await plantMrBurCookie(loginResult.session_id); // or however you get the sid
-      }
+  return {
+    sessionInfo: loginResult.data?.result ?? loginResult.sessionInfo,
+    session_id: loginResult.session_id ?? loginResult.data?.result?.session_id,
+    seed_entry_url: loginResult.seed_entry_url ?? null,
+  };
+},
 
-      return {
-        sessionInfo: loginResult.data.result,
-        seed_entry_url: loginResult.seed_entry_url ?? null,
-      };
-    },
+onSuccess: async ({ sessionInfo, session_id, seed_entry_url }) => {
+  localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
 
-    onSuccess: async ({ sessionInfo, seed_entry_url }) => {
-      localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
-        
-      // 1. Plant SSO identity cookie on mrbur.shop FIRST
-      try {
-        await plantSnabbbIdentity(sessionInfo);
-      } catch (err) {
-        console.warn("[SSO] Failed to plant snabbb_identity:", err);
-      }
-    
-      // 2. Redirect priority:
-      //    a) ?redirect= param  ← user came from a specific product page
-      //    b) seed_entry_url    ← existing SSO seed chain
-      //    c) onAuthSuccess()   ← default Snabbb app behaviour
-      const redirectUrl = getRedirectParam();
-    
-      if (redirectUrl) {
-        console.log("[SSO] → Redirecting to product page:", redirectUrl);
-        window.location.href = redirectUrl;
-      } else if (seed_entry_url) {
-        console.log("[SSO] → Redirecting to seed_entry_url:", seed_entry_url);
-        window.location.href = seed_entry_url;
-      } else {
-        onAuthSuccess();
-      }
-    },
+  // Plant the Odoo session cookie on mrbur.shop FIRST
+  // This is what logs the user in on the shop domain
+  if (session_id) {
+    try {
+      await plantMrBurCookie(session_id);
+      console.log("[SSO] ✓ Cookie planted on mrbur.shop");
+    } catch (err) {
+      console.warn("[SSO] Failed to plant mrbur cookie:", err);
+    }
+  } else {
+    console.warn("[SSO] No session_id found — cookie not planted. sessionInfo:", sessionInfo);
+  }
+
+  const redirectUrl = getRedirectParam();
+
+  if (redirectUrl) {
+    console.log("[SSO] → Redirecting to product page:", redirectUrl);
+    window.location.href = redirectUrl;
+  } else if (seed_entry_url) {
+    console.log("[SSO] → Redirecting to seed_entry_url:", seed_entry_url);
+    window.location.href = seed_entry_url;
+  } else {
+    onAuthSuccess();
+  }
+},
 
 
     onError: ({ error }: any) => {
