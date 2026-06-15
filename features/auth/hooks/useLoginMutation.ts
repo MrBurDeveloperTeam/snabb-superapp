@@ -69,27 +69,16 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
 onSuccess: async ({ sessionInfo, session_id, seed_entry_url }) => {
   localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
 
-  // Plant the Odoo session cookie on mrbur.shop FIRST
-  // This is what logs the user in on the shop domain
-  if (session_id) {
-    try {
-      await plantMrBurCookie(session_id);
-      console.log("[SSO] ✓ Cookie planted on mrbur.shop");
-    } catch (err) {
-      console.warn("[SSO] Failed to plant mrbur cookie:", err);
-    }
-  } else {
-    console.warn("[SSO] No session_id found — cookie not planted. sessionInfo:", sessionInfo);
-  }
+  const redirectUrl = getRedirectParam() || seed_entry_url || null;
 
-  const redirectUrl = getRedirectParam();
-
-  if (redirectUrl) {
-    console.log("[SSO] → Redirecting to product page:", redirectUrl);
-    window.location.href = redirectUrl;
-  } else if (seed_entry_url) {
-    console.log("[SSO] → Redirecting to seed_entry_url:", seed_entry_url);
-    window.location.href = seed_entry_url;
+  if (session_id && redirectUrl) {
+    // Top-level navigation to Odoo plant-cookie endpoint
+    // Odoo sets session_id cookie (SameSite=Lax is fine for top-level nav)
+    // then Odoo redirects back to the product page
+    const finalUrl = encodeURIComponent(redirectUrl);
+    window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${finalUrl}`;
+  } else if (session_id) {
+    window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
   } else {
     onAuthSuccess();
   }
