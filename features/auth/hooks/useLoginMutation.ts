@@ -24,19 +24,29 @@ async function plantSnabbbIdentity(sessionInfo: any) {
 }
 
 /**
- * Read ?redirect= from the current Snabbb login page URL.
- * e.g. app.snabbb.com/login?redirect=https://my.mrbur.shop/shop/801-06-...
+ * Reads the ?redirect= query param from the CURRENT Snabbb login page URL.
+ * e.g. app.snabbb.com/login?redirect=https://my.mrbur.shop/shop/some-bur
+ *      → returns "https://my.mrbur.shop/shop/some-bur"
+ *
+ * Only accepts URLs that point back to mrbur.shop (safety check).
  */
 function getRedirectParam(): string | null {
-  const params = new URLSearchParams(window.location.search);
-  const redirect = params.get("redirect");
-  if (!redirect) return null;
-
-  // Basic safety check — only allow http/https URLs
   try {
-    const url = new URL(redirect);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    return redirect;
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("redirect");
+    if (!raw) return null;
+ 
+    const decoded = decodeURIComponent(raw);
+ 
+    // Safety: only redirect to mrbur.shop or mrbur.odoo.com domains
+    const allowed = ["mrbur.shop", "mrbur.odoo.com"];
+    const { hostname } = new URL(decoded);
+    if (!allowed.some((d) => hostname === d || hostname.endsWith("." + d))) {
+      console.warn("[SSO] Ignoring untrusted redirect param:", decoded);
+      return null;
+    }
+ 
+    return decoded;
   } catch {
     return null;
   }
@@ -64,30 +74,31 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
 
     onSuccess: async ({ sessionInfo, seed_entry_url }) => {
       localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
-
-      // Plant passive SSO identity cookie on mrbur.shop
+        
+      // 1. Plant SSO identity cookie on mrbur.shop FIRST
       try {
         await plantSnabbbIdentity(sessionInfo);
       } catch (err) {
         console.warn("[SSO] Failed to plant snabbb_identity:", err);
       }
-
-      // Priority order:
-      // 1. ?redirect= param (user came from a specific product/page)
-      // 2. seed_entry_url (existing SSO seed chain)
-      // 3. onAuthSuccess() fallback
+    
+      // 2. Redirect priority:
+      //    a) ?redirect= param  ← user came from a specific product page
+      //    b) seed_entry_url    ← existing SSO seed chain
+      //    c) onAuthSuccess()   ← default Snabbb app behaviour
       const redirectUrl = getRedirectParam();
-
+    
       if (redirectUrl) {
-        console.log("[SSO] Redirecting to ?redirect= param:", redirectUrl);
+        console.log("[SSO] → Redirecting to product page:", redirectUrl);
         window.location.href = redirectUrl;
       } else if (seed_entry_url) {
-        console.log("[SSO] Redirecting to seed_entry_url:", seed_entry_url);
+        console.log("[SSO] → Redirecting to seed_entry_url:", seed_entry_url);
         window.location.href = seed_entry_url;
       } else {
         onAuthSuccess();
       }
     },
+
 
     onError: ({ error }: any) => {
       return { error };
