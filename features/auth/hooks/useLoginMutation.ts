@@ -76,23 +76,9 @@ onSuccess: async ({ sessionInfo, session_id }) => {
       const { hostname } = new URL(redirectUrl);
 
       if (hostname.endsWith(".mrburstudio.com") || hostname === "mrburstudio.com") {
-        // Step 1: plant cookie on mrbur.shop first
-        // Step 2: generate token for mrburstudio.com fresh session
-        const tokenRes = await fetch('https://app.snabbb.com/api/sso/generate_token', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const tokenData = await tokenRes.json();
-        const token = tokenData?.result?.token;
-
-        if (token) {
-          // Plant mrbur.shop cookie first, then hop to mrburstudio.com/sso/callback
-          const studioCallback = `https://my.mrburstudio.com/sso/callback?token=${encodeURIComponent(token)}&next=${encodeURIComponent(new URL(redirectUrl).pathname)}`;
-          window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(studioCallback)}`;
-        } else {
-          window.location.href = redirectUrl;
-        }
+        // Same approach as mrbur.shop — direct plant-cookie hop
+        // Worker proxies my.mrburstudio.com → my.mrbur.shop and rewrites cookie domain
+        window.location.href = `https://my.mrburstudio.com/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
       } else {
         // Single hop for mrbur.shop domains
         const plantDomain = (hostname.endsWith(".mrbur.shop") || hostname === "mrbur.shop")
