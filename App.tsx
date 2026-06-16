@@ -37,6 +37,7 @@ const initialFormData: AuthFormData = {
   confirmPassword: '',
   agreedToTerms: false,
   country: '',
+  partner_id: 0,
 };
 
 const ALLOWED_ORIGINS = [
@@ -213,7 +214,7 @@ const App: React.FC = () => {
       }
 
 
-
+      console.log('res.sessionInfo:', res);
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
         jobPosition: '',
@@ -223,6 +224,7 @@ const App: React.FC = () => {
         confirmPassword: '',
         country: '',
         agreedToTerms: true,
+        partner_id: res.sessionInfo.partner_id,
       };
 
       setIsLoggedIn(true);
@@ -461,6 +463,7 @@ const App: React.FC = () => {
       confirmPassword: '',
       agreedToTerms: true,
       country: '',
+      partner_id: null
     };
 
     setIsLoggedIn(true);

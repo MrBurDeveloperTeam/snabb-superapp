@@ -8,4 +8,5 @@ export interface AuthFormData {
   agreedToTerms: boolean;
   country: string;
   dob?: string;
+  partner_id: number;
 }
