@@ -27,6 +27,7 @@ import DisclaimerPage from './components/DisclaimerPage';
 import { Toaster } from "sonner";
 import { plantMrBurCookie } from './services/plantCookies';
 import SsoCheck from './components/SsoCheck';
+import { useSnabbbCredit } from './services/useSnabbbCredit';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -57,7 +58,7 @@ const App: React.FC = () => {
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
-
+  const { balance, loading } = useSnabbbCredit(authFormData?.partner_id)
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
@@ -613,7 +614,7 @@ const App: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">Snabbb Credit</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">
-                            {/* {creditBalance !== undefined ? `${creditBalance} credits available` : 'View balance'} */}
+                            {balance !== undefined ? `${balance} credits` : 'Loading...'}
                           </p>
                         </div>
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
