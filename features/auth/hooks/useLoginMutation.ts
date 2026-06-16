@@ -76,11 +76,25 @@ onSuccess: async ({ sessionInfo, session_id }) => {
       const { hostname } = new URL(redirectUrl);
 
       if (hostname.endsWith(".mrburstudio.com") || hostname === "mrburstudio.com") {
-        // Two-hop via Odoo plant-cookie on both domains
-        const studioPlant = `https://my.mrburstudio.com/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
-        window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(studioPlant)}`;
+        // Step 1: plant cookie on mrbur.shop first
+        // Step 2: generate token for mrburstudio.com fresh session
+        const tokenRes = await fetch('https://app.snabbb.com/api/sso/generate_token', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const tokenData = await tokenRes.json();
+        const token = tokenData?.result?.token;
+
+        if (token) {
+          // Plant mrbur.shop cookie first, then hop to mrburstudio.com/sso/callback
+          const studioCallback = `https://my.mrburstudio.com/sso/callback?token=${encodeURIComponent(token)}&next=${encodeURIComponent(new URL(redirectUrl).pathname)}`;
+          window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(studioCallback)}`;
+        } else {
+          window.location.href = redirectUrl;
+        }
       } else {
-        // Single hop — direct to Odoo plant-cookie (this was working before)
+        // Single hop for mrbur.shop domains
         const plantDomain = (hostname.endsWith(".mrbur.shop") || hostname === "mrbur.shop")
           ? hostname
           : "my.mrbur.shop";
