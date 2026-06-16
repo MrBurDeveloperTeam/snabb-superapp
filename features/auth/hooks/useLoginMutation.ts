@@ -66,31 +66,26 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
   };
 },
 
-onSuccess: async ({ sessionInfo, session_id, seed_entry_url }) => {
+onSuccess: async ({ sessionInfo, session_id }) => {
   localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
 
-  const redirectUrl = getRedirectParam() || seed_entry_url || null;
+  const redirectUrl = getRedirectParam() || 'https://my.mrbur.shop/shop';
 
-  if (session_id && redirectUrl) {
+  if (session_id) {
     try {
       const { hostname } = new URL(redirectUrl);
 
       if (hostname.endsWith(".mrburstudio.com") || hostname === "mrburstudio.com") {
-        // Two-hop: plant .mrbur.shop first, then hop to mrburstudio.com to plant there
+        // Two-hop: plant .mrbur.shop first, then hop to mrburstudio.com
         const studioPlant = `https://my.mrburstudio.com/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
-        window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(studioPlant)}`;
+        window.location.href = `https://app.snabbb.com/api/sso/set-mrbur-session?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(studioPlant)}`;
       } else {
-        // Single hop for mrbur.shop domains
-        const plantDomain = (hostname.endsWith(".mrbur.shop") || hostname === "mrbur.shop")
-          ? hostname
-          : "my.mrbur.shop";
-        window.location.href = `https://${plantDomain}/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
+        // Single hop via Cloudflare Worker
+        window.location.href = `https://app.snabbb.com/api/sso/set-mrbur-session?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
       }
     } catch {
-      window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
+      window.location.href = `https://app.snabbb.com/api/sso/set-mrbur-session?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
     }
-  } else if (session_id) {
-    window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
   } else {
     onAuthSuccess();
   }
