@@ -27,17 +27,11 @@ export function useSnabbbCredit(partnerId?: number) {
     if (!partnerId) return
     setLoading(true)
 
-    odooCall('snabbb.wallet', 'search_read', [
-      [['partner_id', '=', partnerId]],
-      ['snabbb_balance'],
-    ])
-      .then((records: any[]) => {
-        if (records.length > 0) {
-          setBalance(records[0].snabbb_balance ?? 0)
-        } else {
-          setBalance(0)
-        }
-      })
+    fetch(`https://my.mrbur.shop/api/snabbb/wallet?partner_id=${partnerId}`, {
+      credentials: 'include', // sends the mrbur.odoo.com session cookie
+    })
+      .then(r => r.json())
+      .then(data => setBalance(data.balance ?? null))
       .catch(() => setBalance(null))
       .finally(() => setLoading(false))
   }, [partnerId])
