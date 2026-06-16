@@ -69,27 +69,25 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
 onSuccess: async ({ sessionInfo, session_id }) => {
   localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
 
-  const redirectUrl = getRedirectParam() || null;
+  const redirectUrl = getRedirectParam();
 
-  if (session_id) {
+  if (redirectUrl && session_id) {
     try {
       const { hostname } = new URL(redirectUrl);
 
       if (hostname.endsWith(".mrburstudio.com") || hostname === "mrburstudio.com") {
-        // Same approach as mrbur.shop — direct plant-cookie hop
-        // Worker proxies my.mrburstudio.com → my.mrbur.shop and rewrites cookie domain
         window.location.href = `https://my.mrburstudio.com/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
       } else {
-        // Single hop for mrbur.shop domains
         const plantDomain = (hostname.endsWith(".mrbur.shop") || hostname === "mrbur.shop")
           ? hostname
           : "my.mrbur.shop";
         window.location.href = `https://${plantDomain}/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
       }
     } catch {
-      window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
+      onAuthSuccess();
     }
   } else {
+    // No redirect param — stay on Snabbb (normal login)
     onAuthSuccess();
   }
 },
