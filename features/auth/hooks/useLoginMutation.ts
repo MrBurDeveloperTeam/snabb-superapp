@@ -72,11 +72,23 @@ onSuccess: async ({ sessionInfo, session_id, seed_entry_url }) => {
   const redirectUrl = getRedirectParam() || seed_entry_url || null;
 
   if (session_id && redirectUrl) {
-    // Top-level navigation to Odoo plant-cookie endpoint
-    // Odoo sets session_id cookie (SameSite=Lax is fine for top-level nav)
-    // then Odoo redirects back to the product page
-    const finalUrl = encodeURIComponent(redirectUrl);
-    window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${finalUrl}`;
+    try {
+      const { hostname } = new URL(redirectUrl);
+
+      if (hostname.endsWith(".mrburstudio.com") || hostname === "mrburstudio.com") {
+        // Two-hop: plant .mrbur.shop first, then hop to mrburstudio.com to plant there
+        const studioPlant = `https://my.mrburstudio.com/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
+        window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(studioPlant)}`;
+      } else {
+        // Single hop for mrbur.shop domains
+        const plantDomain = (hostname.endsWith(".mrbur.shop") || hostname === "mrbur.shop")
+          ? hostname
+          : "my.mrbur.shop";
+        window.location.href = `https://${plantDomain}/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
+      }
+    } catch {
+      window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
+    }
   } else if (session_id) {
     window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
   } else {
