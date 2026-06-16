@@ -69,7 +69,7 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
 onSuccess: async ({ sessionInfo, session_id }) => {
   localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
 
-  const redirectUrl = getRedirectParam() || 'https://my.mrbur.shop/shop';
+  const redirectUrl = getRedirectParam() || null;
 
   if (session_id) {
     try {
