@@ -613,7 +613,7 @@ const App: React.FC = () => {
                             {/* {creditBalance !== undefined ? `${creditBalance} credits available` : 'View balance'} */}
                           </p>
                         </div>
-                        <i className="fa-regular fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
                         
                       {/* My Channel */}
@@ -628,7 +628,7 @@ const App: React.FC = () => {
                           <p className="text-sm font-bold text-slate-800 leading-tight">My Channel</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your storefront</p>
                         </div>
-                        <i className="fa-regular fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
                         
                       {/* Settings */}
@@ -643,7 +643,7 @@ const App: React.FC = () => {
                           <p className="text-sm font-bold text-slate-800 leading-tight">Settings</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">Account & preferences</p>
                         </div>
-                        <i className="fa-regular fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
                     </div>
                         
