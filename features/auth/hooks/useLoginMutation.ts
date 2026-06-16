@@ -76,15 +76,18 @@ onSuccess: async ({ sessionInfo, session_id }) => {
       const { hostname } = new URL(redirectUrl);
 
       if (hostname.endsWith(".mrburstudio.com") || hostname === "mrburstudio.com") {
-        // Two-hop: plant .mrbur.shop first, then hop to mrburstudio.com
+        // Two-hop via Odoo plant-cookie on both domains
         const studioPlant = `https://my.mrburstudio.com/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
-        window.location.href = `https://app.snabbb.com/api/sso/set-mrbur-session?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(studioPlant)}`;
+        window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(studioPlant)}`;
       } else {
-        // Single hop via Cloudflare Worker
-        window.location.href = `https://app.snabbb.com/api/sso/set-mrbur-session?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
+        // Single hop — direct to Odoo plant-cookie (this was working before)
+        const plantDomain = (hostname.endsWith(".mrbur.shop") || hostname === "mrbur.shop")
+          ? hostname
+          : "my.mrbur.shop";
+        window.location.href = `https://${plantDomain}/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent(redirectUrl)}`;
       }
     } catch {
-      window.location.href = `https://app.snabbb.com/api/sso/set-mrbur-session?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
+      window.location.href = `https://my.mrbur.shop/sso/plant-cookie?sid=${encodeURIComponent(session_id)}&next=${encodeURIComponent('https://my.mrbur.shop/shop')}`;
     }
   } else {
     onAuthSuccess();
