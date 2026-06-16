@@ -75,6 +75,20 @@ const App: React.FC = () => {
   const handleClearChat = () => setChatHistory([]);
   const [badgeText, setBadgeText] = useState("Ask Me");
 
+  const [creditBalance, setCreditBalance] = useState<number | null>(null)
+
+useEffect(() => {
+  const partnerId = authFormData?.partner_id // or however you store partner_id after login
+  if (!partnerId) return
+
+  fetch(`https://app.snabbb.com/api/wallet?partner_id=${partnerId}`, {
+    credentials: 'include',
+  })
+    .then(r => r.json())
+    .then(data => setCreditBalance(data?.data?.balance ?? null))
+    .catch(() => setCreditBalance(null))
+}, [authFormData?.partner_id])
+
   useEffect(() => {
     const texts = !isLoggedIn 
       ? ['Log In', 'Get Started']
@@ -614,7 +628,7 @@ const App: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">Snabbb Credit</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">
-                            {balance !== undefined ? `${balance} credits` : 'Loading...'}
+                            {creditBalance !== null ? `${creditBalance} credits` : 'Loading...'}
                           </p>
                         </div>
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
