@@ -680,14 +680,17 @@ useEffect(() => {
                       <button
                         onClick={async () => {
                           try {
-                            const { data: { session } } = await supabase.auth.getSession();
-                            console.log('the session: ',session);
-                            if (!session?.user?.id) {
+                            const { data: profileData }  = await supabase
+                              .from('profiles')
+                              .select('user_id, name, email, account_type, role, specialty, is_verified, is_creator, follower_count, video_count, bio, institution, registration_number')
+                              .eq('email', authFormData?.email)
+                              .single();
+                            if (!profileData.user_id) {
                               toast.error("Unable to find your user ID", );
                               return;
                             }
                           
-                            window.open(`https://e-learning.snabbb.com/channel/${session.user.id}`, '_blank');
+                            window.open(`https://e-learning.snabbb.com/channel/${profileData.user_id}`, '_blank');
                           } catch (error) {
                             console.error(error);
                             toast.error("Please log in again");
