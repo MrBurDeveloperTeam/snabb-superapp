@@ -74,7 +74,7 @@ const App: React.FC = () => {
   const lastVerifyAtRef = useRef(0);
   const handleClearChat = () => setChatHistory([]);
   const [badgeText, setBadgeText] = useState("Ask Me");
-  // const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
+  const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   
 
@@ -677,12 +677,12 @@ useEffect(() => {
                       <button
                         onClick={async () => {
                           const w = window.open('', '_blank');
-                          //  const res = await createAppLink({
-                          //     app: 'e-learning',
-                          //     email: authUser?.username,
-                          //     name: authUser?.name,
-                          //   });
-                          //   if (res.result?.url && w) w.location.href = res.result.url;
+                           const res = await createAppLink({
+                              app: 'e-learning',
+                              email: authUser?.username,
+                              name: authUser?.name,
+                            });
+                            if (res.result?.url && w) w.location.href = res.result.url;
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
