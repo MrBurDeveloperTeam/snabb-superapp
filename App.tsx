@@ -683,7 +683,7 @@ useEffect(() => {
                           });
 
                          
-                            console.log('userId:', appLink?.user_id);
+                            console.log('appLink:', appLink);
 
                           const w = window.open('', '_blank');
                           if (appLink?.user_id && w) {
