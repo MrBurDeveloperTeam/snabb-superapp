@@ -67,7 +67,7 @@ const App: React.FC = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [userChatContext, setUserChatContext] = useState<string>('');
   const setConfig = useAnnouncementBarStore((s) => s.setConfig);
-
+  const [isToastBackdropOpen, setIsToastBackdropOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const didInitRef = useRef(false);
   const checkingSessionRef = useRef(false);
@@ -500,10 +500,18 @@ useEffect(() => {
 
   const toastMessage = useCallback(
     (msg: string, options: { type: 'success' | 'error' }) => {
+      toast.dismiss();
+      setIsToastBackdropOpen(true);
+
+      const toastOptions = {
+        toastId: 'center-toast',
+        onClose: () => setIsToastBackdropOpen(false),
+      };
+
       if (options.type === 'success') {
-        toast.success(msg);
+        toast.success(msg, toastOptions);
       } else {
-        toast.error(msg);
+        toast.error(msg, toastOptions);
       }
     },
     []
@@ -529,29 +537,40 @@ useEffect(() => {
         isLoggedIn={!!user}
         profileComplete={(user as any)?.profileComplete}
       />
-    <ToastContainer
-      position="top-center"
-      hideProgressBar={true}
-      autoClose={false}
-      closeOnClick
-      pauseOnHover
-      draggable={false}
-      style={{
-        top: '50%',
-        left: '50%',
-        right: 'auto',
-        bottom: 'auto',
-        transform: 'translate(-50%, -50%)',
-        width: 'auto',
-        maxWidth: '90vw',
-        background: 'transparent',
-      }}
-      toastStyle={{
-        width: 'fit-content',
-        minWidth: '320px',
-        maxWidth: '90vw',
-      }}
-    />
+    {isToastBackdropOpen && (
+        <div
+          className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-[1px]"
+          onClick={() => {
+            toast.dismiss('center-toast');
+            setIsToastBackdropOpen(false);
+          }}
+        />
+      )}
+      
+      <ToastContainer
+        position="top-center"
+        hideProgressBar={true}
+        autoClose={false}
+        closeOnClick={false}
+        pauseOnHover
+        draggable={false}
+        style={{
+          top: '50%',
+          left: '50%',
+          right: 'auto',
+          bottom: 'auto',
+          transform: 'translate(-50%, -50%)',
+          width: 'auto',
+          maxWidth: '90vw',
+          background: 'transparent',
+          zIndex: 9999,
+        }}
+        toastStyle={{
+          width: 'fit-content',
+          minWidth: '320px',
+          maxWidth: '90vw',
+        }}
+      />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
