@@ -77,6 +77,12 @@ const App: React.FC = () => {
 
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
 
+  const fetchSupabaseUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log("supabase session:", session);
+    return session?.user || null;
+  }
+
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
   if (!partnerId) return
@@ -228,8 +234,6 @@ useEffect(() => {
         return false;
       }
 
-
-      console.log('res.sessionInfo:', res);
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
         jobPosition: '',
@@ -674,7 +678,7 @@ useEffect(() => {
                         
                       {/* My Channel */}
                       <button
-                        // onClick={() => router.push('/channel')}
+                        // onClick={() => window.location.href = `https://e-learning.snabbb.com/channel/${fetchSupabaseUser()?.id}`}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
                         <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
