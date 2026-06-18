@@ -27,6 +27,7 @@ import DisclaimerPage from './components/DisclaimerPage';
 import { Toaster } from "sonner";
 import { plantMrBurCookie } from './services/plantCookies';
 import SsoCheck from './components/SsoCheck';
+import { getVerifiedUserId } from './services/getVerifiedUserId';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -677,7 +678,21 @@ useEffect(() => {
                         
                       {/* My Channel */}
                       <button
-                        onClick={() => window.location.href = `https://e-learning.snabbb.com/channel/${fetchSupabaseUser()}`}
+                        onClick={async () => {
+                          try {
+                            const userId = await getVerifiedUserId();
+                          
+                            if (!userId) {
+                              toast.error("Unable to find your user ID");
+                              return;
+                            }
+                          
+                            window.location.href = `https://account.snabbb.com/channel/${userId}`;
+                          } catch (error) {
+                            console.error(error);
+                            toast.error("Please log in again");
+                          }
+                        }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
                         <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
