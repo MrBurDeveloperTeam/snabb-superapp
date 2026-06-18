@@ -28,6 +28,7 @@ import { Toaster } from "sonner";
 import { plantMrBurCookie } from './services/plantCookies';
 import SsoCheck from './components/SsoCheck';
 import { useCreateAppLink } from './mutation/useCreateAppLink';
+import { useGetUserId } from './mutation/useGetUserId';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -74,7 +75,7 @@ const App: React.FC = () => {
   const lastVerifyAtRef = useRef(0);
   const handleClearChat = () => setChatHistory([]);
   const [badgeText, setBadgeText] = useState("Ask Me");
-  const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
+  const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   
 
