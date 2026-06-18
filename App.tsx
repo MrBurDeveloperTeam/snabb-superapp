@@ -676,33 +676,21 @@ useEffect(() => {
                       {/* My Channel */}
                       <button
                         onClick={async () => {
-                          // 1. Call the worker to get the Supabase JWT
-const res = await fetch('https://app.snabbb.com/api/supabase-session', {
-  method: 'GET',
-  credentials: 'include', // sends mrbur_sso cookie
-});
+                          const appLink = await createAppLink({
+                            app: 'e-learning',
+                            email: authUser?.username,
+                            name: authUser.name,
+                          });
 
-const data = await res.json();
-console.log('this data: ',data)
-if (data.ok && data.access_token) {
-  // 2. Manually set the session on the Supabase client
-  await supabase.auth.setSession({
-    access_token: data.access_token,
-    refresh_token: data.access_token, // worker returns same token for both
-  });
-
-  // 3. Now getSession() will work
-  const { data: { session } } = await supabase.auth.getSession();
-  const userId = session?.user?.id;
-  console.log('userId:', userId);
+                         
+                            console.log('userId:', appLink?.user_id);
 
                           const w = window.open('', '_blank');
-                                              console.log('Current session:', userId);
-                          if (userId && w) {
-                            w.location.href = `https://e-learning.snabbb.com/channel/${userId}`;
+                          if (appLink?.user_id && w) {
+                            w.location.href = `https://e-learning.snabbb.com/channel/${appLink?.user_id}`;
                           } else if (w) {
                             w.close();
-                          }}
+                          }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
