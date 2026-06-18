@@ -529,10 +529,17 @@ useEffect(() => {
         isLoggedIn={!!user}
         profileComplete={(user as any)?.profileComplete}
       />
-    <ToastContainer 
-      position="top-center"  // Position of the toast
-      hideProgressBar={true} // Option to show progress bar
+    <ToastContainer
+      position="top-center"
+      hideProgressBar={true}
       autoClose={false}
+      style={{
+        top: '50%',
+        left: '50%',
+        right: 'auto',
+        bottom: 'auto',
+        transform: 'translate(-50%, -50%)',
+      }}
     />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
