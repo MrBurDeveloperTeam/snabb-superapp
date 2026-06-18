@@ -17,7 +17,7 @@ import { MolarChat } from './components/MolarChat';
 import type { ChatHistory } from './components/MolarChat';
 import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
 import { chatWithGemini } from './services/geminiService';
-import { fetchUserChatContext, buildUserContextString, type UserChatContext, getVerifiedProfileFromWorker } from './services/userContextService';
+import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
 import { SnabbbIcon } from './public/icons/SnabbbIcon';
 import { toast, ToastContainer } from 'react-toastify';
@@ -27,7 +27,6 @@ import DisclaimerPage from './components/DisclaimerPage';
 import { Toaster } from "sonner";
 import { plantMrBurCookie } from './services/plantCookies';
 import SsoCheck from './components/SsoCheck';
-import { getVerifiedUserId } from './services/getVerifiedUserId';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -75,12 +74,6 @@ const App: React.FC = () => {
   const [badgeText, setBadgeText] = useState("Ask Me");
 
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
-
-  const fetchSupabaseUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log("supabase session:", session);
-    return session?.user.id || null;
-  }
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
@@ -233,6 +226,8 @@ useEffect(() => {
         return false;
       }
 
+
+      console.log('res.sessionInfo:', res);
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
         jobPosition: '',
@@ -287,7 +282,6 @@ useEffect(() => {
       // Fetch personalized context for Molar AI
       try {
         const ctx = await fetchUserChatContext(nextUser.email);
-        console.log('[MolarAI] Fetched user chat context:', ctx);
         setUserChatContext(buildUserContextString(ctx));
       } catch (e) {
         console.warn('[MolarAI] Context fetch failed:', e);
@@ -348,7 +342,6 @@ useEffect(() => {
     }, 1000), [verifySessionSafe]);
 
   useEffect(() => {
-    fetchSupabaseUser();
     const handlePopState = () => {
       setPath(window.location.pathname);
     };
@@ -679,38 +672,7 @@ useEffect(() => {
                         
                       {/* My Channel */}
                       <button
-                        onClick={async () => {
-                          try {
-                            // const verifiedProfile = await getVerifiedProfileFromWorker();
-
-                            // if (!verifiedProfile?.userId) {
-                            //   console.warn('[MolarAI] No verified user_id found');
-                            //   return ctx;
-                            // }
-                            
-                            // const userId = verifiedProfile.userId;
-                            
-                            // ctx.profile = {
-                            //   name: verifiedProfile.name,
-                            //   email: verifiedProfile.email || userEmail,
-                            //   role: verifiedProfile.role,
-                            //   specialty: null,
-                            //   accountType: verifiedProfile.accountType,
-                            //   isVerified: false,
-                            //   isCreator: false,
-                            //   followerCount: 0,
-                            //   videoCount: 0,
-                            //   bio: null,
-                            //   institution: null,
-                            //   registrationNumber: null,
-                            // };
-                          
-                            // window.open(`https://e-learning.snabbb.com/channel/${profileData.user_id}`, '_blank');
-                          } catch (error) {
-                            console.error(error);
-                            toast.error("Please log in again");
-                          }
-                        }}
+                        // onClick={() => router.push('/channel')}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
                         <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
