@@ -27,7 +27,6 @@ import DisclaimerPage from './components/DisclaimerPage';
 import { Toaster } from "sonner";
 import { plantMrBurCookie } from './services/plantCookies';
 import SsoCheck from './components/SsoCheck';
-import { useSnabbbCredit } from './services/useSnabbbCredit';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -58,7 +57,6 @@ const App: React.FC = () => {
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
-  const { balance, loading } = useSnabbbCredit(authFormData?.partner_id)
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
