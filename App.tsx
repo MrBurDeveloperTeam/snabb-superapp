@@ -682,7 +682,7 @@ useEffect(() => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">My Channel</p>
-                          <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your storefront</p>
+                          <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your channel</p>
                         </div>
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
