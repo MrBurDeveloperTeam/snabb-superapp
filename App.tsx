@@ -74,9 +74,9 @@ const App: React.FC = () => {
   const lastVerifyAtRef = useRef(0);
   const handleClearChat = () => setChatHistory([]);
   const [badgeText, setBadgeText] = useState("Ask Me");
-  const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
+  // const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
-  const w = window.open('', '_blank');
+  
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
@@ -676,6 +676,7 @@ useEffect(() => {
                       {/* My Channel */}
                       <button
                         onClick={async () => {
+                          const w = window.open('', '_blank');
                           //  const res = await createAppLink({
                           //     app: 'e-learning',
                           //     email: authUser?.username,
