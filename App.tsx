@@ -680,14 +680,14 @@ useEffect(() => {
                       <button
                         onClick={async () => {
                           try {
-                            const userId = await getVerifiedUserId();
-                          
-                            if (!userId) {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            
+                            if (!session?.user?.id) {
                               toast.error("Unable to find your user ID");
                               return;
                             }
                           
-                            window.location.href = `https://account.snabbb.com/channel/${userId}`;
+                            window.open(`https://e-learning.snabbb.com/channel/${session.user.id}`, '_blank');
                           } catch (error) {
                             console.error(error);
                             toast.error("Please log in again");
