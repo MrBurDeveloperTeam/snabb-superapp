@@ -171,8 +171,8 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
       if (document.visibilityState !== 'visible') return;
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
         console.log('[CatMascot] Fetching pet stats for user:', session.user.id);
+        if (!session?.user) return;
         const { data, error } = await supabase
           .from('inventory_pet')
           .select('hunger, hygiene, energy, happiness, updated_at')
