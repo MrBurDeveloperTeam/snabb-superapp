@@ -546,7 +546,7 @@ useEffect(() => {
           }}
         />
       )}
-      
+
       <ToastContainer
         position="top-center"
         hideProgressBar={true}
@@ -569,6 +569,7 @@ useEffect(() => {
           width: 'fit-content',
           minWidth: '320px',
           maxWidth: '90vw',
+          padding: "1.7rem",
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
