@@ -533,12 +533,23 @@ useEffect(() => {
       position="top-center"
       hideProgressBar={true}
       autoClose={false}
+      closeOnClick
+      pauseOnHover
+      draggable={false}
       style={{
         top: '50%',
         left: '50%',
         right: 'auto',
         bottom: 'auto',
         transform: 'translate(-50%, -50%)',
+        width: 'auto',
+        maxWidth: '90vw',
+        background: 'transparent',
+      }}
+      toastStyle={{
+        width: 'fit-content',
+        minWidth: '320px',
+        maxWidth: '90vw',
       }}
     />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
