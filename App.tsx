@@ -681,9 +681,9 @@ useEffect(() => {
                         onClick={async () => {
                           try {
                             const { data: { session } } = await supabase.auth.getSession();
-                            
+                            console.log('the session: ',session);
                             if (!session?.user?.id) {
-                              toast.error("Unable to find your user ID");
+                              toast.error("Unable to find your user ID", );
                               return;
                             }
                           
