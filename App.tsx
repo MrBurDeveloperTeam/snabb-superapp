@@ -676,12 +676,12 @@ useEffect(() => {
                       {/* My Channel */}
                       <button
                         onClick={async () => {
-                           const res = await createAppLink({
-                              app: 'e-learning',
-                              email: authUser?.username,
-                              name: authUser?.name,
-                            });
-                            if (res.result?.url && w) w.location.href = res.result.url;
+                          //  const res = await createAppLink({
+                          //     app: 'e-learning',
+                          //     email: authUser?.username,
+                          //     name: authUser?.name,
+                          //   });
+                          //   if (res.result?.url && w) w.location.href = res.result.url;
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
