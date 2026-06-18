@@ -348,6 +348,7 @@ useEffect(() => {
     }, 1000), [verifySessionSafe]);
 
   useEffect(() => {
+    fetchSupabaseUser();
     const handlePopState = () => {
       setPath(window.location.pathname);
     };
