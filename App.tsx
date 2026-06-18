@@ -676,20 +676,16 @@ useEffect(() => {
                       {/* My Channel */}
                       <button
                         onClick={async () => {
-                          const appLink = await createAppLink({
+                          const res = await createAppLink({
                             app: 'e-learning',
                             email: authUser?.username,
-                            name: authUser.name,
+                            name: authUser?.name,
                           });
-
-                         
-                            console.log('appLink:', appLink);
-
+                          
+                          const supabaseUserId = res.result?.supabase_user_id;
                           const w = window.open('', '_blank');
-                          if (appLink?.user_id && w) {
-                            w.location.href = `https://e-learning.snabbb.com/channel/${appLink?.user_id}`;
-                          } else if (w) {
-                            w.close();
+                          if (supabaseUserId && w) {
+                            w.location.href = `https://e-learning.snabbb.com/channel/${supabaseUserId}`;
                           }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
