@@ -683,7 +683,7 @@ const res = await fetch('https://app.snabbb.com/api/supabase-session', {
 });
 
 const data = await res.json();
-
+console.log('this data: ',data)
 if (data.ok && data.access_token) {
   // 2. Manually set the session on the Supabase client
   await supabase.auth.setSession({
