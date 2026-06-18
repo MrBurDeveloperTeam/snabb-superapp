@@ -677,13 +677,14 @@ useEffect(() => {
                       <button
                         onClick={async () => {
                           const w = window.open('', '_blank');
-                           const res = await createAppLink({
-                              app: 'e-learning',
-                              email: authUser?.username,
-                              name: authUser?.name,
-                            });
-                            console.log('createAppLink response:', res);
-                            if (res.result?.url && w) w.location.href = res.result.url;
+                          const { data: { session: currentSession } } = await supabase.auth.getSession();
+                          const userId = currentSession?.user?.id;
+                                              console.log('Current session:', currentSession);
+                          if (userId && w) {
+                            w.location.href = `https://e-learning.snabbb.com/channel/${userId}`;
+                          } else if (w) {
+                            w.close();
+                          }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
