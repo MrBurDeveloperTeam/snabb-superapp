@@ -27,6 +27,7 @@ import DisclaimerPage from './components/DisclaimerPage';
 import { Toaster } from "sonner";
 import { plantMrBurCookie } from './services/plantCookies';
 import SsoCheck from './components/SsoCheck';
+import { useCreateAppLink } from './mutation/useCreateAppLink';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -49,6 +50,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
+  const authUser = getAuthUser();
   const [path, setPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -72,8 +74,9 @@ const App: React.FC = () => {
   const lastVerifyAtRef = useRef(0);
   const handleClearChat = () => setChatHistory([]);
   const [badgeText, setBadgeText] = useState("Ask Me");
-
+  const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const w = window.open('', '_blank');
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
@@ -672,7 +675,14 @@ useEffect(() => {
                         
                       {/* My Channel */}
                       <button
-                        // onClick={() => router.push('/channel')}
+                        onClick={async () => {
+                           const res = await createAppLink({
+                              app: 'e-learning',
+                              email: authUser?.username,
+                              name: authUser?.name,
+                            });
+                            if (res.result?.url && w) w.location.href = res.result.url;
+                        }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
                         <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
