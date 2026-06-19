@@ -111,7 +111,7 @@ export default function ProfileSettingsPage() {
         return;
       }
 
-      const p = data.profile || {};
+      const p = data.partner || {};
       const loadedPartnerId = data.partner_id || null;
 
       const stateId = Array.isArray(p.state_id) ? String(p.state_id[0]) : "";
