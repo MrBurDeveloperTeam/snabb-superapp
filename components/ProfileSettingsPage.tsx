@@ -66,7 +66,7 @@ export default function ProfileSettingsPage() {
     state: "",
     postalCode: "",
     country: "",
-    receiveInvoices: "by Email",
+    receiveInvoices: "email",
     electronicFormat: "",
     stateId: "",
     countryId: "",
@@ -163,12 +163,7 @@ export default function ProfileSettingsPage() {
         countryId,
         categoryIds,
         categoryId: categoryIds[0] || "76",
-        receiveInvoices:
-          p.invoice_sending_method === "post"
-            ? "by Post"
-            : p.invoice_sending_method === "email_and_post"
-            ? "by Email and Post"
-            : "by Email",
+        receiveInvoices: p.invoice_sending_method || "email",
         electronicFormat: p.invoice_edi_format || "",
       }));
     } catch (err) {
@@ -267,14 +262,7 @@ export default function ProfileSettingsPage() {
     formData.append("state_id", form.stateId);
     formData.append("zipcode", form.postalCode);
     formData.append("country_id", form.countryId);
-    formData.append(
-      "invoice_sending_method",
-      form.receiveInvoices === "by Email"
-        ? "email"
-        : form.receiveInvoices === "by Post"
-        ? "post"
-        : "email_and_post"
-    );
+    formData.append("invoice_sending_method", form.receiveInvoices || "email");
     formData.append("invoice_edi_format", form.electronicFormat);
     formData.append("redirect", "");
 
@@ -715,16 +703,22 @@ export default function ProfileSettingsPage() {
             <div>
               <label className="field-label">Electronic Format</label>
               <select
-                name="electronicFormat"
-                value={form.electronicFormat}
-                onChange={updateField}
-                className="inp"
-              >
-                <option value="">Select format</option>
-                <option>PDF</option>
-                <option>XML</option>
-                <option>UBL</option>
-              </select>
+                  name="electronicFormat"
+                  value={form.electronicFormat}
+                  onChange={updateField}
+                  className="inp"
+                >
+                  <option value="">None</option>
+                  <option value="facturx">France (FacturX)</option>
+                  <option value="ubl_bis3">EU Standard (Peppol Bis 3.0)</option>
+                  <option value="zugferd">Germany (ZUGFeRD)</option>
+                  <option value="xrechnung">Germany (XRechnung)</option>
+                  <option value="nlcius">Netherlands (NLCIUS)</option>
+                  <option value="ubl_a_nz">Australia (BIS Billing 3.0 A-NZ)</option>
+                  <option value="ubl_sg">Singapore (BIS Billing 3.0 SG)</option>
+                  <option value="pint_jp">Japan (Peppol PINT JP)</option>
+                  <option value="pint_my">Malaysia (Peppol PINT MY)</option>
+                </select>
             </div>
           </div>
         </div>
