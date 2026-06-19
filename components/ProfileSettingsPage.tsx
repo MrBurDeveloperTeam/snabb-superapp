@@ -227,19 +227,20 @@ export default function ProfileSettingsPage() {
   };
 
   const addSpecialty = (specialtyId: string) => {
-    if (!specialtyId) return;
-
-    const selected = SPECIALTY_OPTIONS.find((item) => item.id === specialtyId);
-
-    if (!selected) return;
-
-    setForm((prev) => ({
-      ...prev,
-      categoryId: selected.id,
-    }));
-
-    setSelectedSpecialties([selected.name]);
-  };
+      if (!specialtyId) return;
+      const selected = SPECIALTY_OPTIONS.find((item) => item.id === specialtyId);
+      if (!selected) return;
+    
+      // ← append instead of replace
+      setSelectedSpecialties((prev) => 
+        prev.includes(selected.name) ? prev : [...prev, selected.name]
+      );
+  
+      setForm((prev) => ({
+        ...prev,
+        categoryId: specialtyId, // still sends last selected for now
+      }));
+    };
 
   const removeSpecialty = (value: string) => {
     setSelectedSpecialties((prev) => prev.filter((item) => item !== value));
