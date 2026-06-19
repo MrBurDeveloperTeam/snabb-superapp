@@ -29,6 +29,7 @@ import { plantMrBurCookie } from './services/plantCookies';
 import SsoCheck from './components/SsoCheck';
 import { useCreateAppLink } from './mutation/useCreateAppLink';
 import { useGetUserId } from './mutation/useGetUserId';
+import ProfileSettingsPage from './components/ProfileSettingsPage';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -703,7 +704,7 @@ useEffect(() => {
                         
                       {/* Settings */}
                       <button
-                        onClick={() => window.location.href = 'https://account.snabbb.com/'}
+                        onClick={() => navigate('/profile-settings')}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
                         <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
@@ -821,7 +822,11 @@ useEffect(() => {
               setToastMsg={toastMessage}
             />
           )}
-
+          {path === '/profile-settings' && (
+            <motion.div key="profile-settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <ProfileSettingsPage />
+            </motion.div>
+          )}
 
           {path === '/privacy' && (
             <motion.div key="privacy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
