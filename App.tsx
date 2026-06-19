@@ -30,6 +30,7 @@ import SsoCheck from './components/SsoCheck';
 import { useCreateAppLink } from './mutation/useCreateAppLink';
 import { useGetUserId } from './mutation/useGetUserId';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
+import { profile } from 'console';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -78,7 +79,8 @@ const App: React.FC = () => {
   const [badgeText, setBadgeText] = useState("Ask Me");
   const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
-  
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
@@ -606,11 +608,24 @@ useEffect(() => {
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                   className="block relative"
                 >
-                  <div
-                    className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full shadow-md flex items-center justify-center ${avatarBgColor} text-white font-black text-sm sm:text-base hover:border-blue-500/30 transition-all`}
-                  >
+                  {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="Profile preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : profileImageUrl ? (
+                  <img
+                    src={profileImageUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                    onError={() => setProfileImageUrl(null)}
+                  />
+                ) : (
+                  <span className="text-lg font-semibold tracking-wide text-white">
                     {userInitial}
-                  </div>
+                  </span>
+                )}
                 </motion.button>
 
                <AnimatePresence>
