@@ -15,23 +15,23 @@ export default function ProfileSettingsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [form, setForm] = useState({
-    name: "NIZAM",
-    email: "wesalix989@brixozu.com",
+    name: "",
+    email: "",
     companyName: "",
     sstNumber: "",
-    phone: "+6011378010101",
-    dateOfBirth: "1995-08-02",
-    street: "1, Jalan Teknokrat 1",
+    phone: "",
+    dateOfBirth: "",
+    street: "",
     street2: "",
-    city: "Cyberjaya",
-    state: "Selangor",
-    postalCode: "63000",
-    country: "Malaysia",
-    receiveInvoices: "by Email",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "",
+    receiveInvoices: "",
     electronicFormat: "",
-    stateId: "483",    // Selangor = 483
-    countryId: "157",  // Malaysia = 157
-    categoryId: "76",
+    stateId: "",    // Selangor = 483
+    countryId: "",  // Malaysia = 157
+    categoryId: "",
   });
 
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>(["General Dentistry"]);
