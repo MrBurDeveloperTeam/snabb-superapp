@@ -576,6 +576,7 @@ export default function ProfileSettingsPage() {
               <input
                 name="companyName"
                 value={form.companyName}
+                disabled
                 onChange={updateField}
                 className="inp"
                 placeholder="Your clinic or company"
@@ -588,6 +589,7 @@ export default function ProfileSettingsPage() {
                 name="sstNumber"
                 value={form.sstNumber}
                 onChange={updateField}
+                disabled
                 className="inp"
                 placeholder="e.g. W10-1234-56789012"
               />
