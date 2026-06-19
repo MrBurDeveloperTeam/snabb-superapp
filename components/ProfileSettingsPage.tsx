@@ -29,11 +29,16 @@ export default function ProfileSettingsPage() {
     country: "Malaysia",
     receiveInvoices: "by Email",
     electronicFormat: "",
+    stateId: "483",    // Selangor = 483
+    countryId: "157",  // Malaysia = 157
+    categoryId: "76",
   });
 
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>(["General Dentistry"]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const updateField = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -44,6 +49,7 @@ export default function ProfileSettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) { alert("Image must be below 2MB"); return; }
+    setAvatarFile(file);                              // ← store raw file
     setAvatarPreview(URL.createObjectURL(file));
   };
 
@@ -56,10 +62,52 @@ export default function ProfileSettingsPage() {
     setSelectedSpecialties((prev) => prev.filter((item) => item !== value));
   };
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  const handleSave = async () => {
+      const formData = new FormData();
+
+      // Required fields matching the payload
+      formData.append("name", form.name);
+      formData.append("email", form.email);
+      formData.append("phone", form.phone);
+      formData.append("company_name", form.companyName);
+      formData.append("vat", form.sstNumber);
+      formData.append("x_date_of_birth", form.dateOfBirth);
+      formData.append("street", form.street);
+      formData.append("street2", form.street2);
+      formData.append("city", form.city);
+      formData.append("state_id", form.stateId);      // needs to be numeric ID e.g. "483"
+      formData.append("zipcode", form.postalCode);
+      formData.append("country_id", form.countryId);  // needs to be numeric ID e.g. "157"
+      formData.append("invoice_sending_method", form.receiveInvoices === "by Email" ? "email" : form.receiveInvoices === "by Post" ? "post" : "email_and_post");
+      formData.append("invoice_edi_format", form.electronicFormat);
+      formData.append("redirect", "");
+      formData.append("category_id", form.categoryId || "76"); // specialty
+
+      // Avatar if changed
+      if (avatarFile) {
+        formData.append("profile_picture", avatarFile);
+      }
+
+      try {
+        setSaving(true);
+        const res = await fetch("https://account.snabbb.com/my/account", {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+          redirect: "manual", // it returns 303, don't follow
+        });
+
+        // 303 = success (Odoo redirects to /my/account?success=1)
+        if (res.status === 303 || res.ok) {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        }
+      } catch (err) {
+        console.error("Save failed:", err);
+      } finally {
+        setSaving(false);
+      }
+    };
 
   const handleDiscard = () => window.location.reload();
 
@@ -332,13 +380,8 @@ export default function ProfileSettingsPage() {
             >
               Discard
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="rounded-lg px-5 py-2 text-sm font-medium text-white transition"
-              style={{ background: saved ? "#16a34a" : "#647294" }}
-            >
-              {saved ? "✓ Saved" : "Save changes"}
+            <button onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : saved ? "✓ Saved" : "Save changes"}
             </button>
           </div>
         </div>
