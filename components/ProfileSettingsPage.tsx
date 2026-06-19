@@ -94,9 +94,6 @@ export default function ProfileSettingsPage() {
         const res = await fetch("https://account.snabbb.com/api/account/profile", {
           method: "POST",
           credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: formData,
         });
 
