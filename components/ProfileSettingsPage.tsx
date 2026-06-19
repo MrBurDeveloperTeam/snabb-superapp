@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const SPECIALTIES = [
   "General Dentistry",
@@ -39,6 +39,48 @@ export default function ProfileSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [partnerId, setPartnerId] = useState<number | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+      async function loadProfilePicture() {
+        try {
+          const res = await fetch("https://account.snabbb.com/api/web/session/get_session_info", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "call",
+              params: {},
+              id: 1,
+            }),
+          });
+
+          const data = await res.json();
+
+          const currentPartnerId = data?.result?.partner_id;
+
+          if (!currentPartnerId) {
+            console.warn("No partner_id found:", data);
+            return;
+          }
+
+          setPartnerId(currentPartnerId);
+
+          setProfileImageUrl(
+            `https://account.snabbb.com/web/image/res.partner/${currentPartnerId}/image_128?unique=${Date.now()}`
+          );
+        } catch (error) {
+          console.error("Failed to load profile picture:", error);
+        }
+      }
+
+      loadProfilePicture();
+    }, []);
 
   const updateField = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -198,9 +240,22 @@ export default function ProfileSettingsPage() {
             <div className="relative shrink-0">
               <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-[#e2e5ea] bg-[#647294] flex items-center justify-center shadow-sm">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="Profile" className="h-full w-full object-cover" />
+                  <img
+                    src={avatarPreview}
+                    alt="Profile preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : profileImageUrl ? (
+                  <img
+                    src={profileImageUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                    onError={() => setProfileImageUrl(null)}
+                  />
                 ) : (
-                  <span className="text-white text-lg font-semibold tracking-wide">{initials}</span>
+                  <span className="text-white text-lg font-semibold tracking-wide">
+                    {initials}
+                  </span>
                 )}
               </div>
               <button
