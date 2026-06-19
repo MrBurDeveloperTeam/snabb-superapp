@@ -694,9 +694,8 @@ export default function ProfileSettingsPage() {
                 onChange={updateField}
                 className="inp"
               >
-                <option>by Email</option>
-                <option>by Post</option>
-                <option>by Email and Post</option>
+                <option value="email">by Email</option>
+                <option value="snailmail">by Post</option>
               </select>
             </div>
 
