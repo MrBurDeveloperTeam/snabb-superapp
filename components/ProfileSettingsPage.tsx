@@ -90,11 +90,14 @@ export default function ProfileSettingsPage() {
 
       try {
         setSaving(true);
-        const res = await fetch("https://account.snabbb.com/my/account", {
+        
+        const res = await fetch("https://account.snabbb.com/api/account/profile", {
           method: "POST",
           credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: formData,
-          redirect: "manual", // it returns 303, don't follow
         });
 
         // 303 = success (Odoo redirects to /my/account?success=1)
