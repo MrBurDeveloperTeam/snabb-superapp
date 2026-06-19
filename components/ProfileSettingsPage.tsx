@@ -122,9 +122,12 @@ export default function ProfileSettingsPage() {
       const countryId = Array.isArray(p.country_id) ? String(p.country_id[0]) : "";
       const countryName = Array.isArray(p.country_id) ? p.country_id[1] || "" : "";
 
-      // Multi-specialty: category_id comes back as array of IDs e.g. [81, 80, 83]
-      const rawCategoryIds: number[] = Array.isArray(p.category_id) ? p.category_id : [];
-      const categoryIds = rawCategoryIds.map(String);
+      const rawCategoryIds = Array.isArray(p.category_id) ? p.category_id : [];
+      const categoryIds: string[] = rawCategoryIds
+        .map((item: number | [number, string]) =>
+          Array.isArray(item) ? String(item[0]) : String(item)
+        )
+        .filter(Boolean);
 
       // Map IDs to names for display
       const specialtyNames = categoryIds
