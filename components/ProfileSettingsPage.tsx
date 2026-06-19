@@ -47,6 +47,7 @@ type ProfileForm = {
   stateId: string;
   countryId: string;
   categoryId: string;
+  categoryIds: string[];
 };
 
 export default function ProfileSettingsPage() {
@@ -70,6 +71,7 @@ export default function ProfileSettingsPage() {
     stateId: "",
     countryId: "",
     categoryId: "76",
+    categoryIds: [],
   });
 
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
@@ -120,14 +122,14 @@ export default function ProfileSettingsPage() {
       const countryId = Array.isArray(p.country_id) ? String(p.country_id[0]) : "";
       const countryName = Array.isArray(p.country_id) ? p.country_id[1] || "" : "";
 
-      const categoryId =
-        Array.isArray(p.category_id) && p.category_id.length
-          ? String(p.category_id[0])
-          : "76";
+      // Multi-specialty: category_id comes back as array of IDs e.g. [81, 80, 83]
+      const rawCategoryIds: number[] = Array.isArray(p.category_id) ? p.category_id : [];
+      const categoryIds = rawCategoryIds.map(String);
 
-      const categoryName =
-        SPECIALTY_OPTIONS.find((item) => item.id === categoryId)?.name ||
-        "General Dentistry";
+      // Map IDs to names for display
+      const specialtyNames = categoryIds
+        .map((id) => SPECIALTY_OPTIONS.find((s) => s.id === id)?.name)
+        .filter((name): name is string => Boolean(name));
 
       setPartnerId(loadedPartnerId);
 
@@ -138,7 +140,7 @@ export default function ProfileSettingsPage() {
             : null)
       );
 
-      setSelectedSpecialties(categoryName ? [categoryName] : []);
+      setSelectedSpecialties(specialtyNames);
 
       setForm((prev) => ({
         ...prev,
@@ -152,22 +154,18 @@ export default function ProfileSettingsPage() {
         street2: p.street2 || "",
         city: p.city || "",
         postalCode: p.zip || "",
-
         state: stateName,
         stateId,
-
         country: countryName,
         countryId,
-
-        categoryId,
-
+        categoryIds,
+        categoryId: categoryIds[0] || "76",
         receiveInvoices:
           p.invoice_sending_method === "post"
             ? "by Post"
             : p.invoice_sending_method === "email_and_post"
             ? "by Email and Post"
             : "by Email",
-
         electronicFormat: p.invoice_edi_format || "",
       }));
     } catch (err) {
@@ -185,16 +183,11 @@ export default function ProfileSettingsPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const updateState = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.selectedOptions[0];
-
     setForm((prev) => ({
       ...prev,
       stateId: e.target.value,
@@ -204,7 +197,6 @@ export default function ProfileSettingsPage() {
 
   const updateCountry = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.selectedOptions[0];
-
     setForm((prev) => ({
       ...prev,
       countryId: e.target.value,
@@ -214,41 +206,47 @@ export default function ProfileSettingsPage() {
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
-
     if (file.size > 2 * 1024 * 1024) {
       alert("Image must be below 2MB");
       return;
     }
-
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
   };
 
   const addSpecialty = (specialtyId: string) => {
-      if (!specialtyId) return;
-      const selected = SPECIALTY_OPTIONS.find((item) => item.id === specialtyId);
-      if (!selected) return;
-    
-      // ← append instead of replace
-      setSelectedSpecialties((prev) => 
-        prev.includes(selected.name) ? prev : [...prev, selected.name]
-      );
-  
-      setForm((prev) => ({
-        ...prev,
-        categoryId: specialtyId, // still sends last selected for now
-      }));
-    };
+    if (!specialtyId) return;
+    const selected = SPECIALTY_OPTIONS.find((item) => item.id === specialtyId);
+    if (!selected) return;
 
-  const removeSpecialty = (value: string) => {
-    setSelectedSpecialties((prev) => prev.filter((item) => item !== value));
+    // Append to selected list (don't replace)
+    setSelectedSpecialties((prev) =>
+      prev.includes(selected.name) ? prev : [...prev, selected.name]
+    );
 
     setForm((prev) => ({
       ...prev,
-      categoryId: "",
+      categoryIds: prev.categoryIds.includes(specialtyId)
+        ? prev.categoryIds
+        : [...prev.categoryIds, specialtyId],
+      categoryId: specialtyId,
     }));
+  };
+
+  const removeSpecialty = (value: string) => {
+    const removed = SPECIALTY_OPTIONS.find((s) => s.name === value);
+    setSelectedSpecialties((prev) => prev.filter((item) => item !== value));
+    setForm((prev) => {
+      const newIds = removed
+        ? prev.categoryIds.filter((id) => id !== removed.id)
+        : prev.categoryIds;
+      return {
+        ...prev,
+        categoryIds: newIds,
+        categoryId: newIds[0] || "76",
+      };
+    });
   };
 
   const handleSave = async () => {
@@ -276,7 +274,10 @@ export default function ProfileSettingsPage() {
     );
     formData.append("invoice_edi_format", form.electronicFormat);
     formData.append("redirect", "");
-    formData.append("category_id", form.categoryId || "76");
+
+    // Send all selected specialty IDs
+    const idsToSend = form.categoryIds.length > 0 ? form.categoryIds : ["76"];
+    idsToSend.forEach((id) => formData.append("category_id", id));
 
     if (avatarFile) {
       formData.append("profile_picture", avatarFile);
