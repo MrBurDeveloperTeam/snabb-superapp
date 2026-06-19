@@ -622,7 +622,7 @@ useEffect(() => {
                     onError={() => setProfileImageUrl(null)}
                   />
                 ) : (
-                  <span className="text-lg font-semibold tracking-wide text-white">
+                  <span className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full shadow-md flex items-center justify-center ${avatarBgColor} text-white font-black text-sm sm:text-base hover:border-blue-500/30 transition-all`}>
                     {userInitial}
                   </span>
                 )}
