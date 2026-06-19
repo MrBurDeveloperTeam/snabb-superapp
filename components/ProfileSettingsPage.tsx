@@ -29,8 +29,8 @@ export default function ProfileSettingsPage() {
     country: "",
     receiveInvoices: "",
     electronicFormat: "",
-    stateId: "",    // Selangor = 483
-    countryId: "",  // Malaysia = 157
+    stateId: "",    
+    countryId: "",  
     categoryId: "",
   });
 
@@ -41,6 +41,51 @@ export default function ProfileSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [partnerId, setPartnerId] = useState<number | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch('https://account.snabbb.com/api/account/profile', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      console.log('GET profile response:', data);
+      
+      if (data.ok && data.partner) {
+        const p = data.partner;
+        setForm({
+          name: p.name || '',
+          email: p.email || '',
+          companyName: p.company_name || '',
+          sstNumber: p.vat || '',
+          phone: p.phone || '',
+          dateOfBirth: p.x_date_of_birth || '',
+          street: p.street || '',
+          street2: p.street2 || '',
+          city: p.city || '',
+          state: p.state_id?.[1] || 'Selangor',
+          postalCode: p.zip || '',
+          country: p.country_id?.[1] || 'Malaysia',
+          receiveInvoices: p.invoice_sending_method === 'email' ? 'by Email' 
+            : p.invoice_sending_method === 'post' ? 'by Post' 
+            : 'by Email and Post',
+          electronicFormat: p.invoice_edi_format || '',
+          stateId: String(p.state_id?.[0] || '483'),
+          countryId: String(p.country_id?.[0] || '157'),
+          categoryId: String(p.category_id?.[0]?.id || p.category_id?.[0] || '76'),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchProfile();
+}, []);
 
   useEffect(() => {
       async function loadProfilePicture() {
@@ -132,17 +177,26 @@ export default function ProfileSettingsPage() {
 
       try {
         setSaving(true);
-        
         const res = await fetch("https://account.snabbb.com/api/account/profile", {
           method: "POST",
           credentials: "include",
           body: formData,
         });
 
-        // 303 = success (Odoo redirects to /my/account?success=1)
-        if (res.status === 303 || res.ok) {
+        const data = await res.json();
+        console.log('POST profile response:', data); // ← check shape
+
+        if (res.ok) {
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
+        
+          // ← re-fetch to confirm saved values are reflected
+          const refreshRes = await fetch('https://account.snabbb.com/api/account/profile', {
+            method: 'GET',
+            credentials: 'include',
+          });
+          const refreshData = await refreshRes.json();
+          console.log('Refreshed profile:', refreshData);
         }
       } catch (err) {
         console.error("Save failed:", err);
@@ -159,6 +213,8 @@ export default function ProfileSettingsPage() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-sm text-gray-400">Loading profile...</div>;
 
   return (
     <div className="min-h-screen bg-[#f5f6f8] text-[#1f2937]">
