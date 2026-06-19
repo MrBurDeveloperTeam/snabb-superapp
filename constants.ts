@@ -116,7 +116,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'E-Learning',
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/e-learning.png',
-    route: `https://e-learning.snabbb.com/`,
+    // route: `https://e-learning.snabbb.com/`,
     colorScheme: { bg: 'bg-[#F9FBFA]', text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
