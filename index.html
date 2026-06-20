@@ -39,11 +39,11 @@
         try {
           var key = "snabbb-theme";
           var stored = localStorage.getItem(key);
-          var theme = "system";
+          var theme = "light";
           if (stored) {
             // Zustand persist() wraps state in JSON; read the nested `theme` if present.
             var parsed = JSON.parse(stored);
-            theme = (parsed && parsed.state && parsed.state.theme) || parsed.theme || "system";
+            theme = (parsed && parsed.state && parsed.state.theme) || parsed.theme || "light";
           }
           var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
           var isDark = theme === "dark" || (theme === "system" && prefersDark);

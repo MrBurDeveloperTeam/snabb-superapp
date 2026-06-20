@@ -15,7 +15,7 @@ interface ThemeStore {
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set, get) => ({
-      theme: "system",
+      theme: "light",
       setTheme: (theme) => set({ theme }),
       toggle: () => {
         const order: ThemeMode[] = ["light", "dark", "system"];
