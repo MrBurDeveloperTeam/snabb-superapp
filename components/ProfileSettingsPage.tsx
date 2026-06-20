@@ -1,3 +1,4 @@
+import { loadUserProfile } from "@/services/loadProfile";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 const SPECIALTY_OPTIONS = [
@@ -96,19 +97,11 @@ export default function ProfileSettingsPage() {
     try {
       setLoading(true);
 
-      const res = await fetch("https://account.snabbb.com/api/account/profile", {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      const data = await res.json().catch(() => null);
+      const data = await loadUserProfile();
 
       console.log("GET profile response:", data);
 
-      if (!res.ok || !data?.ok) {
+      if (!data?.ok) {
         console.error("Profile load failed:", data);
         return;
       }

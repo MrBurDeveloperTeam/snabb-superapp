@@ -7,14 +7,19 @@ export async function getVerifiedUserId(): Promise<string | null> {
     },
   });
 
+  const data = await res.json().catch(() => null);
+
   if (!res.ok) {
-    throw new Error("Unable to verify user");
+    console.error("[getVerifiedUserId] verify-token failed:", data);
+    throw new Error(data?.error || "Unable to verify user");
   }
 
-  const data = await res.json();
+  console.log("[getVerifiedUserId] verify-token response:", data);
 
   return (
     data?.user?.profiles?.user?.user_id ||
+    data?.user?.profile?.user_id ||
+    data?.profile?.user_id ||
     data?.user_id ||
     data?.user?.id ||
     null

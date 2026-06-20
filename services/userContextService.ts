@@ -55,6 +55,52 @@ export interface UserChatContext {
   }>;
 }
 
+export async function getVerifiedProfileFromWorker() {
+  const res = await fetch('https://app.snabbb.com/api/verify-token', {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    console.warn('[MolarAI] verify-token failed:', data);
+    return null;
+  }
+
+  const user =
+    data?.user?.profiles?.user ||
+    data?.user?.profile ||
+    data?.profile ||
+    null;
+
+  return {
+    userId:
+      user?.user_id ||
+      data?.user_id ||
+      data?.user?.id ||
+      null,
+    email:
+      user?.email ||
+      data?.email ||
+      null,
+    name:
+      user?.name ||
+      user?.user_metadata?.name ||
+      null,
+    accountType:
+      user?.account_type ||
+      user?.user_metadata?.account_type ||
+      null,
+    role:
+      user?.role ||
+      null,
+  };
+}
+
 /**
  * Fetches all relevant user data from Supabase given the user's auth email.
  * Returns null fields gracefully if data doesn't exist.
