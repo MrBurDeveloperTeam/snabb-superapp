@@ -32,6 +32,7 @@ import { useGetUserId } from './mutation/useGetUserId';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
 import { profile } from 'console';
 import { useProfileImage } from './hooks/useProfileImage';
+import ThemeToggle from './components/ThemeToggle';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -600,6 +601,7 @@ useEffect(() => {
           </button>
 
           <div className="flex items-center gap-2 sm:gap-8">
+            <ThemeToggle />
             {isLoggedIn === null ? (
               <div className="w-24 h-11 bg-gray-200 rounded-xl animate-pulse"></div>
             ) : isLoggedIn ? (

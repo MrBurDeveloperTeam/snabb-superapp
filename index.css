@@ -1,0 +1,144 @@
+/*
+ * Snabbb Apps Gallery — global dark-mode override layer.
+ *
+ * This file is loaded AFTER the inline <style> in index.html, so any rule
+ * here wins on equal specificity. We scope everything under `.dark`
+ * (applied to <html> by hooks/useTheme.ts) so light mode is untouched.
+ *
+ * Design notes:
+ *   - The app uses Tailwind via CDN with a hardcoded neutral palette
+ *     (slate 50–950, white, black, a little gray). We remap those here.
+ *   - Brand colors (tiffany, blue, violet, sky) and pet/game colors are
+ *     intentionally left alone — they read well on both themes.
+ *   - `text-white` is preserved everywhere because it lives on colored
+ *     buttons/badges where white is correct in both themes.
+ */
+
+/* ------------------------------------------------------------------ *
+ * Page chrome (body, mesh gradient, scrollbar)
+ * ------------------------------------------------------------------ */
+.dark {
+  --mesh-bg: radial-gradient(at 0% 0%, hsla(210, 50%, 12%, 1) 0, transparent 50%),
+             radial-gradient(at 50% 0%, hsla(225, 45%, 10%, 1) 0, transparent 50%),
+             radial-gradient(at 100% 0%, hsla(200, 50%, 9%, 1) 0, transparent 50%);
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #020617;        /* slate-950 */
+  background-image: var(--mesh-bg);
+  color: #e2e8f0;                    /* slate-200 */
+}
+
+/* Scrollbar (matches the universal selector in index.html) */
+.dark::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;               /* slate-700 */
+}
+.dark::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;               /* slate-600 */
+}
+
+/* ------------------------------------------------------------------ *
+ * Surfaces (backgrounds)
+ * ------------------------------------------------------------------ */
+.dark .bg-white            { background-color: #0f172a; } /* slate-900 — primary card surface */
+.dark .bg-white\/90        { background-color: rgba(15, 23, 42, 0.9); }
+.dark .bg-white\/80        { background-color: rgba(15, 23, 42, 0.8); }
+.dark .bg-white\/60        { background-color: rgba(15, 23, 42, 0.6); }
+.dark .bg-white\/50        { background-color: rgba(15, 23, 42, 0.5); }
+.dark .bg-white\/40        { background-color: rgba(15, 23, 42, 0.45); }
+.dark .bg-white\/30        { background-color: rgba(15, 23, 42, 0.35); }
+.dark .bg-white\/20        { background-color: rgba(15, 23, 42, 0.25); }
+
+.dark .bg-slate-50         { background-color: #1e293b; } /* slate-800 — elevated chips/insets */
+.dark .bg-slate-50\/80     { background-color: rgba(30, 41, 59, 0.8); }
+.dark .bg-slate-50\/50     { background-color: rgba(30, 41, 59, 0.5); }
+.dark .bg-slate-100        { background-color: #1e293b; }
+.dark .bg-slate-100\/70    { background-color: rgba(30, 41, 59, 0.7); }
+.dark .bg-slate-100\/50    { background-color: rgba(30, 41, 59, 0.5); }
+.dark .bg-slate-100\/40    { background-color: rgba(30, 41, 59, 0.4); }
+.dark .bg-slate-200        { background-color: #334155; } /* slate-700 */
+.dark .bg-slate-200\/50    { background-color: rgba(51, 65, 85, 0.5); }
+.dark .bg-gray-200         { background-color: #334155; }
+
+/* Solid slate backgrounds already dark-ish; nudge for contrast where used as chips */
+.dark .bg-slate-300        { background-color: #475569; } /* slate-600 */
+.dark .bg-slate-800        { background-color: #1e293b; }
+.dark .bg-slate-800\/80    { background-color: rgba(30, 41, 59, 0.8); }
+
+/* ------------------------------------------------------------------ *
+ * Text
+ * ------------------------------------------------------------------ */
+.dark .text-slate-950      { color: #f8fafc; } /* slate-50 */
+.dark .text-slate-900      { color: #f1f5f9; }
+.dark .text-slate-800      { color: #e2e8f0; } /* slate-200 */
+.dark .text-slate-800\/80  { color: rgba(226, 232, 240, 0.8); }
+.dark .text-slate-700      { color: #cbd5e1; } /* slate-300 */
+.dark .text-slate-600      { color: #94a3b8; } /* slate-400 */
+.dark .text-slate-500      { color: #94a3b8; }
+.dark .text-slate-400      { color: #8b98ad; } /* muted but readable */
+.dark .text-slate-400\/70  { color: rgba(139, 152, 173, 0.7); }
+.dark .text-slate-300      { color: #cbd5e1; } /* already light, keep */
+.dark .text-gray-400       { color: #9ca3af; }
+
+/* ------------------------------------------------------------------ *
+ * Borders
+ * ------------------------------------------------------------------ */
+.dark .border-slate-300        { border-color: #475569; } /* slate-600 */
+.dark .border-slate-300\/70    { border-color: rgba(71, 85, 105, 0.7); }
+.dark .border-slate-200        { border-color: #1e293b; } /* slate-800 */
+.dark .border-slate-200\/50    { border-color: rgba(30, 41, 59, 0.5); }
+.dark .border-slate-100        { border-color: #1e293b; }
+.dark .border-slate-100\/50    { border-color: rgba(30, 41, 59, 0.5); }
+
+/* White borders are usually on glass/overlays — soften to a faint light edge */
+.dark .border-white            { border-color: rgba(255, 255, 255, 0.12); }
+.dark .border-white\/60        { border-color: rgba(255, 255, 255, 0.1); }
+.dark .border-white\/50        { border-color: rgba(255, 255, 255, 0.1); }
+.dark .border-white\/40        { border-color: rgba(255, 255, 255, 0.08); }
+.dark .border-white\/20        { border-color: rgba(255, 255, 255, 0.06); }
+.dark .border-white\/10        { border-color: rgba(255, 255, 255, 0.06); }
+
+/* ------------------------------------------------------------------ *
+ * Gradients & utilities
+ * ------------------------------------------------------------------ */
+.dark .from-white          { --tw-gradient-from: #0f172a var(--tw-gradient-from-position); --tw-gradient-to: rgba(15,23,42,0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.dark .from-white\/30      { --tw-gradient-from: rgba(15,23,42,0.3) var(--tw-gradient-from-position); --tw-gradient-to: rgba(15,23,42,0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.dark .from-white\/25      { --tw-gradient-from: rgba(15,23,42,0.25) var(--tw-gradient-from-position); --tw-gradient-to: rgba(15,23,42,0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.dark .from-white\/20      { --tw-gradient-from: rgba(15,23,42,0.2) var(--tw-gradient-from-position); --tw-gradient-to: rgba(15,23,42,0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+
+/* Glass card — translucent dark */
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.6);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ------------------------------------------------------------------ *
+ * Sonner / toast container transparency (App.tsx sets inline styles)
+ * ------------------------------------------------------------------ */
+.dark .glass-card,
+.dark [style*="background:transparent"] {
+  /* no-op hook; kept for clarity */
+}
+
+/* ------------------------------------------------------------------ *
+ * Subtle theme transition (excludes framer-motion transforms)
+ * ------------------------------------------------------------------ */
+.dark body,
+.dark .bg-white,
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-slate-400,
+.dark .border-slate-200,
+.dark .border-slate-100 {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
