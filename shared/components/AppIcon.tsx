@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-export const AppIcon = ({ icon, label, color }: { icon: string, label: string, color: string }) => {
+export const AppIcon = ({ icon, label }: { icon: string, label: string }) => {
   const isImageUrl = icon.startsWith('http');
   const isMrBur = label === 'Mr.Bur';
 
@@ -15,7 +15,7 @@ export const AppIcon = ({ icon, label, color }: { icon: string, label: string, c
     >
       <div className={`${
           isMrBur ? '' : 'p-2'
-        } w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30 relative overflow-hidden group/icon ${isMrBur ? '' : color}`}>
+        } w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30 relative overflow-hidden group/icon}`}>
         {!isMrBur && (
           <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10" />
         )}

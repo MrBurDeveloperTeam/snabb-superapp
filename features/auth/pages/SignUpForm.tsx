@@ -471,7 +471,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
         >
           {MINI_APPS.map((app, i) => {
             if (i <= 5) {
-              return <AppIcon key={app.id} icon={app.icon} label={app.title} color={app.colorScheme.bg} />;
+              return <AppIcon key={app.id} icon={app.icon} label={app.title} />;
             }
           })}
         </motion.div>

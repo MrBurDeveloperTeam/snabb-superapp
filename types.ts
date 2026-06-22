@@ -8,7 +8,6 @@ export interface MiniApp {
   category: Category;
   icon: string;
   colorScheme: {
-    bg: string;
     text: string;
     icon: string;
   };
