@@ -142,3 +142,79 @@
 .dark .border-slate-100 {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
+
+/* ------------------------------------------------------------------ *
+ * ProfileSettingsPage — uses arbitrary hex utilities + a scoped <style>
+ * block (.inp/.section-card/etc.) that bypass the slate scale above.
+ * ------------------------------------------------------------------ */
+
+/* Page background + base text */
+.dark .bg-\[\#f5f6f8\] { background-color: #0b1120; }
+.dark .text-\[\#1f2937\] { color: #e2e8f0; }
+.dark .text-\[\#111827\] { color: #f1f5f9; }
+
+/* Card surfaces + their borders */
+.dark .section-card {
+  background-color: #0f172a;
+  border-color: #1e293b;
+}
+
+/* Inputs (.inp) and the date <input> native chrome */
+.dark .inp {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+.dark .inp::placeholder { color: #64748b; }
+.dark .inp:disabled {
+  background: #1e293b;
+  color: #64748b;
+  border-color: #1e293b;
+}
+.dark .inp:focus {
+  border-color: #647294;
+  box-shadow: 0 0 0 3px rgba(100, 114, 148, 0.25);
+}
+/* Darken the select chevron so it stays visible on the dark option list */
+.dark select.inp {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+/* Section headings + field labels + hints */
+.dark .section-title {
+  color: #94a3b8;
+  border-bottom-color: #1e293b;
+}
+.dark .field-label { color: #cbd5e1; }
+.dark .field-hint { color: #64748b; }
+
+/* Specialty chips container + inline select wrapper */
+.dark .bg-white { background-color: #0f172a; }
+.dark .border-\[\#e2e5ea\] { border-color: #334155; }
+.dark .bg-\[\#eef0f5\] { background-color: #1e293b; }
+.dark .text-\[\#4b5563\] { color: #cbd5e1; }
+.dark .text-\[\#6b7280\] { color: #94a3b8; }
+.dark .text-\[\#9ca3af\] { color: #64748b; }
+.dark .text-\[\#374151\] { color: #cbd5e1; }
+.dark .border-\[\#f0f1f3\] { border-color: #1e293b; }
+.dark .border-\[\#d7dce2\] { border-color: #334155; }
+.dark .border-\[\#e5e7eb\] { border-color: #1e293b; }
+.dark .bg-\[\#f9fafb\]:hover,
+.dark .hover\:bg-\[\#f9fafb\]:hover { background-color: #1e293b; }
+
+/* Sticky footer save bar */
+.dark .bg-white\/90 { background-color: rgba(11, 17, 32, 0.9); }
+.dark .backdrop-blur-md { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+/* Calendar picker icon for dark <input type="date"> */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+/* Transitions for the arbitrary-hex surfaces too */
+.dark .section-card,
+.dark .inp,
+.dark .bg-\[\#f5f6f8\],
+.dark .bg-\[\#eef0f5\] {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
