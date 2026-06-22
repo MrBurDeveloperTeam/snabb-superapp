@@ -1,0 +1,30 @@
+import api from "./api";
+
+/**
+ * Triggers Odoo 18's built-in password-reset email flow.
+ *
+ * Odoo endpoint: POST /web/reset_password (JSON-RPC)
+ * Odoo will look up the email, create a token, and send the reset email
+ * itself — no custom module needed.
+ *
+ * Returns true on success. Throws on network/JSON-RPC error.
+ * Note: Odoo returns success=true even for unknown emails (prevents enumeration).
+ */
+export async function resetPassword(email: string): Promise<true> {
+  const response = await api.post("/web/reset_password", {
+    jsonrpc: "2.0",
+    method: "call",
+    id: 1,
+    params: { login: email },
+  });
+
+  if (response.data?.error) {
+    const msg =
+      response.data.error?.data?.message ||
+      response.data.error?.message ||
+      "Password reset failed";
+    throw new Error(msg);
+  }
+
+  return true;
+}
