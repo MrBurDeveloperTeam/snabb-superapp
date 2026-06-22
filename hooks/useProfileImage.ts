@@ -17,13 +17,16 @@ export function useProfileImage(isLoggedIn: boolean | null) {
       .then((data) => {
         if (!data?.ok) return;
         const partnerId = data.partner_id;
-        const imageUrl =
-          data.image_url ||
-          (partnerId
-            ? `https://account.snabbb.com/web/image/res.partner/${partnerId}/image_128?unique=${Date.now()}`
-            : null);
-        setProfileImageUrl(imageUrl);
-      });
+        // const imageUrl =
+        //   data.image_url ||
+        //   (partnerId
+        //     ? `https://account.snabbb.com/web/image/res.partner/${partnerId}/image_128?unique=${Date.now()}`
+        //     : null);
+        const imageUrl = data.partner.has_image
+          ? `https://account.snabbb.com/web/image/res.partner/${data.partner_id}/image_128?unique=${Date.now()}`
+          : null;
+                setProfileImageUrl(imageUrl);
+              });
   }, [isLoggedIn]); // ← re-run when login state changes
 
   return { profileImageUrl };
