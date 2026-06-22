@@ -129,28 +129,28 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
   const activeCardStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    boxShadow:
-      '0 10px 30px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.75)',
+    // boxShadow:
+    //   '0 10px 30px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.75)',
   };
 
   const activeCardHoverStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    boxShadow:
-      '0 20px 40px rgba(95,111,148,0.14), inset 0 1px 0 rgba(255,255,255,0.8)',
+    // boxShadow:
+    //   '0 20px 40px rgba(95,111,148,0.14), inset 0 1px 0 rgba(255,255,255,0.8)',
   };
 
   const comingSoonCardStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    boxShadow:
-      '0 8px 24px rgba(15,23,42,0.04), inset 0 1px 0 rgba(255,255,255,0.7)',
-    border: '1px solid rgba(255,255,255,0.6)',
+    // boxShadow:
+    //   '0 8px 24px rgba(15,23,42,0.04), inset 0 1px 0 rgba(255,255,255,0.7)',
+    // border: '1px solid rgba(255,255,255,0.6)',
   };
 
   const comingSoonCardHoverStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    boxShadow:
-      '0 12px 24px rgba(148,163,184,0.08), inset 0 1px 0 rgba(255,255,255,0.72)',
-    border: '1px solid rgba(255,255,255,0.62)',
+    // boxShadow:
+    //   '0 12px 24px rgba(148,163,184,0.08), inset 0 1px 0 rgba(255,255,255,0.72)',
+    // border: '1px solid rgba(255,255,255,0.62)',
   };
 
   const activeIconWrapStyle: React.CSSProperties = {
