@@ -295,7 +295,6 @@ const LoginForm: React.FC<Props> = ({
                   key={app.id}
                   icon={app.icon}
                   label={app.title}
-                  color={app.colorScheme.bg}
                 />
               );
             }
