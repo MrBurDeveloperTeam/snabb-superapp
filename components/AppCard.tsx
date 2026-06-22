@@ -162,8 +162,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   };
 
   const comingSoonIconWrapStyle: React.CSSProperties = {
-    boxShadow:
-      'inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 14px rgba(148,163,184,0.10)',
+    // boxShadow:
+    //   'inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 14px rgba(148,163,184,0.10)',
     borderRadius: '1.65rem',
   };
 
