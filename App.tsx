@@ -33,6 +33,7 @@ import ProfileSettingsPage from './components/ProfileSettingsPage';
 import { profile } from 'console';
 import { useProfileImage } from './hooks/useProfileImage';
 import ThemeToggle from './components/ThemeToggle';
+import { useThemeStore } from './store/themeStore';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -360,6 +361,32 @@ useEffect(() => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // ─── Theme sync from Odoo ─────────────────────────────────────────────────
+  // Fetches the user's saved theme from Odoo and applies it locally.
+  // Called after login and on session bootstrap so cross-device theme is correct.
+  const setTheme = useThemeStore((s) => s.setTheme);
+
+  const syncThemeFromOdoo = async () => {
+    try {
+      const res = await fetch('/api/user/theme', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.ok && data?.authenticated && data?.theme) {
+        const valid = new Set(['light', 'dark', 'system']);
+        if (valid.has(data.theme)) {
+          setTheme(data.theme); // updates Zustand + writes cookie
+        }
+      }
+    } catch {
+      // Odoo unreachable — keep current theme
+    }
+  };
+
+  // ─── Session bootstrap ────────────────────────────────────────────────────
   useEffect(() => {
     if (didInitRef.current) return;
     didInitRef.current = true;
@@ -370,6 +397,8 @@ useEffect(() => {
 
       if (!sessionId) {
         await verifySessionSafe(true);
+        // Sync theme from Odoo after session is confirmed on page load
+        syncThemeFromOdoo();
         return;
       }
 
@@ -381,6 +410,7 @@ useEffect(() => {
 
         if (data?.ok) {
           await verifySessionSafe(true);
+          syncThemeFromOdoo();
         } else {
           clearAuthState();
           navigate('/login');
@@ -493,6 +523,10 @@ useEffect(() => {
     setAuthFormData(nextUser);
     setUser(nextUser);
     navigate('/');
+
+    // Fetch the user's saved theme from Odoo and apply it.
+    // Runs after login so the correct cross-device theme is applied immediately.
+    syncThemeFromOdoo();
   };
 
   const logout = async () => {
