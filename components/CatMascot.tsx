@@ -494,6 +494,8 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
         target.closest('select') ||
         target.closest('textarea') ||
         target.closest('label') ||
+        target.closest('img') ||
+        target.closest('[data-no-cat]') ||
         target.closest('[role="dialog"]') ||
         target.closest('[role="menu"]') ||
         target.closest('[role="menuitem"]') ||

@@ -193,6 +193,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           y: { duration: 0.3 },
         }}
         className={wrapperClass}
+        data-no-cat="true"
       >
         <div className="relative">
           <div className={cardClass} style={activeCardStyle}>
@@ -238,7 +239,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           </div>
         </div>
 
-        <h3 className="text-[12px] sm:text-[14px] font-bold text-slate-800 text-center px-1 truncate w-full tracking-tight">
+        <h3 className="text-[12px] sm:text-[14px] font-bold text-slate-800 dark:text-slate-200 text-center px-1 truncate w-full tracking-tight">
           {app.title}
         </h3>
       </motion.div>
@@ -259,6 +260,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
         y: { duration: 0.3 },
       }}
       className={`${wrapperClass} ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      data-no-cat="true"
     >
       <div className="relative">
         <motion.div
@@ -342,8 +344,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       <h3
         className={`text-[12px] sm:text-[14px] font-bold transition-colors text-center px-1 truncate w-full tracking-tight ${
           isComingSoon
-            ? 'text-slate-500'
-            : 'text-slate-800 group-hover:text-slate-950'
+            ? 'text-slate-500 dark:text-slate-400'
+            : 'text-slate-800 dark:text-slate-200 group-hover:text-slate-950 dark:group-hover:text-white'
         }`}
       >
         {app.title}
