@@ -485,7 +485,34 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
       if (isHiddenRef.current) return;
 
       const target = e.target;
-      if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('[data-cat]')) return;
+
+      // Ignore clicks on or inside any interactive element or overlay
+      if (
+        target.closest('button') ||
+        target.closest('a') ||
+        target.closest('input') ||
+        target.closest('select') ||
+        target.closest('textarea') ||
+        target.closest('label') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('[role="menu"]') ||
+        target.closest('[role="menuitem"]') ||
+        target.closest('[role="listbox"]') ||
+        target.closest('[role="option"]') ||
+        target.closest('[role="tab"]') ||
+        target.closest('[role="switch"]') ||
+        target.closest('[data-cat]') ||
+        target.closest('[class*="modal"]') ||
+        target.closest('[class*="dropdown"]') ||
+        target.closest('[class*="popover"]') ||
+        target.closest('[class*="dialog"]') ||
+        target.closest('[class*="overlay"]') ||
+        target.closest('[class*="toast"]') ||
+        target.closest('[class*="tooltip"]') ||
+        target.closest('.fixed') ||
+        target.closest('.absolute') ||
+        target.closest('.cat-mascot-wrapper')
+      ) return;
 
       const targetX_px = e.clientX;
       const targetY_px = e.clientY;
