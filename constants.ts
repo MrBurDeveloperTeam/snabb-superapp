@@ -25,13 +25,13 @@ export const MINI_APPS: MiniApp[] = [
     route: getMrBurUrlFromCompanyCode(companyCode),
     colorScheme: { text: 'text-[#4338ca]', icon: '#4338ca' }
   },
-  {
-    id: 'app-10',
-    title: 'Kaneiko',
-    category: 'Shops',
-    icon: 'fa-solid fa-store',
-    colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
-  },
+  // {
+  //   id: 'app-10',
+  //   title: 'Kaneiko',
+  //   category: 'Shops',
+  //   icon: 'fa-solid fa-store',
+  //   colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
+  // },
   // {
   //   id: 'app-11',
   //   title: 'Ortho',
@@ -39,13 +39,13 @@ export const MINI_APPS: MiniApp[] = [
   //   icon: 'fa-solid fa-tooth',
   //   colorScheme: { text: 'text-[#0369a1]', icon: '#0369a1' }
   // },
-  {
-    id: 'app-12',
-    title: 'Endo',
-    category: 'Shops',
-    icon: 'fa-solid fa-stethoscope',
-    colorScheme: {  text: 'text-[#15803d]', icon: '#15803d' }
-  },
+  // {
+  //   id: 'app-12',
+  //   title: 'Endo',
+  //   category: 'Shops',
+  //   icon: 'fa-solid fa-stethoscope',
+  //   colorScheme: {  text: 'text-[#15803d]', icon: '#15803d' }
+  // },
   // {
   //   id: 'app-13',
   //   title: 'DTV',
