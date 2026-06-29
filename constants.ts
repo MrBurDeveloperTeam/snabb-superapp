@@ -36,7 +36,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-10',
     title: 'Lunaflow',
     category: 'Shops',
-    icon: 'fa-solid fa-store',
+    icon: 'https://app.snabbb.com/images/lunaflow.png',
     colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
   },
   // {
@@ -50,7 +50,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-12',
     title: 'Endora',
     category: 'Shops',
-    icon: 'fa-solid fa-stethoscope',
+    icon: 'https://app.snabbb.com/images/endora.png',
     colorScheme: {  text: 'text-[#15803d]', icon: '#15803d' }
   },
   // {
