@@ -366,8 +366,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       <h3
         className={`text-[12px] sm:text-[14px] font-bold transition-colors text-center px-1 truncate w-full tracking-tight ${
           isComingSoon
-            ? 'text-slate-500 dark:text-slate-400'
-            : 'text-slate-800 dark:text-slate-100 group-hover:text-slate-950 dark:group-hover:text-white'
+            ? '!text-slate-500 dark:!text-slate-400'
+            : '!text-slate-700 dark:!text-slate-100 group-hover:!text-slate-950 dark:group-hover:!text-white'
         }`}
       >
         {app.title}
