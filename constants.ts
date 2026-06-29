@@ -29,7 +29,8 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-10',
     title: 'Kaneiko',
     category: 'Shops',
-    icon: 'fa-solid fa-store',
+    icon: '/icons/kaneiko_black.png',
+    iconDark: '/icons/kaneiko_white.png',
     colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
   },
   {
