@@ -23,7 +23,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Shops',
     icon: 'https://app.snabbb.com/icons/mr_bur.png',
     route: getMrBurUrlFromCompanyCode(companyCode),
-    colorScheme: { text: 'text-[#a21caf]', icon: '#4338ca' }
+    colorScheme: { text: 'text-[#4338ca]', icon: '#4338ca' }
   },
   {
     id: 'app-12',
@@ -69,7 +69,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
     route: `https://inventory.snabbb.com/`,
-    colorScheme: { text: 'text-[#a21caf]', icon: '#0891b2' }
+    colorScheme: { text: 'text-[#b91c1c]', icon: '#0891b2' }
   },
   {
     id: 'app-3',
@@ -85,7 +85,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/appointment.png',
     route: `https://appointment.snabbb.com/`,
-    colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
+    colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
   },
   {
     id: 'app-6',
@@ -93,7 +93,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/ai_image.png',
     route: 'https://imageai.snabbb.com',
-    colorScheme: { text: 'text-[#a21caf]', icon: '#0891b2' }
+    colorScheme: { text: 'text-[#7e22ce]', icon: '#0891b2' }
   },
   // {
   //   id: 'app-7',
