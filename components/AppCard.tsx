@@ -313,7 +313,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
               <img
                 src={app.icon}
                 alt={app.title}
-                className={`${'max-w-[100%] max-h-[100%] object-cover'} ${isComingSoon ? 'opacity-70 grayscale-[35%]' : ''}`}
+                className={`${'w-full h-full object-cover'} ${isComingSoon ? 'opacity-70 grayscale-[35%]' : ''}`}
               />
             ) : (
               <i
