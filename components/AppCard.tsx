@@ -188,12 +188,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             <img
               src={app.icon}
               alt={app.title}
-              className={`block dark:hidden w-full h-full object-contain ${imageClass}`}
+              className={`block dark:hidden w-full h-full object-cover ${imageClass}`}
             />
             <img
               src={app.iconDark}
               alt={app.title}
-              className={`hidden dark:block w-full h-full object-contain ${imageClass}`}
+              className={`hidden dark:block w-full h-full object-cover ${imageClass}`}
             />
           </div>
         );
@@ -203,7 +203,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
         <img
           src={app.icon}
           alt={app.title}
-          className={`w-full h-full object-contain ${imageClass}`}
+          className={`w-full h-full object-cover ${imageClass}`}
         />
       );
     }

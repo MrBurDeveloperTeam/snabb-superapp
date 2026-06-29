@@ -26,7 +26,7 @@ export const MINI_APPS: MiniApp[] = [
     colorScheme: { text: 'text-[#4338ca]', icon: '#4338ca' }
   },
   {
-    id: 'app-10',
+    id: 'app-12',
     title: 'Kaneiko',
     category: 'Shops',
     icon: '/icons/kaneiko_black.png',
@@ -34,7 +34,7 @@ export const MINI_APPS: MiniApp[] = [
     colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
   },
   {
-    id: 'app-10',
+    id: 'app-13',
     title: 'Lunaflow',
     category: 'Shops',
     icon: 'https://app.snabbb.com/images/lunaflow.png',
@@ -48,7 +48,7 @@ export const MINI_APPS: MiniApp[] = [
   //   colorScheme: { text: 'text-[#0369a1]', icon: '#0369a1' }
   // },
   {
-    id: 'app-12',
+    id: 'app-16',
     title: 'Endora',
     category: 'Shops',
     icon: 'https://app.snabbb.com/images/endora.png',
