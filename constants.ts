@@ -32,6 +32,13 @@ export const MINI_APPS: MiniApp[] = [
     icon: 'fa-solid fa-store',
     colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
   },
+  {
+    id: 'app-10',
+    title: 'Lunaflow',
+    category: 'Shops',
+    icon: 'fa-solid fa-store',
+    colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
+  },
   // {
   //   id: 'app-11',
   //   title: 'Ortho',
