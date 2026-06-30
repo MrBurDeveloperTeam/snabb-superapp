@@ -1,0 +1,1 @@
+export type View = 'gallery' | 'auth' | 'privacy' | 'terms';
