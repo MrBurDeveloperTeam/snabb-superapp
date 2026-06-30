@@ -1,4 +1,19 @@
+import { getMrBurUrlFromCompanyCode } from './services/authOdoo';
 import { MiniApp } from './types';
+
+function getOdooCompanyCode(): string | null {
+  try {
+    const raw = localStorage.getItem('odoo_session')
+    if (!raw) return null
+    const session = JSON.parse(raw)
+    return session?.company_code ?? null
+  } catch {
+    return null
+  }
+}
+
+// In your app config array:
+const companyCode = getOdooCompanyCode()
 
 export const MINI_APPS: MiniApp[] = [
   // ======= SHOPS =======
@@ -6,37 +21,45 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-1',
     title: 'Mr.Bur',
     category: 'Shops',
-    icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMq1ycD19uS2-bqaqsEg7R_wyOnVH9gTXyQA&s',
-    route: `https://mrbur.shop`,
-    colorScheme: { bg: 'bg-[#eef2ff]', text: 'text-[#4338ca]', icon: '#4338ca' }
+    icon: 'https://app.snabbb.com/icons/mr_bur.png',
+    route: getMrBurUrlFromCompanyCode(companyCode),
+    colorScheme: { text: 'text-[#4338ca]', icon: '#0891b2' }
   },
-  // {
-  //   id: 'app-10',
-  //   title: 'Kaneiko',
-  //   category: 'Shops',
-  //   icon: 'fa-solid fa-store',
-  //   colorScheme: { bg: 'bg-[#fdf4ff]', text: 'text-[#a21caf]', icon: '#a21caf' }
-  // },
+  {
+    id: 'app-12',
+    title: 'Kaneiko',
+    category: 'Shops',
+    icon: '/icons/kaneiko_black.png',
+    // iconDark: '/icons/kaneiko_white.png',
+    colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-13',
+    title: 'Lunaflow',
+    category: 'Shops',
+    icon: 'https://app.snabbb.com/images/lunaflow.png',
+    colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
+  },
   // {
   //   id: 'app-11',
   //   title: 'Ortho',
   //   category: 'Shops',
   //   icon: 'fa-solid fa-tooth',
-  //   colorScheme: { bg: 'bg-[#f0f9ff]', text: 'text-[#0369a1]', icon: '#0369a1' }
+  //   colorScheme: { text: 'text-[#0369a1]', icon: '#0369a1' }
   // },
-  // {
-  //   id: 'app-12',
-  //   title: 'Endo',
-  //   category: 'Shops',
-  //   icon: 'fa-solid fa-stethoscope',
-  //   colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#15803d' }
-  // },
+  {
+    id: 'app-16',
+    title: 'Endora',
+    category: 'Shops',
+    icon: 'https://app.snabbb.com/images/endora.png',
+    colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
+  },
   // {
   //   id: 'app-13',
   //   title: 'DTV',
   //   category: 'Shops',
   //   icon: 'fa-solid fa-tv',
-  //   colorScheme: { bg: 'bg-[#fff7ed]', text: 'text-[#c2410c]', icon: '#c2410c' }
+  //   colorScheme: { text: 'text-[#c2410c]', icon: '#c2410c' }
   // },
 
   // ======= PRODUCTIVITY =======
@@ -46,7 +69,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
     route: `https://inventory.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#E6F4F3]', text: 'text-[#b91c1c]', icon: '#0891b2' }
+    colorScheme: { text: 'text-[#b91c1c]', icon: '#0891b2' }
   },
   {
     id: 'app-3',
@@ -54,7 +77,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/event.png',
     // route: `https://app.snabbb.com/event`,
-    colorScheme: { bg: 'bg-[#ecfeff]', text: 'text-[#0891b2]', icon: '#0891b2' }
+    colorScheme: { text: 'text-[#0891b2]', icon: '#0891b2' }
   },
   {
     id: 'app-4',
@@ -62,7 +85,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/appointment.png',
     route: `https://appointment.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#15803d]', icon: '#0891b2' }
+    colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
   },
   {
     id: 'app-6',
@@ -70,7 +93,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/ai_image.png',
     route: 'https://imageai.snabbb.com',
-    colorScheme: { bg: 'bg-[#F0FAF0]', text: 'text-[#7e22ce]', icon: '#0891b2' }
+    colorScheme: { text: 'text-[#7e22ce]', icon: '#0891b2' }
   },
   // {
   //   id: 'app-7',
@@ -78,7 +101,7 @@ export const MINI_APPS: MiniApp[] = [
   //   category: 'Productivity',
   //   icon: 'https://app.snabbb.com/icons/ai_video.png',
   //   // route: `https://app.snabbb.com`,
-  //   colorScheme: { bg: 'bg-[#F5F7F6]', text: 'text-[#312e81]', icon: '#312e81' }
+  //   colorScheme: { text: 'text-[#312e81]', icon: '#312e81' }
   // },
   {
     id: 'app-8',
@@ -86,7 +109,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/profit_calculator.png',
     route: `https://calculator.snabbb.com`,
-    colorScheme: { bg: 'bg-[#E8F8F7]', text: 'text-[#b45309]', icon: '#312e81' }
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
     id: 'app-9',
@@ -94,7 +117,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
     route: `https://todo.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#F4FBFA]', text: 'text-[#b45309]', icon: '#0891b2' }
+    colorScheme: { text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
     id: 'app-10',
@@ -102,7 +125,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/e-learning.png',
     route: `https://e-learning.snabbb.com/`,
-    colorScheme: { bg: 'bg-[#F9FBFA]', text: 'text-[#b45309]', icon: '#0891b2' }
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
     id: 'app-11',
@@ -110,7 +133,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
     // route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#ECFDFC]', text: 'text-[#b45309]', icon: '#0891b2' }
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
 
   // ======= VALUE ADDED =======
@@ -120,7 +143,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Value Added',
     icon: 'fa-solid fa-shield-halved',
     // route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#f0fdf4]', text: 'text-[#166534]', icon: '#0891b2' }
+    colorScheme: {  text: 'text-[#166534]', icon: '#0891b2' }
   },
   {
     id: 'app-15',
@@ -128,7 +151,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Value Added',
     icon: 'fa-solid fa-file-contract',
     // route: `https://app.snabbb.com`,
-    colorScheme: { bg: 'bg-[#fefce8]', text: 'text-[#854d0e]', icon: '#0891b2' }
+    colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
 ];
 
