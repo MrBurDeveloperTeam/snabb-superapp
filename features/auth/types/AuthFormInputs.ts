@@ -1,14 +1,23 @@
 export interface AuthFormInputs {
-  fullName?: string;
-  name?: string;
-  login?: string;
-  email?: string;
-  jobPosition?: string;
+  account_type: 'individual' | 'company';
+
+  login: string;
+  fullName: string;
+
+  companyName?: string;
+  companyEmail?: string;
+
+  position: string;
+  phone: string;
+  jobPosition: string;
   customJobPosition?: string;
-  phone?: string;
-  password?: string;
-  confirmPassword?: string;
-  agreedToTerms?: boolean;
-  redirect?: boolean;
+  country: string;
+
+  dob?: string;
+
+  password: string;
+  confirmPassword: string;
   rememberMe?: boolean;
+
+  agreedToTerms: boolean;
 }

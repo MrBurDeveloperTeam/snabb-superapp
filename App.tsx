@@ -19,6 +19,21 @@ import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
 import { chatWithGemini } from './services/geminiService';
 import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
+import { SnabbbIcon } from './public/icons/SnabbbIcon';
+import { toast, ToastContainer } from 'react-toastify';
+import { AnnouncementBar } from "./components/AnnouncementBar";
+import { useAnnouncementBarStore } from './store/announcementBarStore';
+import DisclaimerPage from './components/DisclaimerPage';
+import { Toaster } from "sonner";
+import { plantMrBurCookie } from './services/plantCookies';
+import SsoCheck from './components/SsoCheck';
+import { useCreateAppLink } from './mutation/useCreateAppLink';
+import { useGetUserId } from './mutation/useGetUserId';
+import ProfileSettingsPage from './components/ProfileSettingsPage';
+import { profile } from 'console';
+import { useProfileImage } from './hooks/useProfileImage';
+import ThemeToggle from './components/ThemeToggle';
+import { useThemeStore } from './store/themeStore';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -28,6 +43,8 @@ const initialFormData: AuthFormData = {
   password: '',
   confirmPassword: '',
   agreedToTerms: false,
+  country: '',
+  partner_id: 0,
 };
 
 const ALLOWED_ORIGINS = [
@@ -39,6 +56,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
+  const authUser = getAuthUser();
   const [path, setPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -47,7 +65,6 @@ const App: React.FC = () => {
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
-
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
@@ -55,13 +72,31 @@ const App: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [userChatContext, setUserChatContext] = useState<string>('');
-
+  const setConfig = useAnnouncementBarStore((s) => s.setConfig);
+  const [isToastBackdropOpen, setIsToastBackdropOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const didInitRef = useRef(false);
   const checkingSessionRef = useRef(false);
   const lastVerifyAtRef = useRef(0);
   const handleClearChat = () => setChatHistory([]);
   const [badgeText, setBadgeText] = useState("Ask Me");
+  const { mutateAsync: createAppLink, isPending } = useGetUserId();
+  const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const { profileImageUrl } = useProfileImage(isLoggedIn);
+
+useEffect(() => {
+  const partnerId = authFormData?.partner_id // or however you store partner_id after login
+  if (!partnerId) return
+
+  fetch(`https://app.snabbb.com/api/wallet?partner_id=${partnerId}`, {
+    credentials: 'include',
+  })
+    .then(r => r.json())
+    .then(data => setCreditBalance(data?.data?.balance ?? null))
+    .catch(() => setCreditBalance(null))
+}, [authFormData?.partner_id])
 
   useEffect(() => {
     const texts = !isLoggedIn 
@@ -110,7 +145,7 @@ const App: React.FC = () => {
       const { data: apps } = await supabase
         .from('aiboard_response_target_apps')
         .select('response_id')
-        .in('app_name', ['Snabbb.io', 'All']);
+        .in('app_name', ['App.Snabbb', 'All']);
 
       if (apps && apps.length > 0) {
         const responseIds = apps.map(a => a.response_id);
@@ -202,11 +237,8 @@ const App: React.FC = () => {
         return false;
       }
 
-      const companyId = res?.company_id || {};
-      const companyCode = res?.company_code || {};
-      const firstCompanyCode = Object.values(companyCode) || "";
-      const firstCompanyId = Object.keys(companyId) || "";
 
+      console.log('res.sessionInfo:', res);
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
         jobPosition: '',
@@ -214,12 +246,49 @@ const App: React.FC = () => {
         email: res.sessionInfo.username || '',
         password: '',
         confirmPassword: '',
+        country: '',
         agreedToTerms: true,
+        partner_id: res.sessionInfo.partner_id,
       };
 
       setIsLoggedIn(true);
       setAuthFormData(nextUser);
       setUser(nextUser);
+
+      try {
+        const partnerRes = await api.get(
+          `/partner/profile?email=${encodeURIComponent(nextUser.email)}`
+        );
+        const profileComplete = partnerRes?.data?.profileComplete ?? false;
+        setUser({ ...nextUser, profileComplete } as any);
+      } catch (e) {
+        console.warn("Failed to fetch partner profile:", e);
+      }
+
+     const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
+        MMY: "my", MSG: "sg", MTH: "th", MIN: "id",
+        MUSA: "us", MUK: "uk", MAU: "au", MVN: "vn",
+        MPH: "ph", MKR: "kr", MCA: "ca", MAE: "ae",
+        MSA: "sa", MNZ: "nz", MEU: "eu",
+      };
+
+      try {
+        const raw = localStorage.getItem("odoo_session");
+        if (raw) {
+          const session = JSON.parse(raw);
+          const companyCode = session?.company_code as string;
+          const subdomain = COMPANY_SUBDOMAIN_MAP[companyCode];
+          if (subdomain) {
+            setConfig({
+              linkIncomplete: `https://account.snabbb.com`,
+              // linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse odoo_session:", e);
+      }
+      
 
       // Fetch personalized context for Molar AI
       try {
@@ -229,8 +298,8 @@ const App: React.FC = () => {
         console.warn('[MolarAI] Context fetch failed:', e);
       }
 
-      localStorage.setItem("company_code", String(firstCompanyCode));
-      localStorage.setItem("company_id", String(firstCompanyId));
+      // localStorage.setItem("company_code", String(companyCode));
+      // localStorage.setItem("company_id", String(firstCompanyId));
 
       return true;
     } catch (error) {
@@ -259,6 +328,23 @@ const App: React.FC = () => {
     },
     [verifySession, isAuthRoute]
   );
+  
+  async function syncSessionToMrBur() {
+    // Get the current session_id from Odoo
+    const res = await fetch("https://app.snabbb.com/api/web/session/get_session_info", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: 1 }),
+    });
+
+    const data = await res.json();
+    const sid = data?.result?.session_id;  // Odoo includes this in session_info
+
+    if (sid) {
+      await plantMrBurCookie(sid);
+    }
+  }
 
   // Debounced session check
   const verifySessionDebounced = useCallback(
@@ -270,11 +356,37 @@ const App: React.FC = () => {
     const handlePopState = () => {
       setPath(window.location.pathname);
     };
-
+    syncSessionToMrBur();
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // ─── Theme sync from Odoo ─────────────────────────────────────────────────
+  // Fetches the user's saved theme from Odoo and applies it locally.
+  // Called after login and on session bootstrap so cross-device theme is correct.
+  const setTheme = useThemeStore((s) => s.setTheme);
+
+  const syncThemeFromOdoo = async () => {
+    try {
+      const res = await fetch('/api/user/theme', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.ok && data?.authenticated && data?.theme) {
+        const valid = new Set(['light', 'dark', 'system']);
+        if (valid.has(data.theme)) {
+          setTheme(data.theme); // updates Zustand + writes cookie
+        }
+      }
+    } catch {
+      // Odoo unreachable — keep current theme
+    }
+  };
+
+  // ─── Session bootstrap ────────────────────────────────────────────────────
   useEffect(() => {
     if (didInitRef.current) return;
     didInitRef.current = true;
@@ -285,6 +397,8 @@ const App: React.FC = () => {
 
       if (!sessionId) {
         await verifySessionSafe(true);
+        // Sync theme from Odoo after session is confirmed on page load
+        syncThemeFromOdoo();
         return;
       }
 
@@ -296,6 +410,7 @@ const App: React.FC = () => {
 
         if (data?.ok) {
           await verifySessionSafe(true);
+          syncThemeFromOdoo();
         } else {
           clearAuthState();
           navigate('/login');
@@ -400,12 +515,18 @@ const App: React.FC = () => {
       password: '',
       confirmPassword: '',
       agreedToTerms: true,
+      country: '',
+      partner_id: null
     };
 
     setIsLoggedIn(true);
     setAuthFormData(nextUser);
     setUser(nextUser);
     navigate('/');
+
+    // Fetch the user's saved theme from Odoo and apply it.
+    // Runs after login so the correct cross-device theme is applied immediately.
+    syncThemeFromOdoo();
   };
 
   const logout = async () => {
@@ -419,8 +540,80 @@ const App: React.FC = () => {
     }
   };
 
+  const toastMessage = useCallback(
+    (msg: string, options: { type: 'success' | 'error' }) => {
+      toast.dismiss();
+      setIsToastBackdropOpen(true);
+
+      const toastOptions = {
+        toastId: 'center-toast',
+        onClose: () => setIsToastBackdropOpen(false),
+      };
+
+      if (options.type === 'success') {
+        toast.success(msg, toastOptions);
+      } else {
+        toast.error(msg, toastOptions);
+      }
+    },
+    []
+  );
+
+  if(path === '/sso/check') {
+    return <SsoCheck />;
+  }
 
   return (
+    <>
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        style: {
+          background: "#fef2f2",
+          color: "#b91c1c",
+          border: "1px solid #fca5a5",
+        },
+      }}
+    />
+    <AnnouncementBar
+        isLoggedIn={!!user}
+        profileComplete={(user as any)?.profileComplete}
+      />
+    {isToastBackdropOpen && (
+        <div
+          className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-[1px]"
+          onClick={() => {
+            toast.dismiss('center-toast');
+            setIsToastBackdropOpen(false);
+          }}
+        />
+      )}
+
+      <ToastContainer
+        position="top-center"
+        hideProgressBar={true}
+        autoClose={false}
+        closeOnClick={false}
+        pauseOnHover
+        draggable={false}
+        style={{
+          top: '50%',
+          left: '50%',
+          right: 'auto',
+          bottom: 'auto',
+          transform: 'translate(-50%, -50%)',
+          width: 'auto',
+          maxWidth: '90vw',
+          background: 'transparent',
+          zIndex: 9999,
+        }}
+        toastStyle={{
+          width: 'fit-content',
+          minWidth: '320px',
+          maxWidth: '90vw',
+          padding: "1.7rem",
+        }}
+      />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
@@ -435,16 +628,14 @@ const App: React.FC = () => {
             }}
             aria-label="Return to Snabbb.io gallery"
           >
-            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-              <i className="fa-solid fa-layer-group text-xs sm:text-lg"></i>
-            </div>
             <span className="font-extrabold text-lg sm:text-2xl tracking-tighter text-slate-900">
-              Snabbb.
-              <span className="text-blue-600">io</span>
+              <span style={{ transform: 'skewX(353deg)', display: 'inline-block' }}>App.</span>
+              <SnabbbIcon />
             </span>
           </button>
 
           <div className="flex items-center gap-2 sm:gap-8">
+            <ThemeToggle />
             {isLoggedIn === null ? (
               <div className="w-24 h-11 bg-gray-200 rounded-xl animate-pulse"></div>
             ) : isLoggedIn ? (
@@ -455,67 +646,143 @@ const App: React.FC = () => {
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                   className="block relative"
                 >
-                  <div
-                    className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full shadow-md flex items-center justify-center ${avatarBgColor} text-white font-black text-sm sm:text-base hover:border-blue-500/30 transition-all`}
-                  >
+                  {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="Profile preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : profileImageUrl ? (
+                  <img
+                    src={profileImageUrl}
+                    alt="Profile"
+                    className="w-11 h-11 rounded-full object-cover shadow-md"
+                  />
+                ) : (
+                  <span className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full shadow-md flex items-center justify-center ${avatarBgColor} text-white font-black text-sm sm:text-base hover:border-blue-500/30 transition-all`}>
                     {userInitial}
-                  </div>
+                  </span>
+                )}
                 </motion.button>
 
-                <AnimatePresence>
-                  {isProfileMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.12)] overflow-hidden"
-                    >
-                      <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-                          Profile Info
-                        </p>
-
-                        <div className="flex flex-col gap-3">
-                          <div>
-                            <p className="text-base font-bold text-slate-900 truncate leading-tight">
-                              {authFormData?.fullName}
-                            </p>
-
-                            {authFormData?.jobPosition && (
-                              <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-wider border border-blue-100/50">
-                                {authFormData.jobPosition}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 text-slate-500">
-                              <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
-                              <p className="text-xs font-semibold truncate">{authFormData?.email}</p>
+               <AnimatePresence>
+                {isProfileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.12)] overflow-hidden"
+                  >
+                    {/* Profile Info */}
+                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                        Profile Info
+                      </p>
+                
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <p className="text-base font-bold text-slate-900 truncate leading-tight">
+                            {authFormData?.fullName}
+                          </p>
+                
+                          {authFormData?.jobPosition && (
+                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-wider border border-blue-100/50">
+                              {authFormData.jobPosition}
                             </div>
-
-                            {authFormData?.phone && (
-                              <div className="flex items-center gap-2 text-slate-500">
-                                <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
-                                <p className="text-xs font-semibold truncate">{authFormData?.phone}</p>
-                              </div>
-                            )}
+                          )}
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 text-slate-500">
+                            <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
+                            <p className="text-xs font-semibold truncate">{authFormData?.email}</p>
                           </div>
+                        
+                          {authFormData?.phone && (
+                            <div className="flex items-center gap-2 text-slate-500">
+                              <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
+                              <p className="text-xs font-semibold truncate">{authFormData?.phone}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      <div className="p-2">
-                        <button
-                          onClick={logout}
-                          className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-2xl transition-all group text-left"
-                        >
-                          <i className="fa-solid fa-arrow-right-from-bracket w-5"></i>
-                          Log Out
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                        
+                    {/* Nav Items */}
+                    <div className="p-2 border-b border-slate-100">
+                      {/* Snabbb Credit */}
+                      <button
+                        // onClick={() => router.push('/wallet')}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                      >
+                        <div className="w-7 h-7 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-wallet text-[11px] text-violet-500"></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800 leading-tight">Snabbb Credit</p>
+                          <p className="text-[11px] font-semibold text-slate-400 truncate">
+                            {creditBalance !== null ? `${creditBalance} credits` : 'Loading...'}
+                          </p>
+                        </div>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                      </button>
+                        
+                      {/* My Channel */}
+                      <button
+                        onClick={async () => {
+                          const res = await createAppLink({
+                            app: 'e-learning',
+                            email: authUser?.username,
+                            name: authUser?.name,
+                          });
+                          
+                          const supabaseUserId = res.result?.supabase_user_id;
+                          const w = window.open('', '_blank');
+                          if (supabaseUserId && w) {
+                            w.location.href = `https://e-learning.snabbb.com/channel/${supabaseUserId}`;
+                          }
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                      >
+                        <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-tv text-[11px] text-sky-500"></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800 leading-tight">My Channel</p>
+                          <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your channel</p>
+                        </div>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                      </button>
+                        
+                      {/* Settings */}
+                      <button
+                        onClick={() => navigate('/profile-settings')}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                      >
+                        <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-gear text-[11px] text-slate-500"></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800 leading-tight">Settings</p>
+                          <p className="text-[11px] font-semibold text-slate-400 truncate">Account & preferences</p>
+                        </div>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                      </button>
+                    </div>
+                        
+                    {/* Log Out */}
+                    <div className="p-2">
+                      <button
+                        onClick={logout}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-2xl transition-all group text-left"
+                      >
+                        <i className="fa-solid fa-arrow-right-from-bracket w-5"></i>
+                        Log Out
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               </div>
             ) : (
               <>
@@ -523,7 +790,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/login')}
                   className={`px-3 sm:px-4 py-2 font-bold text-xs sm:text-base transition-colors ${
-                    path === '/login' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-900'
+                    path === '/login' ? 'text-tiffany-600' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Log In
@@ -533,7 +800,7 @@ const App: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate('/signup')}
-                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-tiffany-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-tiffany-600/20 hover:bg-tiffany-700 transition-all"
                 >
                   Sign Up
                 </motion.button>
@@ -600,11 +867,17 @@ const App: React.FC = () => {
           {isAuthRoute && (
             <AuthPage
               authMode={authMode}
-              setCurrentView={() => {}}
+              setCurrentView={setPath}
               onAuthSuccess={handleSuccessfulAuth}
               setLoggedInUser={setLoggedInUser}
               setFormData={setAuthFormData}
+              setToastMsg={toastMessage}
             />
+          )}
+          {path === '/profile-settings' && (
+            <motion.div key="profile-settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <ProfileSettingsPage />
+            </motion.div>
           )}
 
           {path === '/privacy' && (
@@ -616,6 +889,12 @@ const App: React.FC = () => {
           {path === '/terms' && (
             <motion.div key="terms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <TermsPage />
+            </motion.div>
+          )}
+
+          {path === '/disclaimer' && (
+            <motion.div key="disclaimer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <DisclaimerPage />
             </motion.div>
           )}
 
@@ -633,10 +912,10 @@ const App: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}
                 >
-                  <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
-                    Snabbb.
-                    <span className="text-blue-600">io</span>
-                  </h1>
+                  <span className="text-5xl md:text-7xl font-black mb-8 tracking-tight leading-tight max-w-4xl">
+                    <h1 style={{transform: 'skewX(353deg)', display: 'inline-block'}}>App.</h1>
+                    <SnabbbIcon />
+                  </span>
 
                   <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
                     {isLoggedIn
@@ -672,7 +951,7 @@ const App: React.FC = () => {
                       onClick={() => setActiveCategory(cat)}
                       className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 border ${
                         activeCategory === cat
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/30'
+                          ? 'bg-tiffany-600 text-white border-tiffany-600 shadow-md shadow-tiffany-600/30'
                           : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200 hover:bg-slate-50 shadow-sm'
                       }`}
                     >
@@ -753,7 +1032,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/privacy')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    path === '/privacy' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/privacy' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
                   }`}
                 >
                   Privacy
@@ -762,10 +1041,19 @@ const App: React.FC = () => {
                 <button
                   onClick={() => navigate('/terms')}
                   className={`transition-colors text-xs font-black uppercase tracking-widest ${
-                    path === '/terms' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                    path === '/terms' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
                   }`}
                 >
                   Terms
+                </button>
+
+                <button
+                  onClick={() => navigate('/disclaimer')}
+                  className={`transition-colors text-xs font-black uppercase tracking-widest ${
+                    path === '/disclaimer' ? 'text-tiffany-600' : 'text-slate-400 hover:text-tiffany-600'
+                  }`}
+                >
+                  Disclaimer
                 </button>
               </div>
             </div>
@@ -773,6 +1061,7 @@ const App: React.FC = () => {
         )}
       </main>
     </motion.div>
+    </>
   );
 };
 

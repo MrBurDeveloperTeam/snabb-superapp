@@ -7,8 +7,8 @@ export interface MiniApp {
   route?: string;
   category: Category;
   icon: string;
+  iconDark?: string;
   colorScheme: {
-    bg: string;
     text: string;
     icon: string;
   };

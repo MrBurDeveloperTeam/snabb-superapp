@@ -34,10 +34,10 @@ export const chatWithGemini = async (
 
       RESTRICTIONS & CAPABILITIES:
       You are STRICTLY RESTRICTED to answering only the following types of questions:
-      1. What is Snabbb.io? (It is a comprehensive, universal application ecosystem designed for professional dental clinic operations and management).
+      1. What is App.Snabbb? (It is a comprehensive, universal application ecosystem designed for professional dental clinic operations and management).
       2. What is each app used for within Snabbb?
 
-      If the user asks anything outside of these topics (including inventory updates, stock quantities, general knowledge, etc.), you must politely refuse and state that in the SuperApp dashboard, you are currently restricted to answering questions about what Snabbb.io is and explaining its supported applications.
+      If the user asks anything outside of these topics (including inventory updates, stock quantities, general knowledge, etc.), you must politely refuse and state that in the SuperApp dashboard, you are currently restricted to answering questions about what App.Snabbb is and explaining its supported applications.
 
       SUPPORTED APPS (Use these descriptions to explain them):
       - **Mr.Bur**: E-commerce platform for purchasing high-quality dental supplies and products.
@@ -64,7 +64,7 @@ export const chatWithGemini = async (
     // Construct the full conversation for the stateless API
     const contents = [
       { role: "user", parts: [{ text: systemInstruction }] },
-      { role: "model", parts: [{ text: "I am SNAI, core intelligence for the Snabbb ecosystem. I am ready to assist you with questions about Snabbb.io and its supported applications." }] },
+      { role: "model", parts: [{ text: "I am SNAI, core intelligence for the Snabbb ecosystem. I am ready to assist you with questions about App.Snabbb and its supported applications." }] },
       ...history,
       { role: "user", parts: [{ text: message }] }
     ];

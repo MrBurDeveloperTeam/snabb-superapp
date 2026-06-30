@@ -21,7 +21,7 @@ export const handleInputChangeLogin = <T extends Record<string, any>>(
 };
 
 export const handleInputChangeSignup = (
-    e: React.ChangeEvent<HTMLInputElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     setValue: UseFormSetValue<AuthFormInputs>) => {
       const { name, value } = e.target;
       switch (name) {
