@@ -23,7 +23,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Shops',
     icon: 'https://app.snabbb.com/icons/mr_bur.png',
     route: getMrBurUrlFromCompanyCode(companyCode),
-    colorScheme: { text: 'text-[#4338ca]', icon: '#4338ca' }
+    colorScheme: { text: 'text-[#4338ca]', icon: '#0891b2' }
   },
   {
     id: 'app-12',
@@ -31,14 +31,14 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Shops',
     icon: '/icons/kaneiko_black.png',
     // iconDark: '/icons/kaneiko_white.png',
-    colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
+    colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
   },
   {
     id: 'app-13',
     title: 'Lunaflow',
     category: 'Shops',
     icon: 'https://app.snabbb.com/images/lunaflow.png',
-    colorScheme: {  text: 'text-[#a21caf]', icon: '#a21caf' }
+    colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
   },
   // {
   //   id: 'app-11',
@@ -52,7 +52,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Endora',
     category: 'Shops',
     icon: 'https://app.snabbb.com/images/endora.png',
-    colorScheme: {  text: 'text-[#15803d]', icon: '#15803d' }
+    colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
   },
   // {
   //   id: 'app-13',
@@ -109,7 +109,7 @@ export const MINI_APPS: MiniApp[] = [
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/profit_calculator.png',
     route: `https://calculator.snabbb.com`,
-    colorScheme: {  text: 'text-[#b45309]', icon: '#312e81' }
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
     id: 'app-9',
