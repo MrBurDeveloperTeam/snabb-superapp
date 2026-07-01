@@ -331,7 +331,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           )}
 
           <div
-            className={`${iconContentClass} group-hover:scale-110 ${
+            className={`${iconContentClass} group-hover:scale-100 ${
               !isImageUrl ? app.colorScheme.text : ''
             }`}
           >
@@ -352,7 +352,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
         {!isComingSoon && (
           <div
-            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl -z-10 scale-110"
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl -z-10 scale-100"
             style={glowStyle}
           />
         )}
