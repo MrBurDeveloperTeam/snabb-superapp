@@ -331,18 +331,14 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           )}
 
           <div
-            className={`${iconContentClass} ${
-              isComingSoon ? 'opacity-75 grayscale-[20%]' : 'group-hover:scale-110'
-            } ${!isImageUrl ? app.colorScheme.text : ''}`}
+            className={`${iconContentClass} group-hover:scale-110 ${
+              !isImageUrl ? app.colorScheme.text : ''
+            }`}
           >
             {isImageUrl ? (
-              renderIcon(isComingSoon ? 'opacity-70 grayscale-[35%]' : '')
+              renderIcon('')
             ) : (
-              <i
-                className={`${app.icon} text-3xl sm:text-4xl ${
-                  isComingSoon ? 'text-slate-400' : ''
-                }`}
-              />
+              <i className={`${app.icon} text-3xl sm:text-4xl`} />
             )}
           </div>
 
@@ -351,8 +347,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
               <span className="text-[8px] font-black uppercase tracking-[0.14em] bg-white/80 text-slate-500 px-2.5 py-1 rounded-full border border-slate-200/80 shadow-sm">
                 Coming Soon
               </span>
-            </div>
-          )}
+            </div>)}
         </motion.div>
 
         {!isComingSoon && (
