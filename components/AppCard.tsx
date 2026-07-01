@@ -172,7 +172,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   const iconInsetClass = 'absolute inset-[3px]';
 
   const cardClass =
-    'relative z-10 w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-500';
+    'relative z-10 w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-150';
 
   const wrapperClass =
     'group flex flex-col items-center gap-3 sm:gap-4 w-full pb-4 pt-2';
