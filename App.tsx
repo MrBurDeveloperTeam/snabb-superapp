@@ -361,6 +361,32 @@ useEffect(() => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // ─── Theme sync from Odoo ─────────────────────────────────────────────────
+  // Fetches the user's saved theme from Odoo and applies it locally.
+  // Called after login and on session bootstrap so cross-device theme is correct.
+  const setTheme = useThemeStore((s) => s.setTheme);
+
+  const syncThemeFromOdoo = async () => {
+    try {
+      const res = await fetch('/api/user/theme', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.ok && data?.authenticated && data?.theme) {
+        const valid = new Set(['light', 'dark', 'system']);
+        if (valid.has(data.theme)) {
+          setTheme(data.theme); // updates Zustand + writes cookie
+        }
+      }
+    } catch {
+      // Odoo unreachable — keep current theme
+
+    }
+  }
+
   const hydrateSupabaseSession = useCallback(async () => {
     try {
       const { data: existing } = await supabase.auth.getSession();
