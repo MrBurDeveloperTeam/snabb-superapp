@@ -361,37 +361,34 @@ useEffect(() => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // ─── Theme sync from Odoo ─────────────────────────────────────────────────
-  // Fetches the user's saved theme from Odoo and applies it locally.
-  // Called after login and on session bootstrap so cross-device theme is correct.
-  const setTheme = useThemeStore((s) => s.setTheme);
-
-  const syncThemeFromOdoo = async () => {
+  const hydrateSupabaseSession = useCallback(async () => {
     try {
-      const res = await fetch('/api/user/theme', {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data?.ok && data?.authenticated && data?.theme) {
-        const valid = new Set(['light', 'dark', 'system']);
-        if (valid.has(data.theme)) {
-          setTheme(data.theme); // updates Zustand + writes cookie
-        }
-      }
-    } catch {
-      // Odoo unreachable — keep current theme
-    }
-  };
+      const { data: existing } = await supabase.auth.getSession();
+      if (existing?.session) return; // already have a Supabase session
 
-  // ─── Session bootstrap ────────────────────────────────────────────────────
+      // Bridge the shared Snabbb SSO cookie into a real Supabase Auth session,
+      // so VirtualPet (and anything else using supabase.auth) sees the same
+      // logged-in user as the other Snabbb apps.
+      const sso = await api.get('/sso/exchange');
+      if (sso?.data?.access_token && sso?.data?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: sso.data.access_token,
+          refresh_token: sso.data.refresh_token,
+        });
+      }
+    } catch (err) {
+      // Non-fatal: the Odoo-based login flow below doesn't depend on this.
+      console.warn('[SSO] Supabase session hydrate failed:', err);
+    }
+  }, []);
+
   useEffect(() => {
     if (didInitRef.current) return;
     didInitRef.current = true;
 
     const bootstrapSession = async () => {
+      await hydrateSupabaseSession();
+
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('sid');
 
@@ -422,7 +419,7 @@ useEffect(() => {
     };
 
     bootstrapSession();
-  }, [verifySessionSafe, clearAuthState, navigate]);
+  }, [verifySessionSafe, clearAuthState, navigate, hydrateSupabaseSession]);
 
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
