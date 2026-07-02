@@ -141,7 +141,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-14',
     title: 'Insurance',
     category: 'Value Added',
-    icon: 'fa-solid fa-shield-halved',
+    icon: '/icons/insurance.png',
     // route: `https://app.snabbb.com`,
     colorScheme: {  text: 'text-[#166534]', icon: '#0891b2' }
   },
@@ -149,7 +149,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-15',
     title: 'Lease',
     category: 'Value Added',
-    icon: 'fa-solid fa-file-contract',
+    icon: '/icons/lease.png',
     // route: `https://app.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
