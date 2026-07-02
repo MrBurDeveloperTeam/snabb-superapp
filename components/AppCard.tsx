@@ -126,6 +126,16 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           break;
         }
 
+        case app.route.includes('snabbb-reward'): {
+          const res = await createAppLink({
+            app: 'reward',
+            email: user.username,
+            name: user.name,
+          });
+          if (res.result?.url && w) w.location.href = res.result.url;
+          break;
+        }
+
         default:
           break;
       }
