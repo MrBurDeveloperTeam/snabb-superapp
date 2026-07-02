@@ -153,6 +153,15 @@ export const MINI_APPS: MiniApp[] = [
     // route: `https://app.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
+  {
+    id: 'app-15',
+    title: 'Snabbb Reward',
+    category: 'Value Added',
+    icon: 'fa-solid fa-award',
+    route: `https://snabbb-reward.snabbb.com`,
+    colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
+  },
 ];
+
 
 export const CATEGORIES: string[] = ['All', 'Shops', 'Productivity', 'Value Added'];
