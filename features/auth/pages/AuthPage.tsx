@@ -128,7 +128,7 @@ return(
               setToastMsg={setToastMsg}
             />
           )}
-          </AnimatePresence>
+        </AnimatePresence>
 
   <Showcase isLoginMode={authMode} />
   </Box>
