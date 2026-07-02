@@ -157,7 +157,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-15',
     title: 'Snabbb Reward',
     category: 'Value Added',
-    icon: `icons/reward.png`,
+    icon: `/icons/reward.png`,
     route: `https://reward.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
