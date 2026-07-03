@@ -34,6 +34,7 @@ import { profile } from 'console';
 import { useProfileImage } from './hooks/useProfileImage';
 import ThemeToggle from './components/ThemeToggle';
 import { useThemeStore } from './store/themeStore';
+import LoadingOverlay from './components/LoadingOverlay';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -588,6 +589,7 @@ useEffect(() => {
 
   return (
     <>
+    <LoadingOverlay isLoading={isPending} message='loading...' />
     <Toaster
       position="top-right"
       toastOptions={{
