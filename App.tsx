@@ -560,7 +560,9 @@ useEffect(() => {
       console.error('Logout failed:', error);
     } finally {
       clearAuthState();
-      window.location.href = 'https://app.snabbb.com';
+    window.location.href =
+      "https://e-learning.snabbb.com/logout?next=https%3A%2F%2Fapp.snabbb.com%2Flogin";
+      // window.location.href = 'https://app.snabbb.com';
     }
   };
 
