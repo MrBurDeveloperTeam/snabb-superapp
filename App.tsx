@@ -735,7 +735,19 @@ useEffect(() => {
                     <div className="p-2 border-b border-slate-100">
                       {/* Snabbb Credit */}
                       <button
-                        // onClick={() => router.push('/wallet')}
+                        onClick={async () => {
+                          const res = await createAppLink({
+                            app: 'reward',
+                            email: authUser?.username,
+                            name: authUser?.name,
+                          });
+                          
+                          const supabaseUserId = res.result?.supabase_user_id;
+                          const w = window.open('', '_blank');
+                          if (supabaseUserId && w) {
+                            w.location.href = `https://reward.snabbb.com`;
+                          }
+                        }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
                         <div className="w-7 h-7 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
