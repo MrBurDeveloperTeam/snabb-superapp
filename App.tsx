@@ -850,7 +850,9 @@ useEffect(() => {
 
       <main className="flex-1 relative">
         <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
+          {/* key remounts CatMascot when auth changes → entry walk plays after login */}
           <CatMascot
+            key={isLoggedIn ? 'logged-in' : 'guest'}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
             isHidden={isAuthRoute || isVirtualPetOpen}
