@@ -391,8 +391,13 @@ useEffect(() => {
   const hydrateSupabaseSession = useCallback(async () => {
     try {
       const { data: existing } = await supabase.auth.getSession();
+      const res = await createAppLink({
+              app: 'snabbb',
+              email: user.email,
+              name: user.fullName,
+            });
       if (existing?.session) return; // already have a Supabase session
-
+      
       // Bridge the shared Snabbb SSO cookie into a real Supabase Auth session,
       // so VirtualPet (and anything else using supabase.auth) sees the same
       // logged-in user as the other Snabbb apps.
@@ -403,6 +408,7 @@ useEffect(() => {
           refresh_token: sso.data.refresh_token,
         });
       }
+      window.location.href = res.result.url;
     } catch (err) {
       // Non-fatal: the Odoo-based login flow below doesn't depend on this.
       console.warn('[SSO] Supabase session hydrate failed:', err);
