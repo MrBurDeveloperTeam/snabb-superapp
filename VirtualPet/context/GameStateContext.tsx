@@ -3,6 +3,7 @@ import { PetStats, RoomType, FoodItem } from '../types';
 import { BED_ITEMS, INITIAL_STATS, XP_TO_LEVEL_UP, INITIAL_INVENTORY, FOOD_ITEMS, TOY_ITEMS } from '../constants';
 import { supabase } from '../../services/supabaseClient';
 import { DEFAULT_PET_ID, normalizePetId } from '../petOptions';
+import { fetchVirtualPetState, saveVirtualPetState, getStoredExternalUserId } from '../services/odooVirtualPetService';
 
 type SoapInventory = Record<'soap' | 'soap2', number>;
 const TOY_ITEM_IDS = TOY_ITEMS.map((toy) => toy.id);
@@ -73,6 +74,7 @@ const GameStateContext = createContext<GameStateContextType | undefined>(undefin
 
 export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCode?: string }> = ({ children, currencyCode: initialCurrencyCode = DEFAULT_CURRENCY_CODE }) => {
     const [userId, setUserId] = useState<string | null>(null);
+    const [userEmail, setUserEmail] = useState<string | null>(null);
     const [stats, setStats] = useState<PetStats>(INITIAL_STATS);
     const [petName, _setPetName] = useState(DEFAULT_PET_ID);
     const [hasAdoptedPet, setHasAdoptedPet] = useState(false);
@@ -179,11 +181,15 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
     useEffect(() => {
         const init = async () => {
             let currentUserId: string | null = null;
+            let currentUserEmail: string | null = null;
+            const currentExternalUserId = getStoredExternalUserId() || null;
             try {
                 const { data: sessionData } = await supabase.auth.getSession();
                 if (sessionData?.session?.user) {
                     currentUserId = sessionData.session.user.id;
+                    currentUserEmail = sessionData.session.user.email || null;
                     setUserId(currentUserId);
+                    setUserEmail(currentUserEmail);
                 }
             } catch (err) {
                 console.error("Auth error", err);
@@ -238,17 +244,77 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
             if (savedInv) setInventory(JSON.parse(savedInv));
             localStorage.removeItem('virtual_pet_bathroom_soap_inventory');
 
-            // Load from Supabase if logged in (overriding localStorage)
-            if (currentUserId) {
+            // Load from Odoo if logged in (overriding localStorage).
+            // Odoo is now the source of truth for each user's virtual pet state;
+            // localStorage is kept only as an offline/cache fallback.
+            if (currentUserId || currentUserEmail || currentExternalUserId) {
                 try {
-                    let shouldLoadPetInventory = false;
-                    const { data: petData, error: petErr } = await supabase
-                        .from('inventory_pet')
-                        .select('*')
-                        .eq('user_id', currentUserId)
-                        .maybeSingle();
+                    const response = await fetchVirtualPetState({
+                        email: currentUserEmail,
+                        externalUserId: currentExternalUserId,
+                        supabaseUserId: currentUserId,
+                    });
 
-                    if (!petData && !petErr) {
+                    if (response.exists && response.state) {
+                        const remote = response.state;
+                        const baseStats = {
+                            hunger: remote.stats?.hunger ?? INITIAL_STATS.hunger,
+                            energy: remote.stats?.energy ?? INITIAL_STATS.energy,
+                            happiness: remote.stats?.happiness ?? INITIAL_STATS.happiness,
+                            hygiene: remote.stats?.hygiene ?? INITIAL_STATS.hygiene,
+                            level: remote.stats?.level ?? INITIAL_STATS.level,
+                            xp: remote.stats?.xp ?? INITIAL_STATS.xp,
+                            coins: remote.stats?.coins ?? INITIAL_STATS.coins,
+                        };
+
+                        // Apply offline decay using the Odoo updated_at timestamp.
+                        const savedAt = remote.updated_at ? new Date(remote.updated_at).getTime() : null;
+                        const elapsedSecs = savedAt ? Math.max(0, (Date.now() - savedAt) / 1000) : 0;
+                        const decayedStats: PetStats = elapsedSecs > 0 ? {
+                            ...baseStats,
+                            hunger: Math.max(0, baseStats.hunger - 0.01 * elapsedSecs),
+                            energy: Math.max(0, baseStats.energy - 0.005 * elapsedSecs),
+                            hygiene: Math.max(0, baseStats.hygiene - 0.004 * elapsedSecs),
+                            happiness: Math.max(0, baseStats.happiness - 0.006 * elapsedSecs),
+                        } : baseStats;
+
+                        if (elapsedSecs > 0) {
+                            console.log(`[VirtualPet] Applied ${Math.round(elapsedSecs)}s of offline decay (Odoo)`);
+                        }
+
+                        setStats(decayedStats);
+                        localStorage.setItem('pet_stats', JSON.stringify(decayedStats));
+                        localStorage.setItem('pet_last_saved_at', new Date().toISOString());
+
+                        if (remote.pet_name && remote.has_adopted_pet !== false) {
+                            const adoptedPet = normalizePetId(remote.pet_name);
+                            _setPetName(adoptedPet);
+                            setHasAdoptedPet(true);
+                            localStorage.setItem('pet_name', adoptedPet);
+                            localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+                        } else {
+                            _setPetName(DEFAULT_PET_ID);
+                            setHasAdoptedPet(false);
+                            localStorage.removeItem('pet_name');
+                            localStorage.removeItem(PET_ADOPTION_CONFIRMED_KEY);
+                        }
+
+                        setInventory(remote.inventory || {});
+                        localStorage.setItem('pet_inventory', JSON.stringify(remote.inventory || {}));
+                        setIsSleeping(!!remote.is_sleeping);
+                        localStorage.setItem(PET_SLEEPING_KEY, String(!!remote.is_sleeping));
+                        if (remote.active_ball_id) {
+                            setActiveBallId(remote.active_ball_id);
+                            localStorage.setItem('pet_active_ball', remote.active_ball_id);
+                        }
+                        setActiveBedId(remote.active_bed_id || null);
+                        if (remote.active_bed_id) {
+                            localStorage.setItem(ACTIVE_BED_KEY, remote.active_bed_id);
+                        } else {
+                            localStorage.removeItem(ACTIVE_BED_KEY);
+                        }
+                    } else {
+                        // First time for this user in Odoo: start clean, but do not auto-adopt.
                         const starterStats = createStarterStats();
                         const starterInventory = createStarterInventory();
                         clearPetLocalStorage();
@@ -264,99 +330,11 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                         localStorage.setItem('pet_inventory', JSON.stringify(starterInventory));
                         localStorage.setItem('pet_last_saved_at', new Date().toISOString());
                     }
-
-                    if (petData && !petErr) {
-                        // Apply offline decay using Supabase updated_at timestamp
-                        const savedAt = petData.updated_at ? new Date(petData.updated_at).getTime() : null;
-                        const elapsedSecs = savedAt ? Math.max(0, (Date.now() - savedAt) / 1000) : 0;
-
-                        const baseStats = {
-                            hunger: petData.hunger ?? INITIAL_STATS.hunger,
-                            energy: petData.energy ?? INITIAL_STATS.energy,
-                            happiness: petData.happiness ?? INITIAL_STATS.happiness,
-                            hygiene: petData.hygiene ?? INITIAL_STATS.hygiene,
-                            level: petData.level ?? INITIAL_STATS.level,
-                            xp: petData.xp ?? INITIAL_STATS.xp,
-                            coins: petData.coins ?? INITIAL_STATS.coins
-                        };
-
-                        const decayedStats: PetStats = elapsedSecs > 0 ? {
-                            ...baseStats,
-                            hunger:    Math.max(0, baseStats.hunger    - 0.01  * elapsedSecs),
-                            energy:    Math.max(0, baseStats.energy    - 0.005 * elapsedSecs),
-                            hygiene:   Math.max(0, baseStats.hygiene   - 0.004 * elapsedSecs),
-                            happiness: Math.max(0, baseStats.happiness - 0.006 * elapsedSecs),
-                        } : baseStats;
-
-                        if (elapsedSecs > 0) {
-                            console.log(`[VirtualPet] Applied ${Math.round(elapsedSecs)}s of offline decay (Supabase)`);
-                        }
-
-                        const localSleepUpdatedAt = savedSleepingUpdatedAt
-                            ? new Date(savedSleepingUpdatedAt).getTime()
-                            : 0;
-                        const remoteUpdatedAt = petData.updated_at
-                            ? new Date(petData.updated_at).getTime()
-                            : 0;
-                        const shouldUseLocalSleep =
-                            savedSleeping !== null &&
-                            localSleepUpdatedAt > 0 &&
-                            localSleepUpdatedAt >= remoteUpdatedAt;
-
-                        setStats(decayedStats);
-                        if (petData.pet_name) {
-                            const adoptedPet = normalizePetId(petData.pet_name);
-                            _setPetName(adoptedPet);
-                            setHasAdoptedPet(true);
-                            localStorage.setItem('pet_name', adoptedPet);
-                            localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
-                            shouldLoadPetInventory = true;
-                            setIsSleeping(shouldUseLocalSleep ? savedSleeping === 'true' : !!petData.is_sleeping);
-                            if (petData.active_ball_id) setActiveBallId(petData.active_ball_id);
-                            setActiveBedId(petData.active_bed_id || null);
-                        } else {
-                            const starterStats = createStarterStats();
-                            const starterInventory = createStarterInventory();
-                            clearPetLocalStorage();
-                            setStats(starterStats);
-                            setInventory(starterInventory);
-                            setSoapInventory({ soap: 0, soap2: 0 });
-                            setActiveBallId('ball_red');
-                            setActiveBedId(null);
-                            _setPetName(DEFAULT_PET_ID);
-                            setHasAdoptedPet(false);
-                            localStorage.setItem('pet_stats', JSON.stringify(starterStats));
-                            localStorage.setItem('pet_inventory', JSON.stringify(starterInventory));
-                            localStorage.setItem('pet_last_saved_at', new Date().toISOString());
-                        }
-                    }
-
-                    if (shouldLoadPetInventory) {
-                        const { data: invData, error: invErr } = await supabase
-                            .from('pet_inventory')
-                            .select('item_id, quantity')
-                            .eq('user_id', currentUserId);
-
-                        const newInv: Record<string, number> = {};
-                        if (invData && !invErr) {
-                            invData.forEach(row => {
-                                if (row.item_id === 'soap' || row.item_id === 'soap2') return;
-                                if (TOY_ITEM_IDS.includes(row.item_id)) {
-                                    newInv[row.item_id] = row.quantity > 0 ? 1 : 0;
-                                } else {
-                                    newInv[row.item_id] = row.quantity;
-                                }
-                            });
-                        } else if (invErr) {
-                            console.error('Failed to load pet inventory', invErr);
-                        }
-                        setInventory(newInv);
-                    }
                 } catch (err) {
-                    console.error("Failed to load from supabase", err);
+                    console.error('Failed to load virtual pet state from Odoo; using local fallback', err);
                 }
             }
-            
+
             setIsPetAdoptionReady(true);
             isHydrated.current = true;
         };
@@ -364,7 +342,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
         init();
     }, []);
 
-    // Sync to Supabase / LocalStorage
+    // Sync to Odoo / LocalStorage
     useEffect(() => {
         if (!isHydrated.current) return;
 
@@ -389,42 +367,22 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
             localStorage.setItem(PET_SLEEPING_KEY, String(isSleeping));
             localStorage.setItem('pet_last_saved_at', new Date().toISOString());
 
-            if (userId) {
+            if (userId || userEmail || getStoredExternalUserId()) {
                 try {
-                    await supabase.from('inventory_pet').upsert({
-                        user_id: userId,
+                    await saveVirtualPetState({
+                        email: userEmail,
+                        externalUserId: getStoredExternalUserId(),
+                        supabaseUserId: userId,
                         pet_name: hasAdoptedPet ? petName : null,
-                        hunger: stats.hunger,
-                        energy: stats.energy,
-                        happiness: stats.happiness,
-                        hygiene: stats.hygiene,
-                        level: stats.level,
-                        xp: stats.xp,
-                        coins: stats.coins,
+                        has_adopted_pet: hasAdoptedPet,
+                        stats,
+                        inventory,
                         is_sleeping: isSleeping,
                         active_ball_id: activeBallId,
                         active_bed_id: activeBedId,
-                        updated_at: new Date().toISOString()
                     });
-
-                    // Fast full sync for pet_inventory: delete all & re-insert
-                    await supabase.from('pet_inventory').delete().eq('user_id', userId);
-                    
-                    const combinedInventory: Record<string, number> = inventory;
-
-                    const invRows = Object.entries(combinedInventory)
-                        .filter(([, qty]) => qty > 0)
-                        .map(([itemId, qty]) => ({
-                        user_id: userId,
-                        item_id: itemId,
-                        quantity: TOY_ITEM_IDS.includes(itemId) ? 1 : qty
-                    }));
-
-                    if (invRows.length > 0) {
-                        await supabase.from('pet_inventory').insert(invRows);
-                    }
                 } catch (e) {
-                    console.error("Failed to sync to Supabase", e);
+                    console.error('Failed to sync virtual pet state to Odoo', e);
                 }
             }
         }, 2000); // 2 second debounce
@@ -432,7 +390,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
         return () => {
             if (saveTimeout.current) clearTimeout(saveTimeout.current);
         };
-    }, [stats, petName, hasAdoptedPet, inventory, isSleeping, activeBallId, activeBedId, userId]);
+    }, [stats, petName, hasAdoptedPet, inventory, isSleeping, activeBallId, activeBedId, userId, userEmail]);
 
     useEffect(() => {
         if (!isHydrated.current) return;
@@ -512,31 +470,19 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
         const savedAt = new Date().toISOString();
 
         try {
-            if (userId) {
-                const { error } = await supabase.from('inventory_pet').upsert({
-                    user_id: userId,
+            if (userId || userEmail || getStoredExternalUserId()) {
+                await saveVirtualPetState({
+                    email: userEmail,
+                    externalUserId: getStoredExternalUserId(),
+                    supabaseUserId: userId,
                     pet_name: adoptedPet,
-                    hunger: starterStats.hunger,
-                    energy: starterStats.energy,
-                    happiness: starterStats.happiness,
-                    hygiene: starterStats.hygiene,
-                    level: starterStats.level,
-                    xp: starterStats.xp,
-                    coins: starterStats.coins,
+                    has_adopted_pet: true,
+                    stats: starterStats,
+                    inventory: starterInventory,
                     is_sleeping: false,
                     active_ball_id: 'ball_red',
                     active_bed_id: null,
-                    updated_at: savedAt
                 });
-
-                if (error) throw error;
-
-                const { error: inventoryError } = await supabase
-                    .from('pet_inventory')
-                    .delete()
-                    .eq('user_id', userId);
-
-                if (inventoryError) throw inventoryError;
             }
 
             clearPetLocalStorage();
