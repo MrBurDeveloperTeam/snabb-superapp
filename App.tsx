@@ -356,6 +356,12 @@ useEffect(() => {
       await verifySessionSafe();
     }, 1000), [verifySessionSafe]);
 
+    useEffect(() => {
+      if(user && user?.email) {
+        user && syncmrbursso();
+      }
+    },[user]);
+
   useEffect(() => {
     const handlePopState = () => {
       setPath(window.location.pathname);
