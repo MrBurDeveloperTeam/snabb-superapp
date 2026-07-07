@@ -57,6 +57,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const App: React.FC = () => {
+  const { mutateAsync: createAppLinks } = useCreateAppLink();
   const authUser = getAuthUser();
   const [path, setPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -331,7 +332,7 @@ useEffect(() => {
   );
   
   async function syncSessionToMrBur() {
-    const resurl = await createAppLink({
+    const resurl = await createAppLinks({
               app: 'snabbb',
               email: user.email,
               name: user.fullName,
