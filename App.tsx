@@ -388,39 +388,24 @@ useEffect(() => {
     }
   }
 
-  const hydrateSupabaseSession = useCallback(async (): Promise<boolean> => {
+  const hydrateSupabaseSession = useCallback(async () => {
     try {
       const { data: existing } = await supabase.auth.getSession();
-      if (existing?.session?.user) return true;
+      if (existing?.session) return; // already have a Supabase session
 
-      // Bridge the existing Snabbb/Odoo login cookie into a real Supabase Auth
-      // session. VirtualPet saves with auth.uid(), so Odoo login alone is not
-      // enough. The backend endpoint must return Supabase access + refresh tokens.
+      // Bridge the shared Snabbb SSO cookie into a real Supabase Auth session,
+      // so VirtualPet (and anything else using supabase.auth) sees the same
+      // logged-in user as the other Snabbb apps.
       const sso = await api.get('/sso/exchange');
-      const payload = sso?.data?.result ?? sso?.data ?? {};
-      const accessToken = payload.access_token ?? payload.accessToken;
-      const refreshToken = payload.refresh_token ?? payload.refreshToken;
-
-      if (!accessToken || !refreshToken) {
-        console.warn('[SSO] /api/sso/exchange did not return Supabase tokens:', payload);
-        return false;
+      if (sso?.data?.access_token && sso?.data?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: sso.data.access_token,
+          refresh_token: sso.data.refresh_token,
+        });
       }
-
-      const { data, error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-
-      if (error) {
-        console.warn('[SSO] Supabase setSession failed:', error.message);
-        return false;
-      }
-
-      return !!data?.session?.user;
     } catch (err) {
       // Non-fatal: the Odoo-based login flow below doesn't depend on this.
       console.warn('[SSO] Supabase session hydrate failed:', err);
-      return false;
     }
   }, []);
 
@@ -436,7 +421,6 @@ useEffect(() => {
 
       if (!sessionId) {
         await verifySessionSafe(true);
-        await hydrateSupabaseSession();
         // Sync theme from Odoo after session is confirmed on page load
         syncThemeFromOdoo();
         return;
@@ -450,7 +434,6 @@ useEffect(() => {
 
         if (data?.ok) {
           await verifySessionSafe(true);
-          await hydrateSupabaseSession();
           syncThemeFromOdoo();
         } else {
           clearAuthState();
@@ -475,13 +458,12 @@ useEffect(() => {
 
       if (event.data?.type === 'SSO_LOGIN') {
         await verifySessionSafe(true);
-        await hydrateSupabaseSession();
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [verifySessionSafe, clearAuthState, hydrateSupabaseSession]);
+  }, [verifySessionSafe, clearAuthState]);
 
   useEffect(() => {
     const onFocus = () => {
@@ -541,7 +523,7 @@ useEffect(() => {
     });
   }, [activeCategory, searchQuery]);
 
-  const handleSuccessfulAuth = async () => {
+  const handleSuccessfulAuth = () => {
     const s = getAuthUser();
 
     if (!s) {
@@ -564,11 +546,6 @@ useEffect(() => {
     setIsLoggedIn(true);
     setAuthFormData(nextUser);
     setUser(nextUser);
-
-    // Important: Odoo login does not automatically create a Supabase session.
-    // Hydrate it here before the user opens VirtualPet/adopts a pet.
-    await hydrateSupabaseSession();
-
     navigate('/');
 
     // Fetch the user's saved theme from Odoo and apply it.
@@ -876,14 +853,7 @@ useEffect(() => {
           {/* key remounts CatMascot when auth changes → entry walk plays after login */}
           <CatMascot
             key={isLoggedIn ? 'logged-in' : 'guest'}
-            onCatClick={async () => {
-              const ok = await hydrateSupabaseSession();
-              if (!ok) {
-                toast.error('Pet saving is not ready yet. Please log out and log in again.');
-                return;
-              }
-              setIsVirtualPetOpen(true);
-            }}
+            onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
             isHidden={isAuthRoute || isVirtualPetOpen}
           />
