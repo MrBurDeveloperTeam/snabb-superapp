@@ -390,6 +390,11 @@ useEffect(() => {
 
   const hydrateSupabaseSession = useCallback(async () => {
     try {
+      const res = await createAppLink({
+            app: 'snabbb',
+            email: user.email,
+            name: user.fullName,
+          });
       const { data: existing } = await supabase.auth.getSession();
       if (existing?.session) return; // already have a Supabase session
 
