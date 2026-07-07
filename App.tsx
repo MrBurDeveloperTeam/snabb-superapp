@@ -490,12 +490,12 @@ useEffect(() => {
   }, [verifySessionDebounced]);
 
   const syncmrbursso = async () => {
-    console.log("check url")
-        const resurl = await createAppLinks({
-              app: 'snabbb',
-              email: user.email,
-              name: user.fullName,
-            });
+    const resurl = await createAppLinks({
+      app: 'snabbb',
+      email: user.email,
+      name: user.fullName,
+    });
+    console.log("check url: ",resurl);
             window.location.href = resurl.result.url;
   }
 
