@@ -77,8 +77,6 @@ onSuccess: async ({ sessionInfo, session_id }) => {
               name: sessionInfo.name,
             });
             
-
-
   if (redirectUrl && session_id) {
     try {
       const { hostname } = new URL(redirectUrl);
