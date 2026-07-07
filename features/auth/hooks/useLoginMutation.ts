@@ -1,7 +1,7 @@
 import { loginOdoo } from "@/services/LoginOdoo";
 import { useMutation } from "@tanstack/react-query";
 import { AuthFormInputs } from "../types/AuthFormInputs";
-import { plantMrBurCookie } from "@/services/plantCookies";
+import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 
 async function plantSnabbbIdentity(sessionInfo: any) {
   const snabbbToken =
@@ -53,6 +53,7 @@ function getRedirectParam(): string | null {
 }
 
 export const useLoginMutation = (onAuthSuccess: () => void) => {
+  const { mutateAsync: createAppLink } = useCreateAppLink();
   return useMutation({
    mutationFn: async (data: AuthFormInputs) => {
   const loginResult = await loginOdoo(data.login, data.password);
@@ -70,6 +71,13 @@ onSuccess: async ({ sessionInfo, session_id }) => {
   localStorage.setItem("odoo_session", JSON.stringify(sessionInfo));
 
   const redirectUrl = getRedirectParam();
+  const res = await createAppLink({
+              app: 'snabbb',
+              email: sessionInfo.username,
+              name: sessionInfo.name,
+            });
+            console.log("createAppLink result:", res);
+            
 
   if (redirectUrl && session_id) {
     try {
