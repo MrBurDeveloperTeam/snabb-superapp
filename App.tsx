@@ -357,10 +357,15 @@ useEffect(() => {
     }, 1000), [verifySessionSafe]);
 
     useEffect(() => {
-      if(user && user?.email) {
-        user && syncmrbursso();
-      }
-    },[user]);
+      if (!user?.email) return;
+        
+      const syncedKey = `snabbb_sso_synced_${user.email}`;
+        
+      if (sessionStorage.getItem(syncedKey)) return;
+        
+      sessionStorage.setItem(syncedKey, 'true');
+      syncmrbursso();
+    }, [user?.email]);
 
   useEffect(() => {
     const handlePopState = () => {
