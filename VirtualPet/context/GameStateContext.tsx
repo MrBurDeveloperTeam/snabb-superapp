@@ -504,64 +504,75 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
     };
 
     const adoptPet = async (name: string) => {
-        if (hasAdoptedPet) return false;
-
-        const adoptedPet = normalizePetId(name);
-        const starterStats = createStarterStats();
-        const starterInventory = createStarterInventory();
-        const savedAt = new Date().toISOString();
-
-        try {
-            if (userId) {
-                const { error } = await supabase.from('inventory_pet').upsert({
-                    user_id: userId,
-                    pet_name: adoptedPet,
-                    hunger: starterStats.hunger,
-                    energy: starterStats.energy,
-                    happiness: starterStats.happiness,
-                    hygiene: starterStats.hygiene,
-                    level: starterStats.level,
-                    xp: starterStats.xp,
-                    coins: starterStats.coins,
-                    is_sleeping: false,
-                    active_ball_id: 'ball_red',
-                    active_bed_id: null,
-                    updated_at: savedAt
-                });
-
-                if (error) throw error;
-
-                const { error: inventoryError } = await supabase
-                    .from('pet_inventory')
-                    .delete()
-                    .eq('user_id', userId);
-
-                if (inventoryError) throw inventoryError;
-            }
-
-            clearPetLocalStorage();
-            setStats(starterStats);
-            setInventory(starterInventory);
-            setSoapInventory({ soap: 0, soap2: 0 });
-            setActiveBallId('ball_red');
-            setActiveBedId(null);
-            setIsSleeping(false);
-            _setPetName(adoptedPet);
-            setHasAdoptedPet(true);
-            localStorage.setItem('pet_name', adoptedPet);
-            localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
-            localStorage.setItem('pet_stats', JSON.stringify(starterStats));
-            localStorage.setItem('pet_inventory', JSON.stringify(starterInventory));
-            localStorage.setItem('pet_last_saved_at', savedAt);
-            localStorage.setItem('pet_active_ball', 'ball_red');
-            localStorage.setItem(PET_SLEEPING_KEY, 'false');
-            localStorage.setItem(PET_SLEEPING_UPDATED_AT_KEY, savedAt);
-            window.dispatchEvent(new CustomEvent('virtual-pet-selection-change', { detail: adoptedPet }));
-            return true;
-        } catch (err) {
-            console.error('Failed to adopt pet', err);
-            return false;
-        }
+      if (hasAdoptedPet) return false;
+        
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUserId = userId || sessionData?.session?.user?.id;
+        
+      if (!currentUserId) {
+        console.error('[VirtualPet] Cannot adopt pet: no Supabase user session');
+        return false;
+      }
+  
+      const adoptedPet = normalizePetId(name);
+      const starterStats = createStarterStats();
+      const starterInventory = createStarterInventory();
+      const savedAt = new Date().toISOString();
+  
+      try {
+        const { error } = await supabase.from('inventory_pet').upsert(
+          {
+            user_id: currentUserId,
+            pet_name: adoptedPet,
+            hunger: starterStats.hunger,
+            energy: starterStats.energy,
+            happiness: starterStats.happiness,
+            hygiene: starterStats.hygiene,
+            level: starterStats.level,
+            xp: starterStats.xp,
+            coins: starterStats.coins,
+            is_sleeping: false,
+            active_ball_id: 'ball_red',
+            active_bed_id: null,
+            updated_at: savedAt,
+          },
+          { onConflict: 'user_id' }
+        );
+    
+        if (error) throw error;
+    
+        await supabase
+          .from('pet_inventory')
+          .delete()
+          .eq('user_id', currentUserId);
+    
+        setUserId(currentUserId);
+    
+        clearPetLocalStorage();
+        setStats(starterStats);
+        setInventory(starterInventory);
+        setSoapInventory({ soap: 0, soap2: 0 });
+        setActiveBallId('ball_red');
+        setActiveBedId(null);
+        setIsSleeping(false);
+        _setPetName(adoptedPet);
+        setHasAdoptedPet(true);
+    
+        localStorage.setItem('pet_name', adoptedPet);
+        localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+        localStorage.setItem('pet_stats', JSON.stringify(starterStats));
+        localStorage.setItem('pet_inventory', JSON.stringify(starterInventory));
+        localStorage.setItem('pet_last_saved_at', savedAt);
+        localStorage.setItem('pet_active_ball', 'ball_red');
+        localStorage.setItem(PET_SLEEPING_KEY, 'false');
+        localStorage.setItem(PET_SLEEPING_UPDATED_AT_KEY, savedAt);
+    
+        window.dispatchEvent(new CustomEvent('virtual-pet-selection-change', { detail: adoptedPet }));
+        return true;
+      } catch (err) {
+        console.error('Failed to adopt pet', err);
+        return false;
+      }
     };
 
     const buyItem = (itemId: string, price: number) => {
