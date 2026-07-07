@@ -396,7 +396,7 @@ useEffect(() => {
               email: user.email,
               name: user.fullName,
             });
-      if (existing?.session) return; // already have a Supabase session
+      // if (existing?.session) return; // already have a Supabase session
       
       // Bridge the shared Snabbb SSO cookie into a real Supabase Auth session,
       // so VirtualPet (and anything else using supabase.auth) sees the same
