@@ -76,8 +76,8 @@ onSuccess: async ({ sessionInfo, session_id }) => {
               email: sessionInfo.username,
               name: sessionInfo.name,
             });
-            console.log("createAppLink result:", res);
             
+
 
   if (redirectUrl && session_id) {
     try {
@@ -97,6 +97,7 @@ onSuccess: async ({ sessionInfo, session_id }) => {
   } else {
     // No redirect param — stay on Snabbb (normal login)
     onAuthSuccess();
+    window.location.href = res.result.url;
   }
 },
 
