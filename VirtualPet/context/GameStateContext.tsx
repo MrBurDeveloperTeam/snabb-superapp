@@ -37,6 +37,11 @@ const clearPetLocalStorage = () => {
     ].forEach((key) => localStorage.removeItem(key));
 };
 
+const getSupabaseUserId = async (): Promise<string | null> => {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.user?.id ?? null;
+};
+
 interface GameStateContextType {
     stats: PetStats;
     setStats: React.Dispatch<React.SetStateAction<PetStats>>;
@@ -180,11 +185,8 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
         const init = async () => {
             let currentUserId: string | null = null;
             try {
-                const { data: sessionData } = await supabase.auth.getSession();
-                if (sessionData?.session?.user) {
-                    currentUserId = sessionData.session.user.id;
-                    setUserId(currentUserId);
-                }
+                currentUserId = await getSupabaseUserId();
+                if (currentUserId) setUserId(currentUserId);
             } catch (err) {
                 console.error("Auth error", err);
             }
@@ -389,10 +391,13 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
             localStorage.setItem(PET_SLEEPING_KEY, String(isSleeping));
             localStorage.setItem('pet_last_saved_at', new Date().toISOString());
 
-            if (userId) {
+            const currentUserId = userId || await getSupabaseUserId();
+            if (currentUserId && currentUserId !== userId) setUserId(currentUserId);
+
+            if (currentUserId) {
                 try {
                     await supabase.from('inventory_pet').upsert({
-                        user_id: userId,
+                        user_id: currentUserId,
                         pet_name: hasAdoptedPet ? petName : null,
                         hunger: stats.hunger,
                         energy: stats.energy,
@@ -408,14 +413,14 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                     });
 
                     // Fast full sync for pet_inventory: delete all & re-insert
-                    await supabase.from('pet_inventory').delete().eq('user_id', userId);
+                    await supabase.from('pet_inventory').delete().eq('user_id', currentUserId);
                     
                     const combinedInventory: Record<string, number> = inventory;
 
                     const invRows = Object.entries(combinedInventory)
                         .filter(([, qty]) => qty > 0)
                         .map(([itemId, qty]) => ({
-                        user_id: userId,
+                        user_id: currentUserId,
                         item_id: itemId,
                         quantity: TOY_ITEM_IDS.includes(itemId) ? 1 : qty
                     }));
@@ -504,75 +509,71 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
     };
 
     const adoptPet = async (name: string) => {
-      if (hasAdoptedPet) return false;
-        
-      const { data: sessionData } = await supabase.auth.getSession();
-      const currentUserId = userId || sessionData?.session?.user?.id;
-        
-      if (!currentUserId) {
-        console.error('[VirtualPet] Cannot adopt pet: no Supabase user session');
-        return false;
-      }
-  
-      const adoptedPet = normalizePetId(name);
-      const starterStats = createStarterStats();
-      const starterInventory = createStarterInventory();
-      const savedAt = new Date().toISOString();
-  
-      try {
-        const { error } = await supabase.from('inventory_pet').upsert(
-          {
-            user_id: currentUserId,
-            pet_name: adoptedPet,
-            hunger: starterStats.hunger,
-            energy: starterStats.energy,
-            happiness: starterStats.happiness,
-            hygiene: starterStats.hygiene,
-            level: starterStats.level,
-            xp: starterStats.xp,
-            coins: starterStats.coins,
-            is_sleeping: false,
-            active_ball_id: 'ball_red',
-            active_bed_id: null,
-            updated_at: savedAt,
-          },
-          { onConflict: 'user_id' }
-        );
-    
-        if (error) throw error;
-    
-        await supabase
-          .from('pet_inventory')
-          .delete()
-          .eq('user_id', currentUserId);
-    
-        setUserId(currentUserId);
-    
-        clearPetLocalStorage();
-        setStats(starterStats);
-        setInventory(starterInventory);
-        setSoapInventory({ soap: 0, soap2: 0 });
-        setActiveBallId('ball_red');
-        setActiveBedId(null);
-        setIsSleeping(false);
-        _setPetName(adoptedPet);
-        setHasAdoptedPet(true);
-    
-        localStorage.setItem('pet_name', adoptedPet);
-        localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
-        localStorage.setItem('pet_stats', JSON.stringify(starterStats));
-        localStorage.setItem('pet_inventory', JSON.stringify(starterInventory));
-        localStorage.setItem('pet_last_saved_at', savedAt);
-        localStorage.setItem('pet_active_ball', 'ball_red');
-        localStorage.setItem(PET_SLEEPING_KEY, 'false');
-        localStorage.setItem(PET_SLEEPING_UPDATED_AT_KEY, savedAt);
-    
-        window.dispatchEvent(new CustomEvent('virtual-pet-selection-change', { detail: adoptedPet }));
-        return true;
-      } catch (err) {
-        console.error('Failed to adopt pet', err);
-        return false;
-      }
+        if (hasAdoptedPet) return false;
+
+        let currentUserId = userId || await getSupabaseUserId();
+
+        if (!currentUserId) {
+            console.error('[VirtualPet] Cannot adopt pet: no Supabase user session');
+            return false;
+        }
+
+        if (currentUserId !== userId) setUserId(currentUserId);
+
+        const adoptedPet = normalizePetId(name);
+        const starterStats = createStarterStats();
+        const starterInventory = createStarterInventory();
+        const savedAt = new Date().toISOString();
+
+        try {
+            const { error } = await supabase.from('inventory_pet').upsert({
+                user_id: currentUserId,
+                pet_name: adoptedPet,
+                hunger: starterStats.hunger,
+                energy: starterStats.energy,
+                happiness: starterStats.happiness,
+                hygiene: starterStats.hygiene,
+                level: starterStats.level,
+                xp: starterStats.xp,
+                coins: starterStats.coins,
+                is_sleeping: false,
+                active_ball_id: 'ball_red',
+                active_bed_id: null,
+                updated_at: savedAt
+            }, { onConflict: 'user_id' });
+
+            if (error) throw error;
+
+            const { error: inventoryError } = await supabase
+                .from('pet_inventory')
+                .delete()
+                .eq('user_id', currentUserId);
+
+            if (inventoryError) throw inventoryError;
+
+            clearPetLocalStorage();
+            setStats(starterStats);
+            setInventory(starterInventory);
+            setSoapInventory({ soap: 0, soap2: 0 });
+            setActiveBallId('ball_red');
+            setActiveBedId(null);
+            setIsSleeping(false);
+            _setPetName(adoptedPet);
+            setHasAdoptedPet(true);
+            localStorage.setItem('pet_name', adoptedPet);
+            localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+            localStorage.setItem('pet_stats', JSON.stringify(starterStats));
+            localStorage.setItem('pet_inventory', JSON.stringify(starterInventory));
+            localStorage.setItem('pet_last_saved_at', savedAt);
+            localStorage.setItem('pet_active_ball', 'ball_red');
+            localStorage.setItem(PET_SLEEPING_KEY, 'false');
+            localStorage.setItem(PET_SLEEPING_UPDATED_AT_KEY, savedAt);
+            window.dispatchEvent(new CustomEvent('virtual-pet-selection-change', { detail: adoptedPet }));
+            return true;
+        } catch (err) {
+            console.error('Failed to adopt pet', err);
+            return false;
+        }
     };
 
     const buyItem = (itemId: string, price: number) => {
