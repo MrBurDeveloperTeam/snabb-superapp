@@ -284,7 +284,7 @@ useEffect(() => {
           const subdomain = COMPANY_SUBDOMAIN_MAP[companyCode];
           if (subdomain) {
             setConfig({
-              linkIncomplete: `https://account.snabbb.com`,
+              linkIncomplete: `https://app.snabbb.com/profile-settings`,
               // linkIncomplete: `https://${subdomain}.mrbur.shop/my/account`,
             });
           }
@@ -358,11 +358,11 @@ useEffect(() => {
 
     useEffect(() => {
       if (!user?.email) return;
-        
+
       const syncedKey = `snabbb_sso_synced_${user.email}`;
-        
+
       if (sessionStorage.getItem(syncedKey)) return;
-        
+
       sessionStorage.setItem(syncedKey, 'true');
       syncmrbursso();
     }, [user?.email]);
