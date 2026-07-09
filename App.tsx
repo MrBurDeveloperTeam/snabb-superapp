@@ -1046,28 +1046,30 @@ useEffect(() => {
                         </div>
 
                         <motion.div
-                          layout
+                          key={`grid-${cat}-${activeCategory}-${searchQuery.trim().toLowerCase()}`}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.18, ease: 'easeOut' }}
                           className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
                         >
-                          <AnimatePresence mode="popLayout">
-                            {appsInCategory.map((app, index) => (
-                              <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
-                            ))}
-                          </AnimatePresence>
+                          {appsInCategory.map((app, index) => (
+                            <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
+                          ))}
                         </motion.div>
                       </div>
                     );
                   })
                 ) : (
                   <motion.div
-                    layout
+                    key={`grid-${activeCategory}-${searchQuery.trim().toLowerCase()}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
                     className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
                   >
-                    <AnimatePresence mode="popLayout">
-                      {filteredApps.map((app, index) => (
-                        <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
-                      ))}
-                    </AnimatePresence>
+                    {filteredApps.map((app, index) => (
+                      <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
+                    ))}
 
                     {filteredApps.length === 0 && (
                       <motion.div

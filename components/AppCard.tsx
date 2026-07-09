@@ -224,15 +224,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   if (isPending) {
     return (
       <motion.div
-        layout
-        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.8, y: 20, transition: { duration: 0.08 } }}
         transition={{
-          layout: { type: 'spring', stiffness: 300, damping: 30 },
-          opacity: { duration: 0.3 },
-          scale: { duration: 0.3 },
-          y: { duration: 0.3 },
+          opacity: { duration: 0.18 },
+          scale: { duration: 0.18 },
+          y: { duration: 0.18 },
         }}
         className={wrapperClass}
         data-no-cat="true"
@@ -285,15 +282,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   return (
     <motion.div
       onClick={isComingSoon ? undefined : handleClick}
-      layout
-      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+      initial={{ opacity: 0, scale: 0.96, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.8, y: 20, transition: { duration: 0.08 } }}
       transition={{
-        layout: { type: 'spring', stiffness: 300, damping: 30 },
-        opacity: { duration: 0.3 },
-        scale: { duration: 0.3 },
-        y: { duration: 0.3 },
+        opacity: { duration: 0.18 },
+        scale: { duration: 0.18 },
+        y: { duration: 0.18 },
       }}
       className={`${wrapperClass} ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       data-no-cat="true"
