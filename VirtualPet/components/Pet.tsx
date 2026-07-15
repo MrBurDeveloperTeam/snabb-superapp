@@ -143,7 +143,6 @@ const Pet = forwardRef<HTMLDivElement, PetProps>(({
 
   const handleClick = () => {
     if (!isSleeping && sleepFrame === null) {
-      console.log('moving')
       if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
       setIsClickReacting(false);
       window.setTimeout(() => setIsClickReacting(true), 0);
