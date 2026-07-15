@@ -655,9 +655,9 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
       }, duration * 1000);
     };
 
-    document.addEventListener('click', handleGlobalClick);
+    document.addEventListener('dblclick', handleGlobalClick);
     return () => {
-      document.removeEventListener('click', handleGlobalClick);
+      document.removeEventListener('dblclick', handleGlobalClick);
       if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
     };
   }, []);
