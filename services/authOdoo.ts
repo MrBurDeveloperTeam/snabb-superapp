@@ -64,7 +64,7 @@ const COMPANY_CODE_TO_MRBUR_URL: Record<string, string> = {
 
 export function getMrBurUrlFromCompanyCode(companyCode?: string | null): string {
   console.log('getMrBurUrlFromCompanyCode called with companyCode:', companyCode);
-  return 'https://app.snabbb.com/shop';
+  if (!companyCode) return 'https://app.snabbb.com/shop';
   // company_code is like "MMY", "MSG", "MTH" — last 2 chars are country code
   const countryCode = companyCode.slice(-2).toUpperCase()
   return COMPANY_CODE_TO_MRBUR_URL[countryCode] ?? 'https://app.snabbb.com/shop'
