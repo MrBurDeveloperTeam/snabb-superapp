@@ -73,7 +73,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             const ssoUrl = new URL(res.result.url);
             const token = ssoUrl.searchParams.get('token');
             const companyCode = ssoUrl.searchParams.get('company_code') || 'INT';
-
+            console.log('SSO token:', token, 'company_code:', companyCode);
             if (token) {
               w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
                 token
