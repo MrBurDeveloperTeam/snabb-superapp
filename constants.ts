@@ -124,21 +124,21 @@ export const MINI_APPS: MiniApp[] = [
     route: `https://reward.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
-  {
-    id: 'app-12',
-    title: 'Kaneiko',
-    category: 'Shops',
-    icon: '/icons/kaneiko_black.png',
-    // iconDark: '/icons/kaneiko_white.png',
-    colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-13',
-    title: 'Lunaflow',
-    category: 'Shops',
-    icon: 'https://app.snabbb.com/images/lunaflow.png',
-    colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
-  },
+  // {
+  //   id: 'app-12',
+  //   title: 'Kaneiko',
+  //   category: 'Shops',
+  //   icon: '/icons/kaneiko_black.png',
+  //   // iconDark: '/icons/kaneiko_white.png',
+  //   colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
+  // },
+  // {
+  //   id: 'app-13',
+  //   title: 'Lunaflow',
+  //   category: 'Shops',
+  //   icon: 'https://app.snabbb.com/images/lunaflow.png',
+  //   colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
+  // },
   // {
   //   id: 'app-11',
   //   title: 'Ortho',
@@ -146,13 +146,13 @@ export const MINI_APPS: MiniApp[] = [
   //   icon: 'fa-solid fa-tooth',
   //   colorScheme: { text: 'text-[#0369a1]', icon: '#0369a1' }
   // },
-  {
-    id: 'app-16',
-    title: 'Endora',
-    category: 'Shops',
-    icon: 'https://app.snabbb.com/images/endora.png',
-    colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
-  },
+  // {
+  //   id: 'app-16',
+  //   title: 'Endora',
+  //   category: 'Shops',
+  //   icon: 'https://app.snabbb.com/images/endora.png',
+  //   colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
+  // },
   // {
   //   id: 'app-13',
   //   title: 'DTV',
