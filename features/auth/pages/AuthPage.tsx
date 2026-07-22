@@ -27,6 +27,11 @@ interface Props {
 
 export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData, setToastMsg}: Props) {
   const [loggedIn, setLoggedIn] = useState(!!getStoredUser());
+
+  // Capture ?student=<code> once on load. This only matters for signup —
+  // it rides along in the signup payload so Odoo can link the new account
+  // back to whoever's invite link was used and tag it Student.
+  const inviteCode = new URLSearchParams(window.location.search).get('student') || '';
   const {
     control: controlLogin,
     handleSubmit: handleSubmitLogin,
@@ -55,10 +60,10 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
   const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<AuthFormInputs>({
     shouldUnregister: false,
     defaultValues: {
-      account_type: 'individual',  
+      account_type: 'individual',
       fullName: "",
       login: "",
-      companyName: '',     
+      companyName: '',
       companyEmail: '',
       jobPosition: "",
       customJobPosition: "",
@@ -68,7 +73,8 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
       password: "",
       confirmPassword: "",
       agreedToTerms: false,
-      position: "",  
+      position: "",
+      inviteCode,
     }
 });
 

@@ -20,4 +20,9 @@ export interface AuthFormInputs {
   rememberMe?: boolean;
 
   agreedToTerms: boolean;
+
+  // Populated from the ?invite= query param on the signup page, if present.
+  // Passed straight through to Odoo so the new account can be linked back
+  // to whoever's invite link was used and tagged Student.
+  inviteCode?: string;
 }

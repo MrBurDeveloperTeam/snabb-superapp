@@ -398,6 +398,7 @@ export const authOdoo = async ({
   dob,
   account_type,
   country,
+  inviteCode,
 }: AuthFormInputs) => {
   // Pass selected country for accurate company resolution
   const companyId = await getSignupCompanyId(country);
@@ -422,6 +423,7 @@ export const authOdoo = async ({
       ...(dob && { date_of_birth: dob }),
       ...(countryId && { country_id: countryId }),
       ...(effectivePosition && { job_position: effectivePosition }),
+      ...(inviteCode && { invite_code: inviteCode }),
       company_id: companyId,
     },
     id: 1,
