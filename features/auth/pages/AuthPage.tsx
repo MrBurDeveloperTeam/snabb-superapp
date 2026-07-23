@@ -28,10 +28,10 @@ interface Props {
 export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData, setToastMsg}: Props) {
   const [loggedIn, setLoggedIn] = useState(!!getStoredUser());
 
-  // Capture ?student=<code> once on load. This only matters for signup —
+  // Capture ?invitation=<code> once on load. This only matters for signup —
   // it rides along in the signup payload so Odoo can link the new account
   // back to whoever's invite link was used and tag it Student.
-  const inviteCode = new URLSearchParams(window.location.search).get('student') || '';
+  const inviteCode = new URLSearchParams(window.location.search).get('invitation') || '';
   const {
     control: controlLogin,
     handleSubmit: handleSubmitLogin,
