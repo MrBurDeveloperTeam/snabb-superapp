@@ -124,6 +124,11 @@ useEffect(() => {
 
   const isAuthRoute = path === '/login' || path === '/signup';
   const authMode: 'login' | 'signup' = path === '/signup' ? 'signup' : 'login';
+  // Invite links carry a ?tags=... param (e.g. /signup?invitation=th-fern&tags=students-th,western-uni-grad-th)
+  // so recipients land straight on a clean signup form — hide the main nav
+  // header for those so there's no distraction/way to click off to the
+  // gallery before they finish signing up.
+  const hasTagsParam = new URLSearchParams(window.location.search).has('tags');
 
   const navigate = useCallback((url: string) => {
     if (window.location.pathname !== url) {
@@ -667,6 +672,7 @@ useEffect(() => {
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
+      {!hasTagsParam && (
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <button
@@ -873,6 +879,7 @@ useEffect(() => {
           </div>
         </div>
       </header>
+      )}
 
       <main className="flex-1 relative">
         <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
