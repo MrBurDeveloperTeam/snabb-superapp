@@ -27,7 +27,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
       switch (true) {
         case app.route.includes('inventory'): {
-          const res = await createAppLink({
+          const res = await createAppLink({ 
             app: 'inventory',
             email: user.username,
             name: user.name,
