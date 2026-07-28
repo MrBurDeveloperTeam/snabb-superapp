@@ -32,6 +32,13 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
   // it rides along in the signup payload so Odoo can link the new account
   // back to whoever's invite link was used and tag it Student.
   const inviteCode = new URLSearchParams(window.location.search).get('invitation') || '';
+
+  // Capture ?referral=<code> once on load (a doctor's referral link). Also
+  // accepts ?referral_code= / ?ref= as aliases. Pre-fills the "Referred by"
+  // field on the sign-up form so Snabbb Credit can be awarded once the
+  // referral qualifies. Unrelated to inviteCode above.
+  const referralParams = new URLSearchParams(window.location.search);
+  const referralCode = referralParams.get('referral') || referralParams.get('referral_code') || referralParams.get('ref') || '';
   const {
     control: controlLogin,
     handleSubmit: handleSubmitLogin,
@@ -75,6 +82,7 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
       agreedToTerms: false,
       position: "",
       inviteCode,
+      referralCode,
     }
 });
 

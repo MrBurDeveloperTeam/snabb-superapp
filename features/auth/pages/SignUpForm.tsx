@@ -197,6 +197,29 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 </div>
               )}
 
+              {/* Referred By (Snabbb referral program) */}
+              <div>
+                <label className={labelClasses}>Referred by <span className="normal-case text-slate-400 font-medium">(optional)</span></label>
+                <div className="relative group">
+                  <i className="fa-solid fa-share-nodes absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <Controller
+                    name="referralCode"
+                    defaultValue=""
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="Referral code, doctor's email, or account ID"
+                        className={inputClasses}
+                        onChange={(e) => { field.onChange(e); onChange(e); }}
+                      />
+                    )}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-400 italic">Referred by a doctor already on Snabbb? Enter their code, email, or share their link to auto-fill this.</p>
+              </div>
+
               {/* Full Name */}
               <div>
                 <label className={labelClasses}>Your Name</label>
