@@ -210,7 +210,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                       <input
                         {...field}
                         type="text"
-                        placeholder="Referral code, doctor's email, or account ID"
+                        placeholder="Referral code"
                         className={inputClasses}
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
