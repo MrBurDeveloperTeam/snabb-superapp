@@ -1012,7 +1012,7 @@ export default function ProfileSettingsPage() {
               <p className="field-label mb-2">Your Contact ID</p>
 
               <div className="flex items-center gap-3">
-                <div className="flex flex-1 items-center justify-between rounded-xl border-2 border-[#647294] bg-[#f4f5f9] px-4 py-3">
+                <div className="flex flex-1 items-center justify-between rounded-xl border-2 border-[#647294]  px-4 py-3">
                   <span className="font-mono text-xl font-bold tracking-widest text-[#111827]">
                     {contactId}
                   </span>
