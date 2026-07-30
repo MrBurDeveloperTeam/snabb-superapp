@@ -145,10 +145,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
     }
   };
 
-  const [dialogSteps, setDialogSteps] = useState([
-    "👋 Hi there! I'm your AI assistant for App.Snabbb.\nI'm here to help you explore and understand all the features available.",
-    "Click on me to open the Virtual Pet ecosystem, or ask me any questions about the app!"
-  ]);
+  const [dialogSteps, setDialogSteps] = useState<string[]>([]);
 
   const [meowMsg, setMeowMsg] = useState(null);
   const [petStates, setPetStates] = useState(['Normal']);
@@ -324,9 +321,6 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
         return;
       }
 
-      const fallbackPreLogin  = ["👋 Welcome to App.Snabbb!", "Please sign in to access your modules, or ask me any questions."];
-      const fallbackPostLogin = ["👋 Welcome back! I'm your App.Snabbb Assistant.", "Click on me to open the Virtual Pet ecosystem, or ask me for help!"];
-
       try {
         const { data: configs } = await supabase
           .from('aiboard_simulator_configs')
@@ -348,18 +342,10 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
             setDialogSteps(data.map(d => d.step_text));
             setDialogStep(0);
             if (isEntryWalkComplete.current && !hasDismissedDialog.current) setIsDialogActive(true);
-            return;
           }
         }
-
-        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
-        setDialogStep(0);
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) setIsDialogActive(true);
       } catch (err) {
         console.error("Error fetching dialog steps:", err);
-        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
-        setDialogStep(0);
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) setIsDialogActive(true);
       }
     };
 
@@ -758,7 +744,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
         }}
       >
         <AnimatePresence mode="wait">
-          {isDialogActive && (
+          {isDialogActive && dialogSteps.length > 0 && (
             <motion.div
               data-cat="true"
               key={`dialog-bubble-${dialogStep}`}
