@@ -386,6 +386,11 @@ export default function ProfileSettingsPage() {
 
       setPartnerId(loadedPartnerId);
 
+      // Contact ID is C{partner_id} — compute it from the data already returned
+      if (loadedPartnerId) {
+        setContactId("C" + loadedPartnerId);
+      }
+
       setProfileImageUrl(
         data.image_url ||
           (loadedPartnerId
@@ -426,23 +431,6 @@ export default function ProfileSettingsPage() {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
-
-  // Fetch Contact ID from Odoo
-  useEffect(() => {
-    fetch("https://account.snabbb.com/api/snabbb/referral/my-contact-id", {
-      method: "GET",
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    })
-      .then((r) => r.json())
-      .catch(() => null)
-      .then((data) => {
-        if (data?.ok) {
-          setContactId(data.contact_id);
-          setReferralCount(data.referral_count ?? 0);
-        }
-      });
-  }, []);
 
   const handleCopyContactId = () => {
     if (!contactId) return;
@@ -1029,7 +1017,7 @@ export default function ProfileSettingsPage() {
                     {contactId}
                   </span>
                   <span className="ml-3 rounded-full bg-[#eef0f5] px-2.5 py-0.5 text-xs font-medium text-[#6b7280]">
-                    {referralCount} referral{referralCount !== 1 ? "s" : ""}
+                    {referralCount > 0 ? `${referralCount} referral${referralCount !== 1 ? "s" : ""}` : "Share to earn credits"}
                   </span>
                 </div>
 
