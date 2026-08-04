@@ -789,6 +789,24 @@ export default function ProfileSettingsPage() {
     );
   }
 
+  const sstEmailSubject = "SST Number Change Request";
+
+  const sstEmailBody = `Hello Snabbb Team,
+
+  I am contacting you to request a change to the SST Number for my account.
+
+  Company name: ${form.companyName || ""}
+  Current SST Number: ${form.sstNumber || ""}
+  New SST Number:
+  Reason for the change:
+
+  Thank you.`;
+
+  const sstEmailLink =
+    `mailto:marketing@snabbb.com` +
+    `?subject=${encodeURIComponent(sstEmailSubject)}` +
+    `&body=${encodeURIComponent(sstEmailBody)}`;
+
   return (
     <div className="min-h-screen bg-[#f5f6f8] text-[#1f2937]">
       <style>{`
@@ -1035,7 +1053,7 @@ export default function ProfileSettingsPage() {
               Business Details
             </div>
 
-            <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+            <div className="space-y-5">
               <div>
                 <label className="field-label">
                   Company Name
@@ -1064,24 +1082,28 @@ export default function ProfileSettingsPage() {
                   placeholder="e.g. W10-1234-56789012"
                 />
 
-                <p className="mt-1.5 text-xs italic leading-5 text-[#9ca3af]">
-                  Changing SST Number is not allowed once
-                  document(s) have been issued for your account.
-                  Please contact us directly for this operation.
+                <p className="mt-2 text-xs italic leading-5 text-[#94a3b8]">
+                  Changing SST Number is not allowed once document(s) have been issued for your account. Please contact us directly for this operation.
                 </p>
 
-                <a
-                  href="mailto:marketing@snabbb.com?subject=SST%20Number%20Change%20Request"
-                  className="mt-1 inline-block text-xs font-medium text-[#2563eb] underline-offset-2 hover:underline"
-                >
-                  marketing@snabbb.com
-                </a>
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-[#94a3b8]">
+                    Contact us to request an SST Number change:
+                  </p>
+
+                  <a
+                    href={sstEmailLink}
+                    className="mt-2 inline-flex items-center gap-2 rounded-lg border border-[#2563eb]/40 bg-[#2563eb]/10 px-3 py-2 text-sm font-semibold text-[#60a5fa] transition hover:border-[#2563eb] hover:bg-[#2563eb]/20"
+                    aria-label="Email Snabbb Marketing to request an SST Number change"
+                  >
+                    <span aria-hidden="true">✉</span>
+                    marketing@snabbb.com
+                  </a>
+                </div>
 
                 {sstChangeUsed && (
-                  <p className="mt-1.5 text-xs font-medium text-[#b45309]">
-                    You have already used your one SST Number
-                    change. Further changes must be requested by
-                    email.
+                  <p className="mt-3 text-xs font-medium leading-5 text-[#f97316]">
+                    You have already used your one SST Number change. Further changes must be requested by email.
                   </p>
                 )}
               </div>
