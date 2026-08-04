@@ -95,22 +95,28 @@ useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
   if (!partnerId) return
 
-  // Without an explicit company on the request, this endpoint falls back to
-  // whatever company the session cookie resolves to on the backend — which
-  // is how everyone ended up seeing the MMY (Malaysia) balance. Pass the
-  // resolved company explicitly, same as the other SSO calls in this app.
+  // The /api/wallet Cloudflare Worker proxy forwards query params straight
+  // to Odoo's /snabbb/reward/api/wallet/my, and picks which per-company
+  // wallet to return using `website_scope` / `website_domain` — defaulting
+  // to "MMY" whenever neither is present. company_id/X-Company-Code (what
+  // we sent before) are never read by that worker at all, so every request
+  // silently fell back to the Malaysia wallet. Send the resolved company
+  // code as website_scope instead.
   const company = getActiveCompanyFromOdooSession();
   const params = new URLSearchParams({ partner_id: String(partnerId) });
-  if (company?.companyId) params.set('company_id', company.companyId);
+  if (authFormData?.email) params.set('email', authFormData.email);
+  if (company?.companyCode) {
+    params.set('website_scope', company.companyCode);
+    params.set('website_domain', company.companyCode);
+  }
 
   fetch(`https://app.snabbb.com/api/wallet?${params.toString()}`, {
     credentials: 'include',
-    headers: company?.companyCode ? { 'X-Company-Code': company.companyCode } : undefined,
   })
     .then(r => r.json())
     .then(data => setCreditBalance(data?.data?.balance ?? null))
     .catch(() => setCreditBalance(null))
-}, [authFormData?.partner_id])
+}, [authFormData?.partner_id, authFormData?.email])
 
   useEffect(() => {
     const texts = !isLoggedIn 
