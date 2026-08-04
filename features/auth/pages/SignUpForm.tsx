@@ -32,14 +32,21 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
 
   const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
     try {
-      const isCompany = accountType === 'company';
+      const submittedAccountType:
+      'individual' | 'company' =
+      data.account_type === 'company'
+        ? 'company'
+        : 'individual';
+
+      const isCompany =
+        submittedAccountType === 'company';
       const effectivePosition = data.jobPosition === 'OTHER'
         ? data.customJobPosition || ''
         : data.jobPosition;
 
       const payload: AuthFormInputs = {
         ...data,
-        account_type: accountType,
+        account_type: submittedAccountType,
         login: isCompany ? (data.companyEmail || data.login) : data.login,
         companyName: data.companyName,
         companyEmail: data.companyEmail,
