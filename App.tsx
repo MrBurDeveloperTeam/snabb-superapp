@@ -29,6 +29,7 @@ import { plantMrBurCookie } from './services/plantCookies';
 import SsoCheck from './components/SsoCheck';
 import { useCreateAppLink } from './mutation/useCreateAppLink';
 import { useGetUserId } from './mutation/useGetUserId';
+import { getActiveCompanyFromOdooSession } from './services/getCompanies';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
 import { profile } from 'console';
 import { useProfileImage } from './hooks/useProfileImage';
@@ -94,8 +95,17 @@ useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
   if (!partnerId) return
 
-  fetch(`https://app.snabbb.com/api/wallet?partner_id=${partnerId}`, {
+  // Without an explicit company on the request, this endpoint falls back to
+  // whatever company the session cookie resolves to on the backend — which
+  // is how everyone ended up seeing the MMY (Malaysia) balance. Pass the
+  // resolved company explicitly, same as the other SSO calls in this app.
+  const company = getActiveCompanyFromOdooSession();
+  const params = new URLSearchParams({ partner_id: String(partnerId) });
+  if (company?.companyId) params.set('company_id', company.companyId);
+
+  fetch(`https://app.snabbb.com/api/wallet?${params.toString()}`, {
     credentials: 'include',
+    headers: company?.companyCode ? { 'X-Company-Code': company.companyCode } : undefined,
   })
     .then(r => r.json())
     .then(data => setCreditBalance(data?.data?.balance ?? null))
@@ -506,13 +516,20 @@ useEffect(() => {
   }, [verifySessionDebounced]);
 
   const syncmrbursso = async () => {
-    const resurl = await createAppLinks({
-      app: 'snabbb',
-      email: user.email,
-      name: user.fullName,
-    });
-    console.log("check url: ",resurl);
-            window.location.href = resurl.result.url;
+    if (!user?.email) return;
+    try {
+      const resurl = await createAppLinks({
+        app: 'snabbb',
+        email: user.email,
+        name: user.fullName,
+      });
+      console.log("check url: ", resurl);
+      if (resurl?.result?.url) {
+        window.location.href = resurl.result.url;
+      }
+    } catch (e) {
+      console.error('Failed to sync mrbur SSO:', e);
+    }
   }
 
   useEffect(() => {
@@ -771,16 +788,21 @@ useEffect(() => {
                       {/* Snabbb Credit */}
                       <button
                         onClick={async () => {
-                          const res = await createAppLink({
-                            app: 'reward',
-                            email: authUser?.username,
-                            name: authUser?.name,
-                          });
-                          
-                          const supabaseUserId = res.result?.supabase_user_id;
-                          const w = window.open('', '_blank');
-                          if (supabaseUserId && w) {
-                            w.location.href = `https://reward.snabbb.com`;
+                          try {
+                            const res = await createAppLink({
+                              app: 'reward',
+                              email: authUser?.username,
+                              name: authUser?.name,
+                            });
+
+                            const supabaseUserId = res.result?.supabase_user_id;
+                            const w = window.open('', '_blank');
+                            if (supabaseUserId && w) {
+                              w.location.href = `https://reward.snabbb.com`;
+                            }
+                          } catch (e: any) {
+                            console.error('Failed to open Snabbb Credit:', e);
+                            toast.error(e?.message || 'Could not open Snabbb Credit. Please try logging in again.');
                           }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
@@ -800,16 +822,21 @@ useEffect(() => {
                       {/* My Channel */}
                       <button
                         onClick={async () => {
-                          const res = await createAppLink({
-                            app: 'e-learning',
-                            email: authUser?.username,
-                            name: authUser?.name,
-                          });
-                          
-                          const supabaseUserId = res.result?.supabase_user_id;
-                          const w = window.open('', '_blank');
-                          if (supabaseUserId && w) {
-                            w.location.href = `https://e-learning.snabbb.com/channel/${supabaseUserId}`;
+                          try {
+                            const res = await createAppLink({
+                              app: 'e-learning',
+                              email: authUser?.username,
+                              name: authUser?.name,
+                            });
+
+                            const supabaseUserId = res.result?.supabase_user_id;
+                            const w = window.open('', '_blank');
+                            if (supabaseUserId && w) {
+                              w.location.href = `https://e-learning.snabbb.com/channel/${supabaseUserId}`;
+                            }
+                          } catch (e: any) {
+                            console.error('Failed to open My Channel:', e);
+                            toast.error(e?.message || 'Could not open My Channel. Please try logging in again.');
                           }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"

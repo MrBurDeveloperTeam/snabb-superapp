@@ -321,7 +321,12 @@ const getLocationInfo = async (): Promise<LocationResponse> => {
     return await res.json();
   } catch (error) {
     console.error("location error:", error);
-    return { country_code: "MY" };
+    // Don't fake a resolved country here — silently returning "MY" made
+    // every failed lookup look like a real Malaysia signal and pushed
+    // unrelated signups into the Malaysia (MMY) company by default.
+    // Leave country_code undefined so callers fall through to their next
+    // real fallback instead.
+    return {};
   }
 };
 
@@ -360,26 +365,31 @@ const getSignupCompanyId = async (selectedCountry?: string): Promise<number> => 
   }
 
   try {
-    const [{ country_code = "MY" }, sessionInfo] = await Promise.all([
+    const [{ country_code }, sessionInfo] = await Promise.all([
       getLocationInfo(),
       getSessionInfo(),
     ]);
 
-    const cc = (country_code || "MY").toUpperCase();
+    // Only treat this as a real signal if the IP lookup actually resolved
+    // a country — don't let a failed lookup masquerade as "MY" before we've
+    // tried the other, more accurate fallbacks below.
+    if (country_code) {
+      const cc = country_code.toUpperCase();
 
-    // 2. Try dynamic session company_codes
-    const companyCodes = sessionInfo.company_codes || {};
-    const resolvedCompanyId = resolveCompanyIdFromCountry(cc, companyCodes);
-    if (resolvedCompanyId) return resolvedCompanyId;
+      // 2. Try dynamic session company_codes
+      const companyCodes = sessionInfo.company_codes || {};
+      const resolvedCompanyId = resolveCompanyIdFromCountry(cc, companyCodes);
+      if (resolvedCompanyId) return resolvedCompanyId;
 
-    // 3. Static fallback by IP country code
-    const staticId = COUNTRY_CODE_TO_COMPANY_ID[cc];
-    if (staticId) return staticId;
+      // 3. Static fallback by IP country code
+      const staticId = COUNTRY_CODE_TO_COMPANY_ID[cc];
+      if (staticId) return staticId;
+    }
 
     // 4. Session fallback
     if (sessionInfo.company_id) return Number(sessionInfo.company_id);
 
-    return 2; // final fallback → MR. BUR (M)
+    return 2; // final fallback → MR. BUR (M), used only once every real signal is exhausted
   } catch (error) {
     console.error("company_id resolve error:", error);
     return 2;

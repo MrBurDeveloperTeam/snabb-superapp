@@ -16,6 +16,12 @@ export const useCreateAppLink = () => {
       const company = getActiveCompanyFromOdooSession();
       console.log('the company info is', company);
 
+      if (!company?.companyId) {
+        throw new Error(
+          "Could not determine your active company from the current session. Please log in again."
+        );
+      }
+
       const { data } = await api.post(
         "/v1/sso/app_link",
         {
@@ -25,15 +31,15 @@ export const useCreateAppLink = () => {
             app_code: app,
             email,
             name,
-            company_id: company?.companyId ? Number(company.companyId) : 2,
+            company_id: Number(company.companyId),
             portal: true,
           },
           id: 1,
         },
         {
           headers: {
-            ...(company?.companyCode ? { "X-Company-Code": company.companyCode } : {}),
-            ...(company?.companyId ? { "X-Company-Id": company.companyId } : {}),
+            "X-Company-Code": company.companyCode,
+            "X-Company-Id": company.companyId,
           },
           withCredentials: true,
         }
