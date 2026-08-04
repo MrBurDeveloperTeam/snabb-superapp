@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "../services/supabaseClient";
 
 const SPECIALTY_OPTIONS = [
   { id: "76", name: "General Dentistry" },
@@ -274,6 +275,8 @@ const COUNTRY_OPTIONS = [
   { id: "15", name: "Åland Islands" },
 ];
 
+type AccountType = "individual" | "company";
+
 type ProfileForm = {
   name: string;
   email: string;
@@ -324,6 +327,9 @@ export default function ProfileSettingsPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [partnerId, setPartnerId] = useState<number | null>(null);
+  const [accountType, setAccountType] = useState<AccountType>("individual");
+  const [originalSstNumber, setOriginalSstNumber] = useState("");
+  const [sstChangeUsed, setSstChangeUsed] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -366,6 +372,75 @@ export default function ProfileSettingsPage() {
       const p = data.partner || {};
       const loadedPartnerId = data.partner_id || null;
 
+      let detectedAccountType: AccountType =
+        p.company_type === "company" ||
+        p.is_company === true
+          ? "company"
+          : "individual";
+
+      let detectedSstChangeUsed =
+        p.sst_change_used === true ||
+        data.sst_change_used === true;
+
+      try {
+        const {
+          data: authData,
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError) {
+          throw authError;
+        }
+
+        const userId = authData.user?.id;
+
+        if (userId) {
+          const {
+            data: profileRow,
+            error: profileError,
+          } = await supabase
+            .from("profiles")
+            .select("account_type, sst_change_used")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          if (profileError) {
+            console.error(
+              "Failed to load account type:",
+              profileError
+            );
+          } else if (profileRow) {
+            if (
+              profileRow.account_type === "company" ||
+              profileRow.account_type === "individual"
+            ) {
+              detectedAccountType =
+                profileRow.account_type as AccountType;
+            }
+
+            detectedSstChangeUsed =
+              profileRow.sst_change_used === true;
+          }
+        }
+      } catch (accountTypeError) {
+        console.error(
+          "Failed to detect account type:",
+          accountTypeError
+        );
+      }
+
+      setAccountType(detectedAccountType);
+      setSstChangeUsed(detectedSstChangeUsed);
+
+      console.log(
+        "Detected account type:",
+        detectedAccountType
+      );
+      console.log(
+        "SST change already used:",
+        detectedSstChangeUsed
+      );
+
       const stateId = Array.isArray(p.state_id) ? String(p.state_id[0]) : "";
       const stateName = Array.isArray(p.state_id) ? p.state_id[1] || "" : "";
 
@@ -400,12 +475,22 @@ export default function ProfileSettingsPage() {
 
       setSelectedSpecialties(specialtyNames);
 
+      const loadedSstNumber =
+        detectedAccountType === "company"
+          ? String(p.vat || "")
+          : "";
+
+      setOriginalSstNumber(loadedSstNumber);
+
       setForm((prev) => ({
         ...prev,
         name: p.name || "",
         email: p.email || "",
-        companyName: p.company_name || "",
-        sstNumber: p.vat || "",
+        companyName:
+          detectedAccountType === "company"
+            ? p.company_name || p.name || ""
+            : "",
+        sstNumber: loadedSstNumber,
         phone: p.phone || "",
         dateOfBirth: p.x_date_of_birth || "",
         street: p.street || "",
@@ -524,14 +609,63 @@ export default function ProfileSettingsPage() {
   };
 
   const handleSave = async () => {
+    const nextSstNumber = form.sstNumber.trim();
+
+    const sstHasChanged =
+      accountType === "company" &&
+      nextSstNumber !==
+        originalSstNumber.trim();
+
+    if (
+      accountType === "company" &&
+      sstHasChanged &&
+      !nextSstNumber
+    ) {
+      alert(
+        "SST Number cannot be empty."
+      );
+      return;
+    }
+
+    if (sstChangeUsed && sstHasChanged) {
+      alert(
+        "Your SST Number has already been changed once. Please contact marketing@snabbb.com for assistance."
+      );
+      return;
+    }
+
+    if (sstHasChanged) {
+      const confirmed = window.confirm(
+        "You can change your SST Number only once. After saving, further changes must be requested through marketing@snabbb.com. Continue?"
+      );
+
+      if (!confirmed) return;
+    }
+
     const formData = new FormData();
 
     formData.append("name", form.name);
     formData.append("email", form.email);
     formData.append("phone", form.phone);
-    formData.append("company_name", form.companyName);
-    formData.append("vat", form.sstNumber);
-    formData.append("x_date_of_birth", form.dateOfBirth);
+
+    if (accountType === "company") {
+      formData.append(
+        "company_name",
+        form.companyName.trim()
+      );
+
+      if (!sstChangeUsed) {
+        formData.append(
+          "vat",
+          nextSstNumber
+        );
+      }
+    }
+
+    formData.append(
+      "x_date_of_birth",
+      form.dateOfBirth
+    );
     formData.append("street", form.street);
     formData.append("street2", form.street2);
     formData.append("city", form.city);
@@ -567,6 +701,59 @@ export default function ProfileSettingsPage() {
         console.error("Save failed:", data);
         alert(data?.error || "Save failed");
         return;
+      }
+
+      if (sstHasChanged) {
+        const {
+          data: authData,
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError || !authData.user?.id) {
+          console.error(
+            "Unable to record SST change:",
+            authError
+          );
+
+          alert(
+            "Your SST Number was updated, but the change lock could not be recorded. Please contact support."
+          );
+          return;
+        }
+
+        const {
+          data: updatedProfile,
+          error: sstLockError,
+        } = await supabase
+          .from("profiles")
+          .update({
+            sst_change_used: true,
+            sst_changed_at:
+              new Date().toISOString(),
+          })
+          .eq("user_id", authData.user.id)
+          .select("sst_change_used")
+          .single();
+
+        if (
+          sstLockError ||
+          updatedProfile?.sst_change_used !== true
+        ) {
+          console.error(
+            "Failed to lock SST Number:",
+            sstLockError
+          );
+
+          alert(
+            "Your SST Number was updated, but the change lock could not be recorded. Please contact marketing@snabbb.com."
+          );
+          return;
+        }
+
+        setSstChangeUsed(true);
+        setOriginalSstNumber(
+          nextSstNumber
+        );
       }
 
       setSaved(true);
@@ -842,35 +1029,65 @@ export default function ProfileSettingsPage() {
           </div>
         </div>
 
-        <div className="section-card">
-          <div className="section-title">Business Details</div>
-
-          <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
-            <div>
-              <label className="field-label">Company Name</label>
-              <input
-                name="companyName"
-                value={form.companyName}
-                disabled
-                onChange={updateField}
-                className="inp"
-                placeholder="Your clinic or company"
-              />
+        {accountType === "company" && (
+          <div className="section-card">
+            <div className="section-title">
+              Business Details
             </div>
 
-            <div>
-              <label className="field-label">SST Number</label>
-              <input
-                name="sstNumber"
-                value={form.sstNumber}
-                onChange={updateField}
-                disabled
-                className="inp"
-                placeholder="e.g. W10-1234-56789012"
-              />
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+              <div>
+                <label className="field-label">
+                  Company Name
+                </label>
+
+                <input
+                  name="companyName"
+                  value={form.companyName}
+                  onChange={updateField}
+                  className="inp"
+                  placeholder="Your clinic or company"
+                />
+              </div>
+
+              <div>
+                <label className="field-label">
+                  SST Number
+                </label>
+
+                <input
+                  name="sstNumber"
+                  value={form.sstNumber}
+                  onChange={updateField}
+                  disabled={sstChangeUsed}
+                  className="inp"
+                  placeholder="e.g. W10-1234-56789012"
+                />
+
+                <p className="mt-1.5 text-xs italic leading-5 text-[#9ca3af]">
+                  Changing SST Number is not allowed once
+                  document(s) have been issued for your account.
+                  Please contact us directly for this operation.
+                </p>
+
+                <a
+                  href="mailto:marketing@snabbb.com?subject=SST%20Number%20Change%20Request"
+                  className="mt-1 inline-block text-xs font-medium text-[#2563eb] underline-offset-2 hover:underline"
+                >
+                  marketing@snabbb.com
+                </a>
+
+                {sstChangeUsed && (
+                  <p className="mt-1.5 text-xs font-medium text-[#b45309]">
+                    You have already used your one SST Number
+                    change. Further changes must be requested by
+                    email.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="section-card">
           <div className="section-title">Address</div>
