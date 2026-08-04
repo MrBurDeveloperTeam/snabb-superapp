@@ -1,7 +1,7 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize Gemini Client
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 const modelId = "gemini-3-flash-preview";
 export type ChatHistory = {
   role: "user" | "model";
@@ -16,21 +16,7 @@ export const chatWithGemini = async (
   activityLogs?: string,
   userContext?: string,
 ): Promise<string> => {
-  if (!GEMINI_API_KEY) {
-    console.error(
-      "[Gemini] Missing VITE_GEMINI_API_KEY."
-    );
-
-    return (
-      "Snabbb Assistant is unavailable " +
-      "in this environment."
-    );
-  }
-
   try {
-    const ai = new GoogleGenAI({
-      apiKey: GEMINI_API_KEY,
-    });
     const isPersonalised = !!userContext && userContext.trim().length > 30;
 
     const systemInstruction = `
