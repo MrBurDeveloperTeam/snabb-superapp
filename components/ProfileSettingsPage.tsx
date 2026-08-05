@@ -1182,6 +1182,7 @@ export default function ProfileSettingsPage() {
                 value={form.countryId}
                 onChange={updateCountry}
                 className="inp"
+                disabled
               >
                 <option value="">Select country</option>
                 {COUNTRY_OPTIONS.map((item) => (
