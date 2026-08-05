@@ -150,6 +150,17 @@ function buildCandidateFromSource(source: ExpiringSoonSource, todayKey: string):
   };
 }
 
+export interface ExpiringSoonInventoryEvaluation {
+  candidate: DialogueCandidate | null;
+  /** Every item id with at least one qualifying expiring-soon (P1) source —
+   *  batch or legacy item-level, not just the globally-selected winner. The
+   *  Low Stock evaluator excludes all of these: an item already flagged as
+   *  expiring soon must never also downgrade into a Low Stock candidate,
+   *  independent of whether this candidate was the global P1 winner or was
+   *  already dismissed/handled in the current session. */
+  expiringSoonItemIds: Set<string>;
+}
+
 /**
  * `expiredItemIds` (from evaluateExpiredInventory) is excluded wholesale:
  * an item that already has a qualifying P0 source must never also produce
@@ -160,7 +171,7 @@ export function evaluateExpiringSoonInventory(
   snapshot: InventorySnapshot,
   expiredItemIds: Set<string>,
   now: Date = new Date()
-): DialogueCandidate | null {
+): ExpiringSoonInventoryEvaluation {
   const todayKey = toCalendarDateKey(now);
   const windowEndKey = addCalendarDaysToDateKey(todayKey, INVENTORY_EXPIRING_SOON_DAYS);
 
@@ -171,8 +182,13 @@ export function evaluateExpiringSoonInventory(
     if (source) sources.push(source);
   }
 
-  if (sources.length === 0) return null;
+  if (sources.length === 0) {
+    return { candidate: null, expiringSoonItemIds: new Set() };
+  }
 
   const winner = [...sources].sort(compareSourcesForSelection)[0];
-  return buildCandidateFromSource(winner, todayKey);
+  return {
+    candidate: buildCandidateFromSource(winner, todayKey),
+    expiringSoonItemIds: new Set(sources.map((s) => s.itemId)),
+  };
 }

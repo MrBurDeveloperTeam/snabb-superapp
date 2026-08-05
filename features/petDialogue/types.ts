@@ -56,6 +56,7 @@ export interface DialogueCandidate {
 export const DIALOGUE_ID = {
   EXPIRED_INVENTORY: 'expired_inventory',
   INVENTORY_EXPIRING_SOON: 'inventory_expiring_soon',
+  INVENTORY_LOW_STOCK: 'inventory_low_stock',
   PROFILE_INCOMPLETE: 'profile_incomplete',
   LEGACY_POST_LOGIN_INTRO: 'legacy_post_login_intro',
   WELCOME_FALLBACK: 'welcome_fallback',

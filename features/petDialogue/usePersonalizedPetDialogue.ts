@@ -174,7 +174,7 @@ export function usePersonalizedPetDialogue({
           return;
         }
 
-        const { expiredCandidate, expiringSoonCandidate } = inventoryResult.candidate;
+        const { expiredCandidate, expiringSoonCandidate, lowStockCandidate } = inventoryResult.candidate;
 
         const p0 = expiredCandidate && !hasHandledInSession(currentUserId, expiredCandidate.dedupeKey)
           ? expiredCandidate
@@ -201,9 +201,23 @@ export function usePersonalizedPetDialogue({
           ? null
           : profileCandidateRaw;
 
-        const p1 = expiringSoonCandidate && !hasHandledInSession(currentUserId, expiringSoonCandidate.dedupeKey)
+        // Session dedupe is applied independently to each P1 subtype before
+        // choosing between them — a handled Expiring Soon must not block an
+        // otherwise-eligible Low Stock candidate on a different item, and
+        // vice versa.
+        const unhandledExpiringSoon = expiringSoonCandidate && !hasHandledInSession(currentUserId, expiringSoonCandidate.dedupeKey)
           ? expiringSoonCandidate
           : null;
+        const unhandledLowStock = lowStockCandidate && !hasHandledInSession(currentUserId, lowStockCandidate.dedupeKey)
+          ? lowStockCandidate
+          : null;
+
+        // Explicit P1 subtype rank: Expiring Soon always outranks Low Stock.
+        // Resolved here, before either ever reaches the shared resolver, so
+        // resolveDialogue.ts never has to compare an expiry date's eventTime
+        // against a Low Stock candidate (which has none) — at most one P1
+        // candidate is ever passed into it.
+        const p1 = unhandledExpiringSoon ?? unhandledLowStock;
 
         // Priority ordering (PROFILE > P1 > LEGACY_INTRO > FALLBACK) lives
         // entirely in resolveDialogue.ts's PRIORITY_RANK — passing all three
@@ -260,7 +274,11 @@ export function usePersonalizedPetDialogue({
         return;
       }
 
-      if (candidate.dialogueId === DIALOGUE_ID.EXPIRED_INVENTORY || candidate.dialogueId === DIALOGUE_ID.INVENTORY_EXPIRING_SOON) {
+      if (
+        candidate.dialogueId === DIALOGUE_ID.EXPIRED_INVENTORY ||
+        candidate.dialogueId === DIALOGUE_ID.INVENTORY_EXPIRING_SOON ||
+        candidate.dialogueId === DIALOGUE_ID.INVENTORY_LOW_STOCK
+      ) {
         const authUser = getAuthUser();
         // Open the tab synchronously (before any await) so popup blockers
         // treat it as part of the click gesture — same pattern as AppCard.
