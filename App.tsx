@@ -35,6 +35,8 @@ import { useProfileImage } from './hooks/useProfileImage';
 import ThemeToggle from './components/ThemeToggle';
 import { useThemeStore } from './store/themeStore';
 import LoadingOverlay from './components/LoadingOverlay';
+import { clearLogoutStorage, clearLocalSupabaseSession, resolveOutgoingSupabaseUserId } from './utils/logoutStorage';
+import type { ProfileCompletionStatus } from './features/petDialogue/types';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -89,6 +91,11 @@ const App: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const { profileImageUrl } = useProfileImage(isLoggedIn);
+  // Feeds the Phase 1A personalized-dialogue resolver in CatMascot. Distinct
+  // from 'unknown' on purpose: 'loading' means "still fetching, wait before
+  // finalizing a dialogue"; 'unknown' means "the fetch failed — never treat
+  // that as an incomplete profile".
+  const [profileCompletionStatus, setProfileCompletionStatus] = useState<ProfileCompletionStatus>('unknown');
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
@@ -232,6 +239,19 @@ useEffect(() => {
     setAuthFormData(initialFormData);
     setIsProfileMenuOpen(false);
     setUserChatContext('');
+    setProfileCompletionStatus('unknown');
+  }, []);
+
+  // Cross-tab SSO_LOGOUT never calls signOut() (no Odoo /logout call, no
+  // Supabase sign-out of its own) — the tab that actually initiated logout
+  // already did that. But Supabase's persisted session and this feature's
+  // storage both live in *this origin's* localStorage/sessionStorage, which
+  // a different origin's sign-out cannot reach, so a receiving tab still
+  // needs to clear its own local copies. See utils/logoutStorage.ts.
+  const clearLocalSessionOnReceivedLogout = useCallback(async () => {
+    const outgoingUserId = await resolveOutgoingSupabaseUserId();
+    await clearLocalSupabaseSession();
+    clearLogoutStorage({ userId: outgoingUserId ?? undefined });
   }, []);
 
     const verifySession = useCallback(async () => {
@@ -264,14 +284,17 @@ useEffect(() => {
       setAuthFormData(nextUser);
       setUser(nextUser);
 
+      setProfileCompletionStatus('loading');
       try {
         const partnerRes = await api.get(
           `/partner/profile?email=${encodeURIComponent(nextUser.email)}`
         );
         const profileComplete = partnerRes?.data?.profileComplete ?? false;
         setUser({ ...nextUser, profileComplete } as any);
+        setProfileCompletionStatus(profileComplete ? 'complete' : 'incomplete');
       } catch (e) {
         console.warn("Failed to fetch partner profile:", e);
+        setProfileCompletionStatus('unknown');
       }
 
      const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
@@ -473,6 +496,7 @@ useEffect(() => {
       if (!ALLOWED_ORIGINS.includes(event.origin)) return;
 
       if (event.data?.type === 'SSO_LOGOUT') {
+        await clearLocalSessionOnReceivedLogout();
         clearAuthState();
       }
 
@@ -483,7 +507,7 @@ useEffect(() => {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [verifySessionSafe, clearAuthState]);
+  }, [verifySessionSafe, clearAuthState, clearLocalSessionOnReceivedLogout]);
 
   useEffect(() => {
     const onFocus = () => {
@@ -586,6 +610,9 @@ useEffect(() => {
 
   const logout = async () => {
     try {
+      // signOut() now owns the full sequence: capture outgoing user id, Odoo
+      // logout, Supabase sign-out, then scoped storage cleanup — see
+      // services/signOut.ts / utils/logoutStorage.ts.
       await signOut();
     } catch (error) {
       console.error('Logout failed:', error);
@@ -889,6 +916,8 @@ useEffect(() => {
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
             isHidden={isAuthRoute || isVirtualPetOpen}
+            profileCompletionStatus={profileCompletionStatus}
+            onNavigateInternal={navigate}
           />
         </div>
         

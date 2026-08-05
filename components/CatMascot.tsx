@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getPetOption, normalizePetId } from '../VirtualPet/petOptions';
+import { isPersonalizedPetDialogueEnabled } from '../features/petDialogue/dialogueFlag';
+import { usePersonalizedPetDialogue } from '../features/petDialogue/usePersonalizedPetDialogue';
+import { DIALOGUE_ID, type DialogueCandidate, type ProfileCompletionStatus } from '../features/petDialogue/types';
 
 const MALLOW_FRAME_WIDTH = 192;
 const MALLOW_FRAME_HEIGHT = 208;
@@ -23,6 +26,10 @@ interface CatMascotProps {
   onCatClick?: () => void;
   disabled?: boolean;
   isHidden?: boolean;
+  /** Odoo-derived profile-completeness signal, resolved by the caller (see App.tsx). Only read when the personalized-dialogue feature flag is enabled. */
+  profileCompletionStatus?: ProfileCompletionStatus;
+  /** Internal (pushState-based) navigation, used by the profile-reminder action button. Only used when the feature flag is enabled. */
+  onNavigateInternal?: (path: string) => void;
 }
 
 interface MallowMascotSpriteProps {
@@ -114,7 +121,13 @@ function MallowMascotSprite({
   );
 }
 
-export default function CatMascot({ onCatClick, disabled = false, isHidden = false }: CatMascotProps) {
+export default function CatMascot({
+  onCatClick,
+  disabled = false,
+  isHidden = false,
+  profileCompletionStatus = 'unknown',
+  onNavigateInternal,
+}: CatMascotProps) {
   const [catPos, setCatPos] = useState({ x: -10, y: 85 });
   const [isWalking, setIsWalking] = useState(false);
   const [facingLeft, setFacingLeft] = useState(false);
@@ -132,12 +145,22 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const autoCloseTimerRef = useRef<any>(null);
   const isEntryWalkComplete = useRef(false);
-  // Which dialog type is currently prepared to show ('intro' | 'welcomeBack' | null),
-  // and which dialog types have already been dismissed during this page lifecycle.
-  // Tracking dismissal per-type (rather than one shared flag) means dismissing the
-  // Post-Login Intro no longer permanently blocks the Welcome Back dialog, or vice versa.
-  const currentDialogType = useRef<'intro' | 'welcomeBack' | null>(null);
-  const dismissedDialogs = useRef<Set<'intro' | 'welcomeBack'>>(new Set());
+  // Which dialog type is currently prepared to show ('intro' | 'welcomeBack' |
+  // 'personalized' | null), and which dialog types have already been dismissed
+  // during this page lifecycle. Tracking dismissal per-type (rather than one
+  // shared flag) means dismissing the Post-Login Intro no longer permanently
+  // blocks the Welcome Back dialog, or vice versa. 'personalized' is the
+  // Phase 1A resolver's own single slot (P0 / profile reminder / fallback);
+  // when the resolver instead picks the legacy intro, it reuses 'intro' as-is.
+  const currentDialogType = useRef<'intro' | 'welcomeBack' | 'personalized' | null>(null);
+  const dismissedDialogs = useRef<Set<'intro' | 'welcomeBack' | 'personalized'>>(new Set());
+  // Holds the winning Phase 1A candidate while it's active, so tryActivateDialog
+  // can decide whether to bypass the entry-walk gate / arm an auto-close timer,
+  // and so the bubble can render its optional action button. Mirrored into
+  // React state (personalizedActiveCandidate below) for render-time reads,
+  // following the same ref+state split already used for isDialogActive.
+  const personalizedCandidateRef = useRef<DialogueCandidate | null>(null);
+  const [personalizedActiveCandidate, setPersonalizedActiveCandidate] = useState<DialogueCandidate | null>(null);
   // Holds the auto-close duration for a prepared 'welcomeBack' dialog, set when
   // its content is fetched but only ever consumed by tryActivateDialog() at the
   // moment it actually shows — see the comment on tryActivateDialog for why.
@@ -157,10 +180,13 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
     }
   };
 
-  const startWelcomeBackAutoCloseTimer = () => {
+  // durationOverrideMs lets the Phase 1A fixed welcome fallback reuse this
+  // same timer instead of duplicating it; the legacy 'welcomeBack' call site
+  // below passes no override and keeps its existing DB-configured duration.
+  const startWelcomeBackAutoCloseTimer = (durationOverrideMs?: number) => {
     clearWelcomeBackAutoCloseTimer();
 
-    const configuredDuration = Number(welcomeBackAutoCloseMsRef.current);
+    const configuredDuration = Number(durationOverrideMs ?? welcomeBackAutoCloseMsRef.current);
     const duration = Number.isFinite(configuredDuration) && configuredDuration > 0
       ? configuredDuration
       : DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS;
@@ -201,14 +227,32 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
   // isDialogActiveRef — once active, further calls (StrictMode's dev double-invoke
   // of the fetch effect, click-to-move, etc.) are no-ops instead of re-arming the
   // Welcome Back timer from scratch every time.
+  //
+  // P0 personalized candidates (bypassEntryWalk) are the one exception to the
+  // entry-walk gate: the wrapper's left/top position is already set to its
+  // final value synchronously on mount (only the CSS transition animates
+  // visually), so showing the bubble immediately never structurally
+  // mis-positions it — it just rides along the walk-in motion instead of
+  // waiting up to ~2.8s behind a cosmetic animation for a critical alert.
   const tryActivateDialog = () => {
     const dialogType = currentDialogType.current;
-    if (
-      !isEntryWalkComplete.current ||
-      !dialogType ||
-      dismissedDialogs.current.has(dialogType) ||
-      isDialogActiveRef.current
-    ) {
+    if (!dialogType || dismissedDialogs.current.has(dialogType) || isDialogActiveRef.current) {
+      return;
+    }
+
+    const canBypassEntryWalk = dialogType === 'personalized' && !!personalizedCandidateRef.current?.bypassEntryWalk;
+    if (!isEntryWalkComplete.current && !canBypassEntryWalk) {
+      return;
+    }
+
+    // Phase 1A candidates must never activate — and therefore must never be
+    // marked "handled" in session dedupe (see markPersonalizedShown below) —
+    // while the mascot wrapper is intentionally hidden (auth routes, or the
+    // Virtual Pet modal — see App.tsx's `isHidden` prop). The legacy Intro /
+    // Welcome Back path never gated on this, so this check is scoped to
+    // 'personalized' only to leave that behaviour unchanged when the feature
+    // flag is disabled. See the effect below that retries once unhidden.
+    if (dialogType === 'personalized' && isHiddenRef.current) {
       return;
     }
 
@@ -217,10 +261,89 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
 
     if (dialogType === 'welcomeBack') {
       startWelcomeBackAutoCloseTimer();
+    } else if (dialogType === 'personalized') {
+      const candidate = personalizedCandidateRef.current;
+      if (candidate) {
+        markPersonalizedShown(candidate);
+        if (candidate.autoCloseMs) startWelcomeBackAutoCloseTimer(candidate.autoCloseMs);
+      }
     }
   };
 
   const [dialogSteps, setDialogSteps] = useState<string[]>([]);
+
+  // ─── Phase 1A personalized dialogue resolver (feature-flagged) ─────────────
+  // Computed once per render; the env var is effectively constant for the
+  // lifetime of a build, so this behaves like a compile-time switch between
+  // the legacy code path below and the new resolver-driven one.
+  const personalizedDialogueEnabled = isPersonalizedPetDialogueEnabled();
+  const {
+    lifecycle: personalizedLifecycle,
+    selection: personalizedSelection,
+    userId: personalizedUserId,
+    markShown: markPersonalizedShown,
+    runAction: runPersonalizedAction,
+  } = usePersonalizedPetDialogue({
+    active: personalizedDialogueEnabled && !disabled,
+    profileStatus: profileCompletionStatus,
+    introAlreadyCompleted: (uid: string) => {
+      try {
+        return localStorage.getItem(`intro_shown_${uid}`) === 'true';
+      } catch {
+        return false;
+      }
+    },
+    onNavigateInternal,
+  });
+
+  // Adopts the resolver's selection into the same dialogSteps/currentDialogType
+  // machinery the legacy Intro/Welcome Back paths already use, so rendering,
+  // dismissal, and the entry-walk gate stay a single code path. Locks after
+  // the first adoption (currentDialogType.current already set) so a later
+  // resolver re-run — e.g. profileStatus settling from 'loading' — can never
+  // replace an already-shown dialogue for this mount.
+  useEffect(() => {
+    if (!personalizedDialogueEnabled || disabled) return;
+    if (personalizedLifecycle !== 'ready' && personalizedLifecycle !== 'failed') return;
+    if (!personalizedSelection) return;
+    if (currentDialogType.current) return;
+
+    if (personalizedUserId) setCurrentUserId(personalizedUserId);
+
+    const { candidate, introSteps } = personalizedSelection;
+    personalizedCandidateRef.current = candidate;
+    setPersonalizedActiveCandidate(candidate);
+
+    if (candidate.dialogueId === DIALOGUE_ID.LEGACY_POST_LOGIN_INTRO && introSteps.length > 0) {
+      // Reuse the existing multi-step Intro rendering/dismissal exactly as-is.
+      setDialogSteps(introSteps);
+      setDialogStep(0);
+      currentDialogType.current = 'intro';
+    } else {
+      setDialogSteps([candidate.message]);
+      setDialogStep(0);
+      currentDialogType.current = 'personalized';
+    }
+
+    tryActivateDialog();
+  }, [personalizedDialogueEnabled, disabled, personalizedLifecycle, personalizedSelection, personalizedUserId]);
+
+  // A personalized candidate may have been ready while the mascot wrapper was
+  // hidden (isHiddenRef gate in tryActivateDialog above) — retry activation
+  // once it's visible again. Scoped to the flag being enabled so this is a
+  // guaranteed no-op, and therefore behaviour-preserving, when it's disabled.
+  //
+  // This effect is declared before the isHiddenRef sync effect below, so on
+  // the same render where `isHidden` flips to false, this one would
+  // otherwise run first and call tryActivateDialog() while isHiddenRef.current
+  // is still stale (true) — silently defeating the retry. Updating the ref
+  // synchronously here, right before the call, removes the dependency on
+  // effect declaration order.
+  useEffect(() => {
+    if (!personalizedDialogueEnabled || isHidden) return;
+    isHiddenRef.current = isHidden;
+    tryActivateDialog();
+  }, [personalizedDialogueEnabled, isHidden]);
 
   const [meowMsg, setMeowMsg] = useState(null);
   const [petStates, setPetStates] = useState(['Normal']);
@@ -229,11 +352,15 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
   const meowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const meowInnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // FIX: track inner timer too
   const isHiddenRef = useRef(isHidden);
-  const isDialogActiveRef = useRef(isDialogActive); // FIX: ref so loop doesn't restart on dialog change
+  // Named distinctly from the manually-managed `isDialogActiveRef` lock above
+  // (pre-existing duplicate-declaration bug fixed while wiring Phase 1A —
+  // see implementation report): this one just mirrors `isDialogActive`
+  // state for the meow loop below so it doesn't need to restart on change.
+  const isDialogActiveMeowRef = useRef(isDialogActive); // FIX: ref so loop doesn't restart on dialog change
   const petStatesRef = useRef(['Normal']);           // FIX: ref so loop doesn't restart on state change
 
   useEffect(() => { isHiddenRef.current = isHidden; }, [isHidden]);
-  useEffect(() => { isDialogActiveRef.current = isDialogActive; }, [isDialogActive]);
+  useEffect(() => { isDialogActiveMeowRef.current = isDialogActive; }, [isDialogActive]);
 
   // Clear message bubble immediately when pet state changes
   useEffect(() => {
@@ -368,8 +495,13 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
     };
   }, [disabled]);
 
-  // ─── Dialog init ─────────────────────────────────────────────────────────
+  // ─── Dialog init (legacy Intro / Welcome Back) ──────────────────────────────
+  // When the Phase 1A personalized-dialogue flag is enabled, the effect above
+  // owns dialog selection instead — this entire legacy path is left untouched
+  // so behaviour with the flag disabled is unaffected.
   useEffect(() => {
+    if (personalizedDialogueEnabled) return;
+
     const initDialog = async () => {
       let userId: string | null = null;
       let userMeta: Record<string, any> | null = null;
@@ -496,7 +628,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
     };
 
     initDialog();
-  }, [disabled]);
+  }, [disabled, personalizedDialogueEnabled]);
 
   // ─── Meow message loop ────────────────────────────────────────────────────
   // FIX: dep array is only [disabled] — petStates and isDialogActive are read
@@ -584,7 +716,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
             if (!isSubscribed) return;
 
             // FIX: skip showing message while dialog is open — read via ref
-            if (isDialogActiveRef.current) {
+            if (isDialogActiveMeowRef.current) {
               loop(); // wait another interval, don't show message
               return;
             }
@@ -917,12 +1049,28 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
                     <ChevronLeft className="w-4 h-4" /> Back
                   </button>
                   {dialogStep === dialogSteps.length - 1 ? (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); closeDialog(); }}
-                      className="flex items-center gap-1 text-xs font-semibold text-[#2A9D8F] underline underline-offset-2 hover:opacity-80 cursor-pointer"
-                    >
-                      Close <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {/* Only P0/profile Phase 1A candidates carry an action; the
+                          legacy Intro and the fixed welcome fallback never do. */}
+                      {personalizedActiveCandidate?.action && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            runPersonalizedAction(personalizedActiveCandidate);
+                            closeDialog();
+                          }}
+                          className="flex items-center gap-1 text-xs font-bold text-white bg-[#2A9D8F] px-3 py-1.5 rounded-md hover:opacity-90 cursor-pointer"
+                        >
+                          {personalizedActiveCandidate.action.label}
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); closeDialog(); }}
+                        className="flex items-center gap-1 text-xs font-semibold text-[#2A9D8F] underline underline-offset-2 hover:opacity-80 cursor-pointer"
+                      >
+                        Close <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={(e) => { e.stopPropagation(); setDialogStep(p => Math.min(dialogSteps.length - 1, p + 1)); }}
