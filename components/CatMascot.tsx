@@ -229,11 +229,12 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
   const meowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const meowInnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // FIX: track inner timer too
   const isHiddenRef = useRef(isHidden);
-  const isDialogActiveRef = useRef(isDialogActive); // FIX: ref so loop doesn't restart on dialog change
+  // isDialogActiveRef is declared above (kept in sync synchronously inside
+  // closeDialog()/tryActivateDialog()) — reused here for the meow loop instead of a second,
+  // effect-synced ref of the same name (that duplicate declaration broke the build).
   const petStatesRef = useRef(['Normal']);           // FIX: ref so loop doesn't restart on state change
 
   useEffect(() => { isHiddenRef.current = isHidden; }, [isHidden]);
-  useEffect(() => { isDialogActiveRef.current = isDialogActive; }, [isDialogActive]);
 
   // Clear message bubble immediately when pet state changes
   useEffect(() => {
