@@ -594,7 +594,7 @@ useEffect(() => {
       confirmPassword: '',
       agreedToTerms: true,
       country: '',
-      partner_id: null
+      partner_id: 0
     };
 
     setIsLoggedIn(true);

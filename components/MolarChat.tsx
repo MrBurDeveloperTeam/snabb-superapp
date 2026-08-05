@@ -123,7 +123,7 @@ interface MolarChatProps {
     setChatInput: (val: string) => void;
     onSendMessage: (e?: React.FormEvent) => void;
     onClearChat: () => void;
-    chatEndRef: React.RefObject<HTMLDivElement>;
+    chatEndRef: React.RefObject<HTMLDivElement | null>;
     onPetToggle?: () => void;
 }
 
