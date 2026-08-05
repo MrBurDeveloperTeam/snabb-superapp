@@ -34,10 +34,15 @@ function parseDateKeyParts(dateKey: string): [number, number, number] | null {
 }
 
 /** Normalizes and calendar-validates a raw date-ish value (e.g. a
- *  possibly-timestamp `expiry_date` column) down to a trustworthy
- *  YYYY-MM-DD key, or `null` if it isn't a real calendar date. */
-function toValidatedDateKey(rawDate: string | null | undefined): string | null {
-  if (!rawDate) return null;
+ *  possibly-timestamp `expiry_date`/`date` column) down to a trustworthy
+ *  YYYY-MM-DD key, or `null` if it isn't a real calendar date. Guards on
+ *  `typeof !== 'string'` rather than mere truthiness: a non-string,
+ *  non-falsy runtime value (defensive against a malformed row from a
+ *  loosely-typed Supabase response) would otherwise reach `.slice()` and
+ *  throw, which is never acceptable for a value this function's callers
+ *  treat as "just reject it and skip this one row." */
+export function toValidatedDateKey(rawDate: string | null | undefined): string | null {
+  if (typeof rawDate !== 'string') return null;
   const normalized = rawDate.slice(0, 10);
   return parseDateKeyParts(normalized) ? normalized : null;
 }

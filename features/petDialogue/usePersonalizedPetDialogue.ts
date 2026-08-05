@@ -4,11 +4,13 @@ import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 import { getAuthUser } from '@/utils/authStorage';
 import { resolvePersonalizedDialogue } from './resolveDialogue';
 import { fetchInventoryDialogueEvaluation } from './providers/inventorySnapshotProvider';
+import { fetchTodoDialogueEvaluation } from './providers/todoSnapshotProvider';
 import { buildProfileCandidate } from './providers/profileProvider';
 import { fetchLegacyIntroCandidate } from './providers/legacyIntroProvider';
 import { resolveSafeFirstName } from './nameResolution';
 import { hasHandledInSession, markHandledInSession } from './sessionDedupe';
-import { getInventoryAppRoute, getProfileSettingsRoute } from './knownRoutes';
+import { getInventoryAppRoute, getTodoAppRoute, getProfileSettingsRoute } from './knownRoutes';
+import { toCalendarDateKey } from './dateUtils';
 import {
   DIALOGUE_ID,
   PET_DIALOGUE_RULE_VERSION,
@@ -136,15 +138,18 @@ export function usePersonalizedPetDialogue({
           }
         };
 
-        const [inventoryResult, introResult, profileRow] = await Promise.all([
+        const localToday = toCalendarDateKey(new Date());
+
+        const [inventoryResult, todoResult, introResult, profileRow] = await Promise.all([
           fetchInventoryDialogueEvaluation(currentUserId, controller.signal),
+          fetchTodoDialogueEvaluation(currentUserId, localToday, controller.signal),
           fetchLegacyIntroCandidate(currentUserId, introAlreadyCompleted(currentUserId), controller.signal),
           fetchDisplayNameProfile(),
         ]);
 
         if (isStale()) return;
 
-        if (inventoryResult.status === 'aborted') {
+        if (inventoryResult.status === 'aborted' || todoResult.status === 'aborted') {
           // The shared per-evaluation controller was aborted (unmount, user
           // change, or a newer generation) — isStale() above should already
           // have caught this, but bail out explicitly rather than act on a
@@ -161,24 +166,41 @@ export function usePersonalizedPetDialogue({
           autoCloseMs: DEFAULT_FALLBACK_AUTO_CLOSE_MS,
         });
 
-        if (inventoryResult.status === 'failed') {
-          // A provider failure is never "no urgent inventory exists" — it's
-          // unknown. Rather than risk showing Profile/P1/Intro while a real
-          // P0 might be hidden behind the failure, go straight to the
-          // neutral fallback (no timeout/error wording —
-          // buildFallbackCandidate's message is identical regardless of why
-          // the evaluation couldn't be trusted).
-          console.warn('[petDialogue] inventory evaluation failed, reason:', inventoryResult.reason);
+        if (inventoryResult.status === 'failed' || todoResult.status === 'failed') {
+          // A provider failure is never "no urgent inventory/tasks exist" —
+          // it's unknown. With two independent urgent-data providers now in
+          // play, either one failing must fail the whole evaluation closed:
+          // never show Profile/P1/P2/Intro while a real P0 could be hidden
+          // behind the other provider's failure. Go straight to the neutral
+          // fallback (no timeout/error wording — buildFallbackCandidate's
+          // message is identical regardless of why the evaluation couldn't
+          // be trusted).
+          if (inventoryResult.status === 'failed') {
+            console.warn('[petDialogue] inventory evaluation failed, reason:', inventoryResult.reason);
+          }
+          if (todoResult.status === 'failed') {
+            console.warn('[petDialogue] todo evaluation failed, reason:', todoResult.reason);
+          }
           setLifecycle('failed');
           setSelection({ candidate: fallback, introSteps: [] });
           return;
         }
 
         const { expiredCandidate, expiringSoonCandidate, lowStockCandidate } = inventoryResult.candidate;
+        const { overdueCandidate, taskTodayCandidate } = todoResult.candidate;
 
-        const p0 = expiredCandidate && !hasHandledInSession(currentUserId, expiredCandidate.dedupeKey)
+        // Explicit P0 subtype rank: expired inventory always outranks an
+        // overdue High task. Resolved here, before either reaches the
+        // shared resolver, so resolveDialogue.ts never has to compare an
+        // inventory expiry date against a Todo task date — at most one P0
+        // candidate is ever passed into it.
+        const unhandledExpired = expiredCandidate && !hasHandledInSession(currentUserId, expiredCandidate.dedupeKey)
           ? expiredCandidate
           : null;
+        const unhandledOverdueTask = overdueCandidate && !hasHandledInSession(currentUserId, overdueCandidate.dedupeKey)
+          ? overdueCandidate
+          : null;
+        const p0 = unhandledExpired ?? unhandledOverdueTask;
 
         if (p0) {
           // A real P0 candidate always wins immediately — never wait on
@@ -219,11 +241,18 @@ export function usePersonalizedPetDialogue({
         // candidate is ever passed into it.
         const p1 = unhandledExpiringSoon ?? unhandledLowStock;
 
-        // Priority ordering (PROFILE > P1 > LEGACY_INTRO > FALLBACK) lives
-        // entirely in resolveDialogue.ts's PRIORITY_RANK — passing all three
+        // Single P2 subtype today (High task due today) — no subtype rank
+        // needed yet, but resolved the same way (session dedupe applied
+        // before it ever reaches the shared resolver).
+        const p2 = taskTodayCandidate && !hasHandledInSession(currentUserId, taskTodayCandidate.dedupeKey)
+          ? taskTodayCandidate
+          : null;
+
+        // Priority ordering (PROFILE > P1 > P2 > LEGACY_INTRO > FALLBACK)
+        // lives entirely in resolveDialogue.ts's PRIORITY_RANK — passing all
         // remaining candidates here rather than branching on profileStatus
         // ourselves keeps that ranking the single source of truth.
-        const resolved = resolvePersonalizedDialogue([profileCandidate, p1, introResult.candidate], fallback);
+        const resolved = resolvePersonalizedDialogue([profileCandidate, p1, p2, introResult.candidate], fallback);
 
         setLifecycle('ready');
         setSelection({
@@ -259,7 +288,12 @@ export function usePersonalizedPetDialogue({
   const markShown = useCallback((candidate: DialogueCandidate) => {
     const uid = lockedUserIdRef.current;
     if (!uid) return;
-    if (candidate.priority === 'P0' || candidate.priority === 'PROFILE' || candidate.priority === 'P1') {
+    if (
+      candidate.priority === 'P0' ||
+      candidate.priority === 'PROFILE' ||
+      candidate.priority === 'P1' ||
+      candidate.priority === 'P2'
+    ) {
       markHandledInSession(uid, candidate.dedupeKey);
     }
   }, []);
@@ -295,6 +329,28 @@ export function usePersonalizedPetDialogue({
           if (w) w.location.href = url || getInventoryAppRoute();
         } catch {
           if (w) w.location.href = getInventoryAppRoute();
+        }
+        return;
+      }
+
+      if (candidate.dialogueId === DIALOGUE_ID.OVERDUE_HIGH_TASK || candidate.dialogueId === DIALOGUE_ID.HIGH_TASK_TODAY) {
+        const authUser = getAuthUser();
+        // Same pattern as the Inventory branch above — always the Todo
+        // landing page, never a task-detail path (no such controlled route
+        // exists).
+        const w = window.open('', '_blank');
+        if (!authUser?.username) {
+          if (w) w.location.href = getTodoAppRoute();
+          return;
+        }
+        try {
+          const res = (await createAppLink({ app: 'todo', email: authUser.username, name: authUser.name })) as {
+            result?: { url?: string };
+          };
+          const url = res?.result?.url;
+          if (w) w.location.href = url || getTodoAppRoute();
+        } catch {
+          if (w) w.location.href = getTodoAppRoute();
         }
         return;
       }

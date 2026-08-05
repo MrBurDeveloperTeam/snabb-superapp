@@ -4,8 +4,9 @@ const PRIORITY_RANK: Record<DialoguePriority, number> = {
   P0: 0,
   PROFILE: 1,
   P1: 2,
-  LEGACY_INTRO: 3,
-  FALLBACK: 4,
+  P2: 3,
+  LEGACY_INTRO: 4,
+  FALLBACK: 5,
 };
 
 function compareCandidates(a: DialogueCandidate, b: DialogueCandidate): number {
