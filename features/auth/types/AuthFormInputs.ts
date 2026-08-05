@@ -26,6 +26,10 @@ export interface AuthFormInputs {
   // to whoever's invite link was used and tagged Student.
   inviteCode?: string;
 
+  // Comma-separated tags received from the invitation URL.
+  // Passed to the signup API together with inviteCode.
+  tags?: string;
+
   // Referral code, referring doctor's email, or account ID. Populated from
   // the ?referral= query param on the signup page (referral link), or typed
   // in manually by the new user. Passed to Odoo as referral_code so the

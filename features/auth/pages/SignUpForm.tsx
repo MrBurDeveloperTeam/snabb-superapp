@@ -47,14 +47,20 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
       const payload: AuthFormInputs = {
         ...data,
         account_type: submittedAccountType,
-        login: isCompany ? (data.companyEmail || data.login) : data.login,
+        login: isCompany
+          ? data.companyEmail || data.login
+          : data.login,
         companyName: data.companyName,
         companyEmail: data.companyEmail,
         fullName: data.fullName,
         phone: data.phone,
         country: data.country,
-        dob: data.dob,  // ← always pass dob for both individual and company
+        dob: data.dob,
         position: effectivePosition,
+        inviteCode:
+          data.inviteCode?.trim() || undefined,
+        tags:
+          data.tags?.trim() || undefined,
       };
 
       console.log('payload being sent:', payload);
@@ -62,8 +68,19 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
       const res = await signupMutation.mutateAsync(payload);
 
       if (res.result.created) {
-        setToastMsg?.('Registration successful! Email for verification sent.', { type: 'success' });
-        setTimeout(() => onNavigate && onNavigate('login'), 2000);
+        sessionStorage.removeItem(
+          'snabbb_pending_signup_invite'
+        );
+
+        setToastMsg?.(
+          'Registration successful! Email for verification sent.',
+          { type: 'success' }
+        );
+
+        setTimeout(
+          () => onNavigate && onNavigate('login'),
+          2000
+        );
       } else {
         setToastMsg?.('User already exists, please log in.', { type: 'error' });
       }

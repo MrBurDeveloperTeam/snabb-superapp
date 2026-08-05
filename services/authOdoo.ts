@@ -409,6 +409,7 @@ export const authOdoo = async ({
   account_type,
   country,
   inviteCode,
+  tags,
   referralCode,
 }: AuthFormInputs) => {
   // Pass selected country for accurate company resolution
@@ -433,9 +434,18 @@ export const authOdoo = async ({
       ...(phone && { phone }),
       ...(dob && { date_of_birth: dob }),
       ...(countryId && { country_id: countryId }),
-      ...(effectivePosition && { job_position: effectivePosition }),
-      ...(inviteCode && { invite_code: inviteCode }),
-      ...(referralCode && { referral_code: referralCode }),
+      ...(effectivePosition && {
+        job_position: effectivePosition
+      }),
+      ...(inviteCode?.trim() && {
+        invite_code: inviteCode.trim()
+      }),
+      ...(tags?.trim() && {
+        tags: tags.trim()
+      }),
+      ...(referralCode?.trim() && {
+        referral_code: referralCode.trim()
+      }),
       company_id: companyId,
     },
     id: 1,
@@ -463,24 +473,43 @@ export const authOdoo = async ({
 
     return response;
   } catch (err: any) {
-    const serverError = err?.response?.data;
-    const innerJsonMatch = serverError.error.match(/:\s*(\{.*\})$/);
-    let errorMessage: any;
+    const rawError =
+      err?.response?.data?.error;
+
+    let errorMessage =
+      typeof rawError === "string"
+        ? rawError
+        : rawError?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Registration failed. Please try again.";
+
+    const innerJsonMatch =
+      typeof errorMessage === "string"
+        ? errorMessage.match(
+            /:\s*(\{.*\})$/
+          )
+        : null;
+
     if (innerJsonMatch) {
-      console.log('the inner: ', innerJsonMatch);
       try {
-        const inner = JSON.parse(innerJsonMatch[1]);
-        errorMessage = inner?.msg ?? inner?.message ?? serverError.error;
+        const inner = JSON.parse(
+          innerJsonMatch[1]
+        );
+
+        errorMessage =
+          inner?.msg ||
+          inner?.message ||
+          errorMessage;
       } catch {
-        errorMessage = serverError.error; // fallback to full string
+        // Keep the original error message.
       }
-    } else {
-      errorMessage = serverError.error;
     }
 
     toast.error(errorMessage, {
       icon: "🔴",
     });
-    return Promise.reject(new Error(errorMessage));
+
+    throw new Error(errorMessage);
   }
 };

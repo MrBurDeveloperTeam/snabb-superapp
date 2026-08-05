@@ -1,10 +1,6 @@
 import LoginForm from './LoginForm.tsx';
-import Showcase from './ShowCase.tsx';
-import { Dispatch, SetStateAction, useState } from 'react';
-import { useForm, SubmitHandler, Controller } from 'react-hook-form';
-import { LoginFormInputs } from '../types/LoginPageProps.ts';
+import { useForm } from 'react-hook-form';
 import { Box, Portal } from '@mui/material';
-import { SubmitButton } from '@/shared/ui/SubmitButton.tsx';
 import { handleInputChangeLogin, handleInputChangeSignup } from '../helper/AuthPageHelper.ts';
 import { AuthFormInputs } from '../types/AuthFormInputs.ts';
 import { SignupForm } from './SignUpForm.tsx';
@@ -13,7 +9,6 @@ import { containerVariants } from '@/shared/styles/variants';
 import { View } from '@/types/View.ts';
 import LoadingOverlay from '@/components/LoadingOverlay.tsx';
 // import LoginForm from '@/components/LoginForm.tsx';
-import { getStoredUser } from '@/features/lib/auth.ts';
 import { AuthFormData } from '@/types/AuthFormData.ts';
 
 interface Props {
@@ -26,12 +21,61 @@ interface Props {
 }
 
 export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData, setToastMsg}: Props) {
-  const [loggedIn, setLoggedIn] = useState(!!getStoredUser());
-
   // Capture ?invitation=<code> once on load. This only matters for signup —
   // it rides along in the signup payload so Odoo can link the new account
   // back to whoever's invite link was used and tag it Student.
-  const inviteCode = new URLSearchParams(window.location.search).get('invitation') || '';
+  const pendingInvite = (() => {
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const invitationFromUrl =
+      params.get('invitation')?.trim() || '';
+
+    const tagsFromUrl =
+      params.get('tags')?.trim() || '';
+
+    if (invitationFromUrl) {
+      return {
+        invitation: invitationFromUrl,
+        tags: tagsFromUrl,
+      };
+    }
+
+    try {
+      const raw = sessionStorage.getItem(
+        'snabbb_pending_signup_invite'
+      );
+
+      if (!raw) {
+        return {
+          invitation: '',
+          tags: '',
+        };
+      }
+
+      const stored = JSON.parse(raw);
+
+      return {
+        invitation:
+          typeof stored?.invitation === 'string'
+            ? stored.invitation.trim()
+            : '',
+        tags:
+          typeof stored?.tags === 'string'
+            ? stored.tags.trim()
+            : '',
+      };
+    } catch {
+      return {
+        invitation: '',
+        tags: '',
+      };
+    }
+  })();
+
+  const inviteCode = pendingInvite.invitation;
+  const inviteTags = pendingInvite.tags;
 
   // Capture ?referral=<code> once on load (a doctor's referral link). Also
   // accepts ?referral_code= / ?ref= as aliases. Pre-fills the "Referred by"
@@ -42,7 +86,7 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
   const {
     control: controlLogin,
     handleSubmit: handleSubmitLogin,
-    formState: { errors: errorslogin, isSubmitting },
+    formState: { errors: errorslogin },
     setValue: setValueLogin,
   } = useForm<AuthFormInputs>({
     shouldUnregister: false,
@@ -82,15 +126,18 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
       agreedToTerms: false,
       position: "",
       inviteCode,
+      tags: inviteTags,
       referralCode,
     }
 });
 
   const navigateTo = (view: View) => {
-    const nextPath = view === 'login' ? '/login' : `/${view}`;
+    const nextPath = view === 'gallery'
+      ? '/'
+      : `/${view}`;
 
     window.history.pushState({}, '', nextPath);
-    setCurrentView(nextPath as View);
+    setCurrentView(nextPath);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -144,7 +191,6 @@ return(
           )}
         </AnimatePresence>
 
-  <Showcase isLoginMode={authMode} />
   </Box>
   </motion.div>
   </>
