@@ -17,7 +17,7 @@ import { MolarChat } from './components/MolarChat';
 import type { ChatHistory } from './components/MolarChat';
 import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
 import { chatWithGemini } from './services/geminiService';
-import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
+import { fetchUserChatContext, buildUserContextString } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
 import { SnabbbIcon } from './public/icons/SnabbbIcon';
 import { toast, ToastContainer } from 'react-toastify';
@@ -31,7 +31,6 @@ import { useCreateAppLink } from './mutation/useCreateAppLink';
 import { useGetUserId } from './mutation/useGetUserId';
 import { getActiveCompanyFromOdooSession } from './services/getCompanies';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
-import { profile } from 'console';
 import { useProfileImage } from './hooks/useProfileImage';
 import ThemeToggle from './components/ThemeToggle';
 import { useThemeStore } from './store/themeStore';
@@ -57,19 +56,105 @@ const ALLOWED_ORIGINS = [
   'https://app.snabbb.com',
 ];
 
+type PendingSignupInvite = {
+  invitation: string;
+  tags: string;
+};
+
+type ResolveInviteResponse = {
+  ok: boolean;
+  invite_code?: string;
+  tags?: string[];
+  error?: string;
+  message?: string;
+};
+
+const PENDING_SIGNUP_INVITE_KEY =
+  'snabbb_pending_signup_invite';
+
+const readStoredSignupInvite =
+  (): PendingSignupInvite | null => {
+    try {
+      const raw = sessionStorage.getItem(
+        PENDING_SIGNUP_INVITE_KEY
+      );
+
+      if (!raw) return null;
+
+      const parsed = JSON.parse(
+        raw
+      ) as Partial<PendingSignupInvite>;
+
+      const invitation = String(
+        parsed.invitation || ''
+      ).trim();
+
+      if (!invitation) return null;
+
+      return {
+        invitation,
+        tags: String(parsed.tags || '').trim(),
+      };
+    } catch {
+      return null;
+    }
+  };
+
+const readSignupInviteFromUrl =
+  (): PendingSignupInvite | null => {
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const invitation = (
+      params.get('invitation') || ''
+    ).trim();
+
+    if (!invitation) return null;
+
+    return {
+      invitation,
+      tags: (
+        params.get('tags') || ''
+      ).trim(),
+    };
+  };
+
 const App: React.FC = () => {
   const { 
     mutateAsync: createAppLinks,
   } = useCreateAppLink();
   const authUser = getAuthUser();
   const [path, setPath] = useState(window.location.pathname);
+  const [
+    pendingSignupInvite,
+    setPendingSignupInvite,
+  ] = useState<PendingSignupInvite | null>(
+    () =>
+      readSignupInviteFromUrl() ||
+      readStoredSignupInvite()
+  );
+  const [
+    isResolvingInvite,
+    setIsResolvingInvite,
+  ] = useState(
+    () =>
+      /^\/r\/[^/]+\/?$/.test(
+        window.location.pathname
+      )
+  );
+
+  const [
+    inviteResolveError,
+    setInviteResolveError,
+  ] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
-  const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
+  const [, setLoggedInUser] = useState<AuthFormData | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
@@ -138,13 +223,159 @@ useEffect(() => {
   const userName = authFormData?.fullName || 'Guest User';
   const userInitial = userName.charAt(0).toUpperCase();
 
-  const isAuthRoute = path === '/login' || path === '/signup';
-  const authMode: 'login' | 'signup' = path === '/signup' ? 'signup' : 'login';
-  // Invite links carry a ?tags=... param (e.g. /signup?invitation=th-fern&tags=students-th,western-uni-grad-th)
-  // so recipients land straight on a clean signup form — hide the main nav
-  // header for those so there's no distraction/way to click off to the
-  // gallery before they finish signing up.
-  const hasTagsParam = new URLSearchParams(window.location.search).has('tags');
+  const shortInviteMatch =
+    path.match(/^\/r\/([^/]+)\/?$/);
+
+  const isShortInviteRoute =
+    Boolean(shortInviteMatch);
+
+  const isAuthRoute =
+    path === '/login' ||
+    path === '/signup' ||
+    isShortInviteRoute;
+
+  const authMode: 'login' | 'signup' =
+    path === '/signup' || isShortInviteRoute
+      ? 'signup'
+      : 'login';
+
+  const isInviteSignup =
+    authMode === 'signup' &&
+    (
+      isShortInviteRoute ||
+      Boolean(pendingSignupInvite)
+    );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveInvite = async () => {
+      const match =
+        path.match(/^\/r\/([^/]+)\/?$/);
+
+      if (!match) {
+        const directInvite =
+          readSignupInviteFromUrl();
+
+        if (directInvite) {
+          sessionStorage.setItem(
+            PENDING_SIGNUP_INVITE_KEY,
+            JSON.stringify(directInvite)
+          );
+
+          setPendingSignupInvite(
+            directInvite
+          );
+        }
+
+        setInviteResolveError('');
+        setIsResolvingInvite(false);
+        return;
+      }
+
+      let shortCode = match[1];
+
+      try {
+        shortCode =
+          decodeURIComponent(shortCode);
+      } catch {
+        // Keep the original value.
+      }
+
+      shortCode =
+        shortCode.trim().toLowerCase();
+
+      setIsResolvingInvite(true);
+      setInviteResolveError('');
+
+      try {
+        const response =
+          await api.get<ResolveInviteResponse>(
+            `/snabbb/invite/resolve/${
+              encodeURIComponent(shortCode)
+            }`
+          );
+
+        const result = response.data;
+
+        const invitation =
+          result?.invite_code?.trim() || '';
+
+        if (!result?.ok || !invitation) {
+          throw new Error(
+            result?.message ||
+            result?.error ||
+            'Unable to resolve invite link.'
+          );
+        }
+
+        const tags = Array.isArray(
+          result.tags
+        )
+          ? result.tags
+              .filter(
+                (tag): tag is string =>
+                  typeof tag === 'string' &&
+                  Boolean(tag.trim())
+              )
+              .map((tag) => tag.trim())
+              .join(',')
+          : '';
+
+        const invite: PendingSignupInvite = {
+          invitation,
+          tags,
+        };
+
+        if (cancelled) return;
+
+        sessionStorage.setItem(
+          PENDING_SIGNUP_INVITE_KEY,
+          JSON.stringify(invite)
+        );
+
+        setPendingSignupInvite(invite);
+
+        window.history.replaceState(
+          {},
+          '',
+          '/signup'
+        );
+
+        setPath('/signup');
+
+        window.scrollTo({
+          top: 0,
+          behavior: 'auto',
+        });
+      } catch (error: any) {
+        if (cancelled) return;
+
+        sessionStorage.removeItem(
+          PENDING_SIGNUP_INVITE_KEY
+        );
+
+        setPendingSignupInvite(null);
+
+        setInviteResolveError(
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          error?.message ||
+          'Unable to open this invite link.'
+        );
+      } finally {
+        if (!cancelled) {
+          setIsResolvingInvite(false);
+        }
+      }
+    };
+
+    resolveInvite();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
 
   const navigate = useCallback((url: string) => {
     if (window.location.pathname !== url) {
@@ -539,7 +770,6 @@ useEffect(() => {
   }
 
   useEffect(() => {
-    syncmrbursso();
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setIsProfileMenuOpen(false);
@@ -554,10 +784,15 @@ useEffect(() => {
     const run = async () => {
       const loggedIn = await verifySession();
 
-      if (path === '/login' || path === '/signup') {
+      if (isAuthRoute) {
         if (loggedIn) {
-          window.history.replaceState({}, '', '/');
-          setPath('/'); 
+          window.history.replaceState(
+            {},
+            '',
+            '/'
+          );
+
+          setPath('/');
         } else {
           setIsLoggedIn(false);
         }
@@ -565,7 +800,7 @@ useEffect(() => {
     };
 
     run();
-  }, [path, verifySession]);
+  }, [path, isAuthRoute, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {
@@ -644,7 +879,14 @@ useEffect(() => {
 
   return (
     <>
-    <LoadingOverlay isLoading={isPending} message='loading...' />
+    <LoadingOverlay
+      isLoading={isPending || isResolvingInvite}
+      message={
+        isResolvingInvite
+          ? 'Opening invite link...'
+          : 'loading...'
+      }
+    />
     <Toaster
       position="top-right"
       toastOptions={{
@@ -695,7 +937,7 @@ useEffect(() => {
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
-      {!hasTagsParam && (
+      {!isInviteSignup && (
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <button
@@ -915,6 +1157,39 @@ useEffect(() => {
       )}
 
       <main className="flex-1 relative">
+        {inviteResolveError && (
+          <div className="min-h-[70vh] flex items-center justify-center px-6">
+            <div className="w-full max-w-md rounded-3xl border border-rose-100 bg-white p-8 text-center shadow-xl">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-500">
+                <i className="fa-solid fa-link-slash" />
+              </div>
+
+              <h1 className="text-2xl font-black text-slate-900">
+                Invite link unavailable
+              </h1>
+
+              <p className="mt-3 text-sm font-medium text-slate-500">
+                {inviteResolveError}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.removeItem(
+                    PENDING_SIGNUP_INVITE_KEY
+                  );
+
+                  setPendingSignupInvite(null);
+                  setInviteResolveError('');
+                  navigate('/signup');
+                }}
+                className="mt-7 rounded-xl bg-tiffany-600 px-6 py-3 text-sm font-bold text-white hover:bg-tiffany-700"
+              >
+                Continue with regular signup
+              </button>
+            </div>
+          </div>
+        )}
         <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
           {/* key remounts CatMascot when auth changes → entry walk plays after login */}
           <CatMascot
@@ -970,7 +1245,9 @@ useEffect(() => {
         )}
 
         {/* <AnimatePresence mode="wait" initial={false}> */}
-          {isAuthRoute && (
+          {isAuthRoute &&
+            !isResolvingInvite &&
+            !inviteResolveError && (
             <AuthPage
               authMode={authMode}
               setCurrentView={setPath}

@@ -7,7 +7,6 @@ import {
   UseFormHandleSubmit,
   UseFormSetValue,
 } from "react-hook-form";
-import { LoginFormInputs } from "../types/LoginPageProps";
 import React, { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { Box } from "@mui/material";
 import { AnimatePresence, motion, Variants } from "framer-motion";
@@ -32,7 +31,7 @@ interface Props {
   setToastMsg?: (msg: string, options: { type: "success" | "error" }) => void;
   setExternalUserId?: (id: string) => void;
   setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData | null>>;
-  setFormData: Dispatch<SetStateAction<Partial<LoginFormInputs>>>;
+  setFormData: React.Dispatch<React.SetStateAction<AuthFormData>>;
 }
 
 const formVariants: Variants = {
@@ -141,7 +140,8 @@ const LoginForm: React.FC<Props> = ({
 
         setFormData((prev) => ({
           ...prev,
-          login: result.sessionInfo.email,
+          fullName: result.sessionInfo.name || '',
+          email: result.sessionInfo.email || '',
         }));
 
       } else {
@@ -210,7 +210,6 @@ const LoginForm: React.FC<Props> = ({
                           <input
                             {...field}
                             type="email"
-                            name="email"
                             autoComplete="email"
                             placeholder="john@example.com"
                             className={inputClasses}
