@@ -289,19 +289,41 @@ useEffect(() => {
       setInviteResolveError('');
 
       try {
-        const response =
-          await api.get<ResolveInviteResponse>(
-            `/snabbb/invite/resolve/${
-              encodeURIComponent(shortCode)
-            }`
-          );
+        const response = await fetch(
+          `https://mrbur.odoo.com/api/snabbb/invite/resolve/${
+            encodeURIComponent(shortCode)
+          }`,
+          {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+            },
+            cache: 'no-store',
+          }
+        );
 
-        const result = response.data;
+        const responseText = await response.text();
+
+        let result: ResolveInviteResponse;
+
+        try {
+          result = JSON.parse(
+            responseText
+          ) as ResolveInviteResponse;
+        } catch {
+          throw new Error(
+            'Invite resolver returned an invalid response.'
+          );
+        }
 
         const invitation =
           result?.invite_code?.trim() || '';
 
-        if (!result?.ok || !invitation) {
+        if (
+          !response.ok ||
+          !result?.ok ||
+          !invitation
+        ) {
           throw new Error(
             result?.message ||
             result?.error ||
@@ -358,8 +380,6 @@ useEffect(() => {
         setPendingSignupInvite(null);
 
         setInviteResolveError(
-          error?.response?.data?.message ||
-          error?.response?.data?.error ||
           error?.message ||
           'Unable to open this invite link.'
         );
