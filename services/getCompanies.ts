@@ -1,3 +1,16 @@
+// company_id -> the actual Snabbb Reward/wallet website code. Odoo's company_codes on the
+// session is res.company's generic accounting code, which doesn't always match the website
+// code the wallet/reward APIs are scoped by — e.g. company id 4 (PT. MRBUR GLOBAL INDONESIA)
+// has company.code "MIN", but its wallet/reward data is filed under website code "MID".
+// Correct known mismatches here; anything not listed falls back to the raw session value.
+const COMPANY_ID_TO_WEBSITE_CODE: Record<string, string> = {
+  "4": "MID", // PT. MRBUR GLOBAL INDONESIA — company.code is "MIN", website code is "MID"
+};
+
+function resolveWebsiteCode(companyId: string, rawCode: string): string {
+  return COMPANY_ID_TO_WEBSITE_CODE[companyId] || rawCode;
+}
+
 export const getActiveCompanyFromOdooSession = () => {
   try {
     const raw = localStorage.getItem("odoo_session");
@@ -17,9 +30,13 @@ export const getActiveCompanyFromOdooSession = () => {
     console.log('the company code: ', companyCodes[currentCompanyId]);
 
     if (currentCompanyId && companyCodes[currentCompanyId]) {
+      const companyId = String(currentCompanyId);
       return {
-        companyId: String(currentCompanyId),
-        companyCode: String(companyCodes[currentCompanyId]).toUpperCase(),
+        companyId,
+        companyCode: resolveWebsiteCode(
+          companyId,
+          String(companyCodes[currentCompanyId]).toUpperCase()
+        ),
       };
     }
 
@@ -44,13 +61,14 @@ export const getActiveCompanyFromOdooSession = () => {
       );
     }
 
-    const [companyId, companyCode] = entries.sort(
+    const [rawCompanyId, companyCode] = entries.sort(
       (a, b) => Number(a[0]) - Number(b[0])
     )[0];
+    const companyId = String(rawCompanyId);
 
     return {
-      companyId: String(companyId),
-      companyCode: String(companyCode).toUpperCase(),
+      companyId,
+      companyCode: resolveWebsiteCode(companyId, String(companyCode).toUpperCase()),
     };
   } catch (e) {
     console.error("Failed to parse odoo_session:", e);
