@@ -18,10 +18,10 @@ import { AuthFormData } from '@/types/AuthFormData.ts';
 
 interface Props {
   authMode: "login" | "signup";
-  setCurrentView: Dispatch<SetStateAction<View>>;
+  setCurrentView: React.Dispatch<React.SetStateAction<string>>;
   onAuthSuccess: () => void;
-  setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData>>;
-  setFormData: Dispatch<SetStateAction<Partial<LoginFormInputs>>>;
+  setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData | null>>;
+  setFormData: React.Dispatch<React.SetStateAction<AuthFormData>>;
   setToastMsg: (msg: string, options: { type: 'success' | 'error' }) => void;
 }
 

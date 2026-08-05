@@ -10,8 +10,8 @@ export const useGetUserId = () => {
       name,
     }: {
       app: string;
-      email: string;
-      name: string;
+      email?: string;
+      name?: string;
     }) => {
       const company = getActiveCompanyFromOdooSession();
       console.log('the company info is', company);
