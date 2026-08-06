@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/services/supabaseClient';
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 import { getAuthUser } from '@/utils/authStorage';
@@ -65,6 +66,17 @@ function buildFallbackCandidate(params: {
  * Pure resolution logic lives in resolveDialogue.ts; this hook is only
  * responsible for fetching candidates, guarding against stale/late
  * responses, and locking the final selection for the current mount.
+ *
+ * Identity lifecycle: every evaluation is owned by exactly one resolved
+ * authenticated user id (`authUserId`), one generation, and one
+ * AbortController. `authUserId` is tracked reactively via
+ * `supabase.auth.onAuthStateChange` (the same client this hook already
+ * reads sessions from — not a second/alternate auth source) rather than
+ * read once per effect run, specifically so an identity change that
+ * doesn't happen to also flip `active` or `profileStatus` — e.g. a
+ * cross-tab account switch that keeps the app "logged in" throughout —
+ * still restarts evaluation. See the effect below for why `active` and
+ * `profileStatus` alone were never a reliable proxy for this.
  */
 export function usePersonalizedPetDialogue({
   active,
@@ -80,6 +92,44 @@ export function usePersonalizedPetDialogue({
   const lockedUserIdRef = useRef<string | null>(null);
   const { mutateAsync: createAppLink } = useCreateAppLink();
 
+  // `undefined` = not yet resolved for this mount (stay in 'loading', don't
+  // guess); `null` = confirmed no session (guest); a string = the real,
+  // resolved Supabase auth user id. `authSessionRef`/`latestAuthUserIdRef`
+  // mirror the same value synchronously (outside React's render cycle) so
+  // an in-flight evaluation's stale check can observe an identity change
+  // the instant it happens, not only after React re-renders/re-runs
+  // effects.
+  const [authUserId, setAuthUserId] = useState<string | null | undefined>(undefined);
+  const authSessionRef = useRef<Session | null>(null);
+  const latestAuthUserIdRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const applySession = (session: Session | null) => {
+      authSessionRef.current = session;
+      const nextUserId = session?.user?.id ?? null;
+      latestAuthUserIdRef.current = nextUserId;
+      if (!cancelled) setAuthUserId(nextUserId);
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      applySession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   useEffect(() => {
     if (!active) {
       setLifecycle('idle');
@@ -89,48 +139,72 @@ export function usePersonalizedPetDialogue({
       return;
     }
 
+    if (authUserId === undefined) {
+      // Identity not yet resolved for this mount/tab — stay neutral rather
+      // than guessing; the bootstrap check/listener above will resolve it
+      // (to a real id or a confirmed guest `null`), which re-runs this
+      // effect since `authUserId` is a dependency.
+      setLifecycle('loading');
+      setSelection(null);
+      setUserId(null);
+      lockedUserIdRef.current = null;
+      return;
+    }
+
+    // Captured once per generation — every check below compares against
+    // this frozen value, never against the live `authUserId` closure
+    // variable (which belongs to whichever render scheduled this effect,
+    // not to "right now").
+    const capturedUserId = authUserId;
     const generation = ++generationRef.current;
     const controller = new AbortController();
     let cancelled = false;
 
     setLifecycle('loading');
     setSelection(null);
+    // Set synchronously (not lazily inside the async run() below) so
+    // `userId` — exposed to CatMascot as `personalizedUserId` — reflects
+    // the identity change in the same commit the evaluation restarts, not
+    // only once a new async evaluation eventually resolves. This is what
+    // lets CatMascot detect "the user changed" promptly enough to tear
+    // down an already-adopted previous-user dialogue.
+    setUserId(capturedUserId);
+    lockedUserIdRef.current = capturedUserId;
 
-    const isStale = () => cancelled || generation !== generationRef.current;
+    // Generation match is the primary guard (bumped on every effect
+    // restart, including every authUserId change). The identity-ref
+    // comparison is deliberate defense-in-depth per the required lifecycle
+    // guarantee — never rely on generation matching alone to prove the
+    // captured user is still current.
+    const isStale = () => cancelled || generation !== generationRef.current || latestAuthUserIdRef.current !== capturedUserId;
+
+    if (!capturedUserId) {
+      // Confirmed guest — not enough identity to safely scope any query,
+      // go straight to the hardcoded fallback rather than guessing at
+      // another user's data.
+      setLifecycle('failed');
+      setSelection({
+        candidate: buildFallbackCandidate({ userId: 'anonymous', autoCloseMs: DEFAULT_FALLBACK_AUTO_CLOSE_MS }),
+        introSteps: [],
+      });
+      return () => {
+        cancelled = true;
+        controller.abort();
+      };
+    }
 
     const run = async () => {
-      let currentUserId: string | null = null;
-
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (isStale()) return;
-
-        currentUserId = session?.user?.id ?? null;
+        const session = authSessionRef.current;
         const metaName = (session?.user?.user_metadata as { name?: string } | undefined)?.name ?? null;
         const email = session?.user?.email ?? null;
-
-        if (!currentUserId) {
-          // Not enough identity to safely scope any query — go straight to
-          // the hardcoded fallback rather than guessing at another user's data.
-          setLifecycle('failed');
-          setSelection({
-            candidate: buildFallbackCandidate({ userId: 'anonymous', autoCloseMs: DEFAULT_FALLBACK_AUTO_CLOSE_MS }),
-            introSteps: [],
-          });
-          return;
-        }
-
-        lockedUserIdRef.current = currentUserId;
-        setUserId(currentUserId);
 
         const fetchDisplayNameProfile = async (): Promise<{ name?: string | null; full_name?: string | null } | null> => {
           try {
             const { data } = await supabase
               .from('profiles')
               .select('name, full_name')
-              .eq('user_id', currentUserId)
+              .eq('user_id', capturedUserId)
               .maybeSingle();
             return data;
           } catch {
@@ -141,9 +215,9 @@ export function usePersonalizedPetDialogue({
         const localToday = toCalendarDateKey(new Date());
 
         const [inventoryResult, todoResult, introResult, profileRow] = await Promise.all([
-          fetchInventoryDialogueEvaluation(currentUserId, controller.signal),
-          fetchTodoDialogueEvaluation(currentUserId, localToday, controller.signal),
-          fetchLegacyIntroCandidate(currentUserId, introAlreadyCompleted(currentUserId), controller.signal),
+          fetchInventoryDialogueEvaluation(capturedUserId, controller.signal),
+          fetchTodoDialogueEvaluation(capturedUserId, localToday, controller.signal),
+          fetchLegacyIntroCandidate(capturedUserId, introAlreadyCompleted(capturedUserId), controller.signal),
           fetchDisplayNameProfile(),
         ]);
 
@@ -158,7 +232,7 @@ export function usePersonalizedPetDialogue({
         }
 
         const fallback = buildFallbackCandidate({
-          userId: currentUserId,
+          userId: capturedUserId,
           profileName: profileRow?.name,
           profileFullName: profileRow?.full_name,
           metaName,
@@ -181,6 +255,7 @@ export function usePersonalizedPetDialogue({
           if (todoResult.status === 'failed') {
             console.warn('[petDialogue] todo evaluation failed, reason:', todoResult.reason);
           }
+          if (isStale()) return;
           setLifecycle('failed');
           setSelection({ candidate: fallback, introSteps: [] });
           return;
@@ -194,10 +269,10 @@ export function usePersonalizedPetDialogue({
         // shared resolver, so resolveDialogue.ts never has to compare an
         // inventory expiry date against a Todo task date — at most one P0
         // candidate is ever passed into it.
-        const unhandledExpired = expiredCandidate && !hasHandledInSession(currentUserId, expiredCandidate.dedupeKey)
+        const unhandledExpired = expiredCandidate && !hasHandledInSession(capturedUserId, expiredCandidate.dedupeKey)
           ? expiredCandidate
           : null;
-        const unhandledOverdueTask = overdueCandidate && !hasHandledInSession(currentUserId, overdueCandidate.dedupeKey)
+        const unhandledOverdueTask = overdueCandidate && !hasHandledInSession(capturedUserId, overdueCandidate.dedupeKey)
           ? overdueCandidate
           : null;
         const p0 = unhandledExpired ?? unhandledOverdueTask;
@@ -205,21 +280,22 @@ export function usePersonalizedPetDialogue({
         if (p0) {
           // A real P0 candidate always wins immediately — never wait on
           // profile status.
+          if (isStale()) return;
           setLifecycle('ready');
           setSelection({ candidate: p0, introSteps: [] });
           return;
         }
 
         // No selectable P0. Wait for profile completeness before deciding
-        // among Profile / P1 / Intro / Fallback — an "incomplete" result
-        // must still outrank P1 and the legacy intro. The effect re-runs
-        // when profileStatus changes.
+        // among Profile / P1 / P2 / Intro / Fallback — an "incomplete"
+        // result must still outrank P1/P2 and the legacy intro. The effect
+        // re-runs when profileStatus changes.
         if (profileStatus === 'loading') {
           return;
         }
 
-        const profileCandidateRaw = buildProfileCandidate(profileStatus, currentUserId);
-        const profileCandidate = hasHandledInSession(currentUserId, profileCandidateRaw?.dedupeKey ?? '')
+        const profileCandidateRaw = buildProfileCandidate(profileStatus, capturedUserId);
+        const profileCandidate = hasHandledInSession(capturedUserId, profileCandidateRaw?.dedupeKey ?? '')
           ? null
           : profileCandidateRaw;
 
@@ -227,10 +303,10 @@ export function usePersonalizedPetDialogue({
         // choosing between them — a handled Expiring Soon must not block an
         // otherwise-eligible Low Stock candidate on a different item, and
         // vice versa.
-        const unhandledExpiringSoon = expiringSoonCandidate && !hasHandledInSession(currentUserId, expiringSoonCandidate.dedupeKey)
+        const unhandledExpiringSoon = expiringSoonCandidate && !hasHandledInSession(capturedUserId, expiringSoonCandidate.dedupeKey)
           ? expiringSoonCandidate
           : null;
-        const unhandledLowStock = lowStockCandidate && !hasHandledInSession(currentUserId, lowStockCandidate.dedupeKey)
+        const unhandledLowStock = lowStockCandidate && !hasHandledInSession(capturedUserId, lowStockCandidate.dedupeKey)
           ? lowStockCandidate
           : null;
 
@@ -244,7 +320,7 @@ export function usePersonalizedPetDialogue({
         // Single P2 subtype today (High task due today) — no subtype rank
         // needed yet, but resolved the same way (session dedupe applied
         // before it ever reaches the shared resolver).
-        const p2 = taskTodayCandidate && !hasHandledInSession(currentUserId, taskTodayCandidate.dedupeKey)
+        const p2 = taskTodayCandidate && !hasHandledInSession(capturedUserId, taskTodayCandidate.dedupeKey)
           ? taskTodayCandidate
           : null;
 
@@ -254,6 +330,7 @@ export function usePersonalizedPetDialogue({
         // ourselves keeps that ranking the single source of truth.
         const resolved = resolvePersonalizedDialogue([profileCandidate, p1, p2, introResult.candidate], fallback);
 
+        if (isStale()) return;
         setLifecycle('ready');
         setSelection({
           candidate: resolved,
@@ -265,7 +342,7 @@ export function usePersonalizedPetDialogue({
         setLifecycle('failed');
         setSelection({
           candidate: buildFallbackCandidate({
-            userId: currentUserId ?? 'unknown',
+            userId: capturedUserId,
             autoCloseMs: DEFAULT_FALLBACK_AUTO_CLOSE_MS,
           }),
           introSteps: [],
@@ -282,8 +359,11 @@ export function usePersonalizedPetDialogue({
     // profileStatus is intentionally a dependency: while it's 'loading' the
     // run above returns early without resolving, and must re-run once a real
     // status arrives so PROFILE can still outrank LEGACY_INTRO/FALLBACK.
+    // authUserId is intentionally a dependency: it's the sole reactively-
+    // tracked identity signal this effect restarts on — see the hook-level
+    // comment above for why active/profileStatus alone are not sufficient.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, profileStatus]);
+  }, [active, authUserId, profileStatus]);
 
   const markShown = useCallback((candidate: DialogueCandidate) => {
     const uid = lockedUserIdRef.current;

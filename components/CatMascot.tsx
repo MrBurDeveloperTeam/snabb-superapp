@@ -296,6 +296,46 @@ export default function CatMascot({
     onNavigateInternal,
   });
 
+  // usePersonalizedPetDialogue reactively tracks the authenticated identity
+  // and restarts its own evaluation the instant it changes — including a
+  // cross-tab account switch that doesn't otherwise flip `disabled` (which
+  // only reflects logged-in/guest, not *which* user). But the adoption
+  // effect below deliberately "locks" after its first adoption
+  // (currentDialogType.current already set) so a later same-user resolver
+  // re-run can never replace an already-shown dialogue. Without this reset,
+  // that same lock would also — wrongly — keep a previous user's
+  // already-adopted/pending dialogue on screen (or pending while hidden)
+  // even after the hook has moved on to a fresh, current-user-only
+  // evaluation for someone else. This effect exists solely to detect that
+  // one case and clear it first.
+  const lastPersonalizedUserIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!personalizedDialogueEnabled || disabled) return;
+    if (!personalizedUserId) return;
+
+    const previousUserId = lastPersonalizedUserIdRef.current;
+    lastPersonalizedUserIdRef.current = personalizedUserId;
+
+    if (!previousUserId || previousUserId === personalizedUserId) return;
+
+    // Identity changed under this mount. Only ever tears down state this
+    // same resolver adopted ('personalized' or resolver-driven 'intro') —
+    // never the unrelated legacy 'welcomeBack' path.
+    if (currentDialogType.current === 'personalized' || currentDialogType.current === 'intro') {
+      currentDialogType.current = null;
+      personalizedCandidateRef.current = null;
+      setPersonalizedActiveCandidate(null);
+      isDialogActiveRef.current = false;
+      setIsDialogActive(false);
+      clearWelcomeBackAutoCloseTimer();
+      setDialogSteps([]);
+      setDialogStep(0);
+      // Deliberately not added to dismissedDialogs: the outgoing user's
+      // dismissal state must never suppress the new user's fresh
+      // evaluation once it resolves.
+    }
+  }, [personalizedUserId, personalizedDialogueEnabled, disabled]);
+
   // Adopts the resolver's selection into the same dialogSteps/currentDialogType
   // machinery the legacy Intro/Welcome Back paths already use, so rendering,
   // dismissal, and the entry-walk gate stay a single code path. Locks after
