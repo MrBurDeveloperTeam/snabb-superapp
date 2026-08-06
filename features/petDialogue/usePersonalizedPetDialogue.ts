@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/services/supabaseClient';
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 import { getAuthUser } from '@/utils/authStorage';
@@ -25,6 +24,19 @@ const DEFAULT_FALLBACK_AUTO_CLOSE_MS = 6000;
 interface UsePersonalizedPetDialogueOptions {
   /** Feature flag enabled AND the user is logged in (mirrors CatMascot's `!disabled`). */
   active: boolean;
+  /**
+   * The Supabase Auth user id that App.tsx's reconcileSupabaseIdentity has
+   * confirmed belongs to the same account as the currently Odoo-verified
+   * user. Three states: `undefined` = reconciliation still in progress /
+   * not yet attempted (stay neutral — never guess); `null` = confirmed
+   * guest, or a failed/mismatched reconciliation (safe to show the neutral
+   * fallback); a string = the confirmed-matched Supabase user id. This
+   * hook never independently reads `supabase.auth.getSession()` to decide
+   * *whose* evaluation to run — App.tsx is the single owner of Odoo/
+   * Supabase identity reconciliation; this is the one canonical signal
+   * consumed here.
+   */
+  matchedUserId: string | null | undefined;
   profileStatus: ProfileCompletionStatus;
   /** Reads the existing `intro_shown_{userId}` localStorage flag — owned by CatMascot, not duplicated here. */
   introAlreadyCompleted: (userId: string) => boolean;
@@ -67,19 +79,23 @@ function buildFallbackCandidate(params: {
  * responsible for fetching candidates, guarding against stale/late
  * responses, and locking the final selection for the current mount.
  *
- * Identity lifecycle: every evaluation is owned by exactly one resolved
- * authenticated user id (`authUserId`), one generation, and one
- * AbortController. `authUserId` is tracked reactively via
- * `supabase.auth.onAuthStateChange` (the same client this hook already
- * reads sessions from — not a second/alternate auth source) rather than
- * read once per effect run, specifically so an identity change that
- * doesn't happen to also flip `active` or `profileStatus` — e.g. a
- * cross-tab account switch that keeps the app "logged in" throughout —
- * still restarts evaluation. See the effect below for why `active` and
- * `profileStatus` alone were never a reliable proxy for this.
+ * Identity lifecycle: every evaluation is owned by exactly one resolved,
+ * reconciled user id (`matchedUserId`, supplied by App.tsx — see
+ * reconcileSupabaseIdentity), one generation, and one AbortController.
+ * `matchedUserId` is a required dependency of the evaluation effect,
+ * specifically so an identity change that doesn't happen to also flip
+ * `active` or `profileStatus` — e.g. a cross-tab account switch, or an Odoo
+ * re-verification whose Supabase session hadn't caught up yet — still
+ * restarts evaluation. This hook deliberately does not re-derive or
+ * independently verify identity matching itself: App.tsx is the single
+ * owner of that reconciliation (see Section 4/11 of the identity
+ * reconciliation task this comment originates from) — duplicating it here
+ * would be a second, potentially-divergent implementation of the same
+ * check.
  */
 export function usePersonalizedPetDialogue({
   active,
+  matchedUserId,
   profileStatus,
   introAlreadyCompleted,
   onNavigateInternal,
@@ -92,43 +108,13 @@ export function usePersonalizedPetDialogue({
   const lockedUserIdRef = useRef<string | null>(null);
   const { mutateAsync: createAppLink } = useCreateAppLink();
 
-  // `undefined` = not yet resolved for this mount (stay in 'loading', don't
-  // guess); `null` = confirmed no session (guest); a string = the real,
-  // resolved Supabase auth user id. `authSessionRef`/`latestAuthUserIdRef`
-  // mirror the same value synchronously (outside React's render cycle) so
+  // Mirrors the `matchedUserId` prop synchronously during render (not via a
+  // separate effect, which would lag a tick behind) — defense-in-depth so
   // an in-flight evaluation's stale check can observe an identity change
-  // the instant it happens, not only after React re-renders/re-runs
-  // effects.
-  const [authUserId, setAuthUserId] = useState<string | null | undefined>(undefined);
-  const authSessionRef = useRef<Session | null>(null);
-  const latestAuthUserIdRef = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const applySession = (session: Session | null) => {
-      authSessionRef.current = session;
-      const nextUserId = session?.user?.id ?? null;
-      latestAuthUserIdRef.current = nextUserId;
-      if (!cancelled) setAuthUserId(nextUserId);
-    };
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (cancelled) return;
-      applySession(session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      applySession(session);
-    });
-
-    return () => {
-      cancelled = true;
-      subscription.unsubscribe();
-    };
-  }, []);
+  // the instant this component re-renders with a new prop value, not only
+  // after this hook's own effect has had a chance to clean up and restart.
+  const latestMatchedUserIdRef = useRef(matchedUserId);
+  latestMatchedUserIdRef.current = matchedUserId;
 
   useEffect(() => {
     if (!active) {
@@ -139,11 +125,12 @@ export function usePersonalizedPetDialogue({
       return;
     }
 
-    if (authUserId === undefined) {
-      // Identity not yet resolved for this mount/tab — stay neutral rather
-      // than guessing; the bootstrap check/listener above will resolve it
-      // (to a real id or a confirmed guest `null`), which re-runs this
-      // effect since `authUserId` is a dependency.
+    if (matchedUserId === undefined) {
+      // App.tsx is still reconciling Odoo/Supabase identity (or hasn't
+      // attempted it yet for the current Odoo session) — stay neutral
+      // rather than guessing; this effect re-runs the instant App.tsx
+      // resolves it (to a matched id, or a confirmed `null`), since
+      // `matchedUserId` is a dependency.
       setLifecycle('loading');
       setSelection(null);
       setUserId(null);
@@ -152,10 +139,10 @@ export function usePersonalizedPetDialogue({
     }
 
     // Captured once per generation — every check below compares against
-    // this frozen value, never against the live `authUserId` closure
+    // this frozen value, never against the live `matchedUserId` closure
     // variable (which belongs to whichever render scheduled this effect,
     // not to "right now").
-    const capturedUserId = authUserId;
+    const capturedUserId = matchedUserId;
     const generation = ++generationRef.current;
     const controller = new AbortController();
     let cancelled = false;
@@ -172,16 +159,18 @@ export function usePersonalizedPetDialogue({
     lockedUserIdRef.current = capturedUserId;
 
     // Generation match is the primary guard (bumped on every effect
-    // restart, including every authUserId change). The identity-ref
+    // restart, including every matchedUserId change). The identity-ref
     // comparison is deliberate defense-in-depth per the required lifecycle
     // guarantee — never rely on generation matching alone to prove the
     // captured user is still current.
-    const isStale = () => cancelled || generation !== generationRef.current || latestAuthUserIdRef.current !== capturedUserId;
+    const isStale = () => cancelled || generation !== generationRef.current || latestMatchedUserIdRef.current !== capturedUserId;
 
     if (!capturedUserId) {
-      // Confirmed guest — not enough identity to safely scope any query,
-      // go straight to the hardcoded fallback rather than guessing at
-      // another user's data.
+      // No confirmed-matched identity — either a guest, or Odoo/Supabase
+      // identity reconciliation hasn't completed (or failed/mismatched).
+      // Not enough *trustworthy* identity to safely scope any query, so go
+      // straight to the hardcoded fallback rather than guessing at another
+      // account's data or querying with a not-yet-confirmed session.
       setLifecycle('failed');
       setSelection({
         candidate: buildFallbackCandidate({ userId: 'anonymous', autoCloseMs: DEFAULT_FALLBACK_AUTO_CLOSE_MS }),
@@ -195,7 +184,15 @@ export function usePersonalizedPetDialogue({
 
     const run = async () => {
       try {
-        const session = authSessionRef.current;
+        // Cosmetic display-name inputs only (never the identity/security
+        // boundary — that's `capturedUserId`, already confirmed matched by
+        // App.tsx). Reading the session fresh here is safe: by definition
+        // `capturedUserId` is non-null only once App.tsx has confirmed the
+        // current Supabase session belongs to this exact account.
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (isStale()) return;
         const metaName = (session?.user?.user_metadata as { name?: string } | undefined)?.name ?? null;
         const email = session?.user?.email ?? null;
 
@@ -359,11 +356,12 @@ export function usePersonalizedPetDialogue({
     // profileStatus is intentionally a dependency: while it's 'loading' the
     // run above returns early without resolving, and must re-run once a real
     // status arrives so PROFILE can still outrank LEGACY_INTRO/FALLBACK.
-    // authUserId is intentionally a dependency: it's the sole reactively-
-    // tracked identity signal this effect restarts on — see the hook-level
-    // comment above for why active/profileStatus alone are not sufficient.
+    // matchedUserId is intentionally a dependency: it's the sole identity
+    // signal this effect restarts on — see the hook-level comment above for
+    // why active/profileStatus alone are not sufficient, and why this hook
+    // consumes App.tsx's reconciled identity rather than tracking its own.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, authUserId, profileStatus]);
+  }, [active, matchedUserId, profileStatus]);
 
   const markShown = useCallback((candidate: DialogueCandidate) => {
     const uid = lockedUserIdRef.current;

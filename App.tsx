@@ -96,6 +96,21 @@ const App: React.FC = () => {
   // finalizing a dialogue"; 'unknown' means "the fetch failed — never treat
   // that as an incomplete profile".
   const [profileCompletionStatus, setProfileCompletionStatus] = useState<ProfileCompletionStatus>('unknown');
+  // Supabase Auth's session and the currently Odoo-verified account are two
+  // separate identity systems bridged only by /sso/exchange — see
+  // reconcileSupabaseIdentity below. `personalizedMatchedUserId` is the
+  // canonical, App-owned "these two identities are confirmed to be the same
+  // account right now" signal, so downstream personalized-dialogue
+  // consumers never have to independently guess whether the Supabase
+  // session they'd read still belongs to the currently displayed Odoo user.
+  // Three states, mirrored all the way down to usePersonalizedPetDialogue:
+  // `undefined` = reconciliation in progress / not yet attempted for the
+  // current Odoo identity (stay in a neutral loading state — never guess);
+  // `null` = confirmed guest, or reconciliation definitively failed/
+  // mismatched (safe to show the neutral fallback, same as any other
+  // provider failure); a string = confirmed matched Supabase user id.
+  const [personalizedMatchedUserId, setPersonalizedMatchedUserId] = useState<string | null | undefined>(undefined);
+  const reconcileGenerationRef = useRef(0);
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
@@ -240,6 +255,12 @@ useEffect(() => {
     setIsProfileMenuOpen(false);
     setUserChatContext('');
     setProfileCompletionStatus('unknown');
+    // Bumping the reconcile generation invalidates any in-flight
+    // reconcileSupabaseIdentity call so a late exchange response can never
+    // apply after this logout (or log the user back in as the outgoing
+    // account) — see reconcileSupabaseIdentity's isStaleReconcile() checks.
+    reconcileGenerationRef.current += 1;
+    setPersonalizedMatchedUserId(null);
   }, []);
 
   // Cross-tab SSO_LOGOUT never calls signOut() (no Odoo /logout call, no
@@ -283,6 +304,14 @@ useEffect(() => {
       setIsLoggedIn(true);
       setAuthFormData(nextUser);
       setUser(nextUser);
+
+      // Fire-and-forget: confirms/repairs the Supabase session for this
+      // Odoo-verified identity before any personalized-dialogue provider is
+      // allowed to run. Every verifySession() success reconciles again
+      // (not just the first one) — this is what actually closes the
+      // cross-tab/focus/visibility account-switch gap, not just the
+      // one-time bootstrap hydration below.
+      void reconcileSupabaseIdentity(nextUser.email);
 
       setProfileCompletionStatus('loading');
       try {
@@ -449,6 +478,121 @@ useEffect(() => {
     } catch (err) {
       // Non-fatal: the Odoo-based login flow below doesn't depend on this.
       console.warn('[SSO] Supabase session hydrate failed:', err);
+    }
+  }, []);
+
+  // Confirms — and if necessary repairs — that the Supabase Auth session
+  // belongs to the same account as `expectedEmail` (the just Odoo-verified
+  // user). hydrateSupabaseSession above only ever asks "does *a* Supabase
+  // session exist" once per tab lifetime; it has no notion of *whose*
+  // session it is, so a cross-tab account switch (or any other path that
+  // re-verifies Odoo without ever clearing the old Supabase session first)
+  // can leave a different account's Supabase session active underneath an
+  // already-logged-in tab. This is the sole gate personalized-dialogue
+  // providers key off (via `personalizedMatchedUserId`) — it never runs an
+  // Inventory/Todo query itself.
+  //
+  // /sso/exchange is cookie-scoped to whichever Odoo session is currently
+  // active server-side (see services/api.ts's withCredentials + GetSessionInfo.ts's
+  // identical cookie-based pattern) — calling it always returns tokens for
+  // *the current* Odoo account, never a stale/cached one, so re-exchanging
+  // here is safe to repeat on every Odoo re-verification.
+  //
+  // Single-flight: `reconcileGenerationRef` is bumped on every call
+  // (including a logout, via clearAuthState below); any earlier call's
+  // continuation checks `isStaleReconcile()` before every state-setting
+  // step, so a slower User A exchange can never overwrite a faster User B
+  // result (or vice versa), and a logout mid-reconciliation can never let a
+  // late exchange response log the user back in.
+  //
+  // Email is the mapping used because it's the only identity value present
+  // in both systems today: the Odoo session-info response's `username`
+  // field is already treated as email throughout this file, Supabase's own
+  // session always carries `session.user.email`, and no stronger shared
+  // immutable ID (a Supabase UUID embedded in the Odoo response, or an Odoo
+  // partner id stored on `profiles`) exists in the current schema/contract.
+  const reconcileSupabaseIdentity = useCallback(async (expectedEmail: string | null) => {
+    const generation = ++reconcileGenerationRef.current;
+    const isStaleReconcile = () => generation !== reconcileGenerationRef.current;
+
+    if (!expectedEmail) {
+      // Guest / no Odoo identity to match against — never let a stale
+      // matched id from a previous account linger.
+      setPersonalizedMatchedUserId(null);
+      return;
+    }
+
+    const normalizedExpected = expectedEmail.trim().toLowerCase();
+    if (!normalizedExpected) {
+      setPersonalizedMatchedUserId(null);
+      return;
+    }
+
+    // Actively reconciling — never leave a possibly-stale/mismatched
+    // previous value (matched or not) visible while this is in flight; the
+    // hook treats `undefined` as "wait, don't guess" rather than falling
+    // through to the guest/failure fallback.
+    setPersonalizedMatchedUserId(undefined);
+
+    try {
+      const {
+        data: { session: existingSession },
+      } = await supabase.auth.getSession();
+      if (isStaleReconcile()) return;
+
+      const existingEmail = existingSession?.user?.email?.trim().toLowerCase() ?? null;
+
+      if (existingSession && existingEmail === normalizedExpected) {
+        // Already the right account — reuse it, no re-exchange needed.
+        setPersonalizedMatchedUserId(existingSession.user.id);
+        return;
+      }
+
+      if (existingSession) {
+        // A stale cross-account session must be cleared before exchanging,
+        // never layered under a new one.
+        await supabase.auth.signOut();
+        if (isStaleReconcile()) return;
+      }
+
+      const sso = await api.get('/sso/exchange');
+      if (isStaleReconcile()) return;
+
+      if (!sso?.data?.access_token || !sso?.data?.refresh_token) {
+        console.warn('[SSO] identity reconciliation: exchange returned no tokens');
+        setPersonalizedMatchedUserId(null);
+        return;
+      }
+
+      const { data: setResult, error: setSessionError } = await supabase.auth.setSession({
+        access_token: sso.data.access_token,
+        refresh_token: sso.data.refresh_token,
+      });
+      if (isStaleReconcile()) return;
+
+      if (setSessionError || !setResult.session) {
+        console.warn('[SSO] identity reconciliation: setSession failed');
+        setPersonalizedMatchedUserId(null);
+        return;
+      }
+
+      const newEmail = setResult.session.user?.email?.trim().toLowerCase() ?? null;
+      if (newEmail !== normalizedExpected) {
+        // The exchange is cookie-scoped to the current Odoo session, so
+        // this should not happen — but a mismatched result is never
+        // treated as reconciled regardless of why it occurred.
+        console.warn('[SSO] identity reconciliation: exchange result did not match expected account');
+        setPersonalizedMatchedUserId(null);
+        return;
+      }
+
+      setPersonalizedMatchedUserId(setResult.session.user.id);
+    } catch (err) {
+      if (isStaleReconcile()) return;
+      // Non-fatal to the Odoo-based login flow, but personalized providers
+      // stay gated off — a definitive failure, not "still reconciling".
+      console.warn('[SSO] identity reconciliation failed:', err);
+      setPersonalizedMatchedUserId(null);
     }
   }, []);
 
@@ -917,6 +1061,7 @@ useEffect(() => {
             disabled={!isLoggedIn}
             isHidden={isAuthRoute || isVirtualPetOpen}
             profileCompletionStatus={profileCompletionStatus}
+            personalizedMatchedUserId={personalizedMatchedUserId}
             onNavigateInternal={navigate}
           />
         </div>

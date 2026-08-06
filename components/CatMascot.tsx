@@ -28,6 +28,21 @@ interface CatMascotProps {
   isHidden?: boolean;
   /** Odoo-derived profile-completeness signal, resolved by the caller (see App.tsx). Only read when the personalized-dialogue feature flag is enabled. */
   profileCompletionStatus?: ProfileCompletionStatus;
+  /**
+   * The Supabase Auth user id App.tsx has confirmed (via
+   * reconcileSupabaseIdentity) belongs to the same account as the currently
+   * Odoo-verified user. Three states: `undefined` = reconciliation still in
+   * progress / not yet attempted (stay neutral, don't guess); `null` =
+   * confirmed guest, or a failed/mismatched reconciliation; a string = the
+   * confirmed-matched Supabase user id. This is the sole authority
+   * usePersonalizedPetDialogue uses for "which identity, if any,
+   * personalized providers may run against" — CatMascot never independently
+   * re-derives or double-guesses identity matching.
+   */
+  personalizedMatchedUserId?: string | null;
+  // (component-level default below narrows the "not passed at all" case to
+  // `undefined`, i.e. treated the same as "still reconciling" — never
+  // defaults to the stronger claim "confirmed guest".)
   /** Internal (pushState-based) navigation, used by the profile-reminder action button. Only used when the feature flag is enabled. */
   onNavigateInternal?: (path: string) => void;
 }
@@ -126,6 +141,7 @@ export default function CatMascot({
   disabled = false,
   isHidden = false,
   profileCompletionStatus = 'unknown',
+  personalizedMatchedUserId,
   onNavigateInternal,
 }: CatMascotProps) {
   const [catPos, setCatPos] = useState({ x: -10, y: 85 });
@@ -285,6 +301,7 @@ export default function CatMascot({
     runAction: runPersonalizedAction,
   } = usePersonalizedPetDialogue({
     active: personalizedDialogueEnabled && !disabled,
+    matchedUserId: personalizedMatchedUserId,
     profileStatus: profileCompletionStatus,
     introAlreadyCompleted: (uid: string) => {
       try {
