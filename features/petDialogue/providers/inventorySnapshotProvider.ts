@@ -298,15 +298,16 @@ async function fetchInventorySnapshot(
 
 /**
  * Single hook-facing entry point: fetches the inventory snapshot once, then
- * derives the P0 (expired), P1 (expiring soon), and P1 (low stock)
+ * derives the P0 (expired), P2 (low stock), and P2 (expiring soon)
  * candidates from it. None of the three ever trigger a second complete
  * item/batch fetch.
  *
- * Same-item precedence (expired > expiring soon > low stock) is enforced
- * here by threading each evaluator's full qualifying-item-id set into the
- * next: low stock excludes the union of expired and expiring-soon item ids,
- * not just their global winners, and independent of session-handled state
- * (that's applied later, per candidate, in the hook).
+ * Same-item precedence (expired > low stock > expiring soon — the approved
+ * priority-order change) is enforced here by threading each evaluator's
+ * full qualifying-item-id set into the next: expiring soon excludes the
+ * union of expired and low-stock item ids, not just their global winners,
+ * and independent of session-handled state (that's applied later, per
+ * candidate, in the hook).
  */
 export async function fetchInventoryDialogueEvaluation(
   userId: string,
@@ -318,12 +319,9 @@ export async function fetchInventoryDialogueEvaluation(
   const snapshot = snapshotResult.candidate ?? { items: [], batchesByItem: new Map() };
 
   const { candidate: expiredCandidate, expiredItemIds } = evaluateExpiredInventory(snapshot);
-  const { candidate: expiringSoonCandidate, expiringSoonItemIds } = evaluateExpiringSoonInventory(
-    snapshot,
-    expiredItemIds
-  );
-  const lowStockExcludedItemIds = new Set([...expiredItemIds, ...expiringSoonItemIds]);
-  const lowStockCandidate = evaluateLowStockInventory(snapshot, lowStockExcludedItemIds);
+  const { candidate: lowStockCandidate, lowStockItemIds } = evaluateLowStockInventory(snapshot, expiredItemIds);
+  const expiringSoonExcludedItemIds = new Set([...expiredItemIds, ...lowStockItemIds]);
+  const { candidate: expiringSoonCandidate } = evaluateExpiringSoonInventory(snapshot, expiringSoonExcludedItemIds);
 
   return { status: 'success', candidate: { expiredCandidate, expiringSoonCandidate, lowStockCandidate } };
 }

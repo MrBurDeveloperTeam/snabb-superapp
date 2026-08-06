@@ -2,8 +2,8 @@ import type { DialogueCandidate, DialoguePriority } from './types';
 
 const PRIORITY_RANK: Record<DialoguePriority, number> = {
   P0: 0,
-  PROFILE: 1,
-  P1: 2,
+  P1: 1,
+  PROFILE: 2,
   P2: 3,
   LEGACY_INTRO: 4,
   FALLBACK: 5,

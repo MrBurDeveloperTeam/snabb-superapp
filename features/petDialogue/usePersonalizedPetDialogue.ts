@@ -5,11 +5,12 @@ import { getAuthUser } from '@/utils/authStorage';
 import { resolvePersonalizedDialogue } from './resolveDialogue';
 import { fetchInventoryDialogueEvaluation } from './providers/inventorySnapshotProvider';
 import { fetchTodoDialogueEvaluation } from './providers/todoSnapshotProvider';
+import { fetchAppointmentDialogueEvaluation } from './providers/appointmentSnapshotProvider';
 import { buildProfileCandidate } from './providers/profileProvider';
 import { fetchLegacyIntroCandidate } from './providers/legacyIntroProvider';
 import { resolveSafeFirstName } from './nameResolution';
 import { hasHandledInSession, markHandledInSession } from './sessionDedupe';
-import { getInventoryAppRoute, getTodoAppRoute, getProfileSettingsRoute } from './knownRoutes';
+import { getInventoryAppRoute, getTodoAppRoute, getAppointmentAppRoute, getProfileSettingsRoute } from './knownRoutes';
 import { toCalendarDateKey } from './dateUtils';
 import {
   DIALOGUE_ID,
@@ -116,6 +117,51 @@ export function usePersonalizedPetDialogue({
   const latestMatchedUserIdRef = useRef(matchedUserId);
   latestMatchedUserIdRef.current = matchedUserId;
 
+  // Appointment eligibility changes purely as clinic-device time advances,
+  // with no data change to react to — so, unlike every other provider here,
+  // it needs an explicit "re-evaluate now" trigger beyond identity/profile
+  // changes. `refreshTick` is that trigger: bumped (debounced/coalesced) on
+  // window focus and document visibility, gated to only when a real
+  // identity is confirmed matched. It's just another dependency of the same
+  // evaluation effect below, so it reuses 100% of the existing generation/
+  // abort/staleness machinery — a refresh is exactly a normal re-run, not a
+  // separate code path. Per the approved Phase scope: no interval polling,
+  // no per-minute timer — a continuously focused page will not itself cross
+  // the two-hour threshold until one of these triggers (or a
+  // matchedUserId/profileStatus change) fires again.
+  const [refreshTick, setRefreshTick] = useState(0);
+  const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!active || typeof matchedUserId !== 'string') return;
+
+    const REFRESH_DEBOUNCE_MS = 1000;
+    const scheduleRefresh = () => {
+      if (refreshDebounceRef.current !== null) clearTimeout(refreshDebounceRef.current);
+      refreshDebounceRef.current = setTimeout(() => {
+        refreshDebounceRef.current = null;
+        setRefreshTick((t) => t + 1);
+      }, REFRESH_DEBOUNCE_MS);
+    };
+
+    const onFocus = () => scheduleRefresh();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (refreshDebounceRef.current !== null) {
+        clearTimeout(refreshDebounceRef.current);
+        refreshDebounceRef.current = null;
+      }
+    };
+  }, [active, matchedUserId]);
+
   useEffect(() => {
     if (!active) {
       setLifecycle('idle');
@@ -209,18 +255,26 @@ export function usePersonalizedPetDialogue({
           }
         };
 
-        const localToday = toCalendarDateKey(new Date());
+        // One local clock snapshot for the whole evaluation — Todo's
+        // localToday and the Appointment provider's query window/2-hour
+        // check all derive from this same instant, so a single evaluation
+        // is always internally consistent even if it happens to straddle
+        // local midnight while in flight (a later refresh — see
+        // refreshTick above — captures a fresh instant for its own run).
+        const evaluationNow = new Date();
+        const localToday = toCalendarDateKey(evaluationNow);
 
-        const [inventoryResult, todoResult, introResult, profileRow] = await Promise.all([
+        const [inventoryResult, todoResult, appointmentResult, introResult, profileRow] = await Promise.all([
           fetchInventoryDialogueEvaluation(capturedUserId, controller.signal),
           fetchTodoDialogueEvaluation(capturedUserId, localToday, controller.signal),
+          fetchAppointmentDialogueEvaluation(capturedUserId, evaluationNow, controller.signal),
           fetchLegacyIntroCandidate(capturedUserId, introAlreadyCompleted(capturedUserId), controller.signal),
           fetchDisplayNameProfile(),
         ]);
 
         if (isStale()) return;
 
-        if (inventoryResult.status === 'aborted' || todoResult.status === 'aborted') {
+        if (inventoryResult.status === 'aborted' || todoResult.status === 'aborted' || appointmentResult.status === 'aborted') {
           // The shared per-evaluation controller was aborted (unmount, user
           // change, or a newer generation) — isStale() above should already
           // have caught this, but bail out explicitly rather than act on a
@@ -237,20 +291,23 @@ export function usePersonalizedPetDialogue({
           autoCloseMs: DEFAULT_FALLBACK_AUTO_CLOSE_MS,
         });
 
-        if (inventoryResult.status === 'failed' || todoResult.status === 'failed') {
-          // A provider failure is never "no urgent inventory/tasks exist" —
-          // it's unknown. With two independent urgent-data providers now in
-          // play, either one failing must fail the whole evaluation closed:
-          // never show Profile/P1/P2/Intro while a real P0 could be hidden
-          // behind the other provider's failure. Go straight to the neutral
-          // fallback (no timeout/error wording — buildFallbackCandidate's
-          // message is identical regardless of why the evaluation couldn't
-          // be trusted).
+        if (inventoryResult.status === 'failed' || todoResult.status === 'failed' || appointmentResult.status === 'failed') {
+          // A provider failure is never "no urgent inventory/tasks/
+          // appointments exist" — it's unknown. With three independent
+          // urgent-data providers now in play, any one failing must fail
+          // the whole evaluation closed: never show Profile/P1/P2/Intro
+          // while a real P0/P1 could be hidden behind another provider's
+          // failure. Go straight to the neutral fallback (no timeout/error
+          // wording — buildFallbackCandidate's message is identical
+          // regardless of why the evaluation couldn't be trusted).
           if (inventoryResult.status === 'failed') {
             console.warn('[petDialogue] inventory evaluation failed, reason:', inventoryResult.reason);
           }
           if (todoResult.status === 'failed') {
             console.warn('[petDialogue] todo evaluation failed, reason:', todoResult.reason);
+          }
+          if (appointmentResult.status === 'failed') {
+            console.warn('[petDialogue] appointment evaluation failed, reason:', appointmentResult.reason);
           }
           if (isStale()) return;
           setLifecycle('failed');
@@ -260,6 +317,7 @@ export function usePersonalizedPetDialogue({
 
         const { expiredCandidate, expiringSoonCandidate, lowStockCandidate } = inventoryResult.candidate;
         const { overdueCandidate, taskTodayCandidate } = todoResult.candidate;
+        const { appointmentSoonCandidate } = appointmentResult.candidate;
 
         // Explicit P0 subtype rank: expired inventory always outranks an
         // overdue High task. Resolved here, before either reaches the
@@ -283,9 +341,32 @@ export function usePersonalizedPetDialogue({
           return;
         }
 
-        // No selectable P0. Wait for profile completeness before deciding
-        // among Profile / P1 / P2 / Intro / Fallback — an "incomplete"
-        // result must still outrank P1/P2 and the legacy intro. The effect
+        // Explicit P1 subtype rank: Appointment Within 2 Hours always
+        // outranks High Task Today. Resolved here, before either ever
+        // reaches the shared resolver, exactly like the P0 subtypes above —
+        // an appointment start instant is never compared against a Todo
+        // due-date to decide this.
+        const unhandledAppointmentSoon = appointmentSoonCandidate && !hasHandledInSession(capturedUserId, appointmentSoonCandidate.dedupeKey)
+          ? appointmentSoonCandidate
+          : null;
+        const unhandledHighTaskToday = taskTodayCandidate && !hasHandledInSession(capturedUserId, taskTodayCandidate.dedupeKey)
+          ? taskTodayCandidate
+          : null;
+        const p1 = unhandledAppointmentSoon ?? unhandledHighTaskToday;
+
+        if (p1) {
+          // Per the approved priority order, P1 (Appointment Soon / High
+          // Task Today) also always wins immediately — it outranks Profile,
+          // so it must never wait on profile status either.
+          if (isStale()) return;
+          setLifecycle('ready');
+          setSelection({ candidate: p1, introSteps: [] });
+          return;
+        }
+
+        // No selectable P0 or P1. Wait for profile completeness before
+        // deciding among Profile / P2 / Intro / Fallback — an "incomplete"
+        // result must still outrank P2 and the legacy intro. The effect
         // re-runs when profileStatus changes.
         if (profileStatus === 'loading') {
           return;
@@ -296,36 +377,28 @@ export function usePersonalizedPetDialogue({
           ? null
           : profileCandidateRaw;
 
-        // Session dedupe is applied independently to each P1 subtype before
-        // choosing between them — a handled Expiring Soon must not block an
-        // otherwise-eligible Low Stock candidate on a different item, and
-        // vice versa.
-        const unhandledExpiringSoon = expiringSoonCandidate && !hasHandledInSession(capturedUserId, expiringSoonCandidate.dedupeKey)
-          ? expiringSoonCandidate
-          : null;
+        // Session dedupe is applied independently to each P2 subtype before
+        // choosing between them — a handled Low Stock must not block an
+        // otherwise-eligible Expiring Soon candidate on a different item,
+        // and vice versa.
         const unhandledLowStock = lowStockCandidate && !hasHandledInSession(capturedUserId, lowStockCandidate.dedupeKey)
           ? lowStockCandidate
           : null;
-
-        // Explicit P1 subtype rank: Expiring Soon always outranks Low Stock.
-        // Resolved here, before either ever reaches the shared resolver, so
-        // resolveDialogue.ts never has to compare an expiry date's eventTime
-        // against a Low Stock candidate (which has none) — at most one P1
-        // candidate is ever passed into it.
-        const p1 = unhandledExpiringSoon ?? unhandledLowStock;
-
-        // Single P2 subtype today (High task due today) — no subtype rank
-        // needed yet, but resolved the same way (session dedupe applied
-        // before it ever reaches the shared resolver).
-        const p2 = taskTodayCandidate && !hasHandledInSession(capturedUserId, taskTodayCandidate.dedupeKey)
-          ? taskTodayCandidate
+        const unhandledExpiringSoon = expiringSoonCandidate && !hasHandledInSession(capturedUserId, expiringSoonCandidate.dedupeKey)
+          ? expiringSoonCandidate
           : null;
 
-        // Priority ordering (PROFILE > P1 > P2 > LEGACY_INTRO > FALLBACK)
-        // lives entirely in resolveDialogue.ts's PRIORITY_RANK — passing all
+        // Explicit P2 subtype rank (approved reversal): Low Stock now
+        // outranks Expiring Soon. Resolved here, before either ever reaches
+        // the shared resolver, so resolveDialogue.ts never has to compare a
+        // quantity-based candidate (no eventTime) against an expiry date.
+        const p2 = unhandledLowStock ?? unhandledExpiringSoon;
+
+        // Priority ordering (PROFILE > P2 > LEGACY_INTRO > FALLBACK) lives
+        // entirely in resolveDialogue.ts's PRIORITY_RANK — passing all
         // remaining candidates here rather than branching on profileStatus
         // ourselves keeps that ranking the single source of truth.
-        const resolved = resolvePersonalizedDialogue([profileCandidate, p1, p2, introResult.candidate], fallback);
+        const resolved = resolvePersonalizedDialogue([profileCandidate, p2, introResult.candidate], fallback);
 
         if (isStale()) return;
         setLifecycle('ready');
@@ -360,8 +433,13 @@ export function usePersonalizedPetDialogue({
     // signal this effect restarts on — see the hook-level comment above for
     // why active/profileStatus alone are not sufficient, and why this hook
     // consumes App.tsx's reconciled identity rather than tracking its own.
+    // refreshTick is intentionally a dependency: it's the sole trigger for
+    // re-evaluating Appointment eligibility as clinic-device time advances
+    // (see the focus/visibility effect above) — a refresh is just another
+    // ordinary re-run of this same effect, gaining the exact same
+    // generation/abort/staleness guarantees as every other restart.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, matchedUserId, profileStatus]);
+  }, [active, matchedUserId, profileStatus, refreshTick]);
 
   const markShown = useCallback((candidate: DialogueCandidate) => {
     const uid = lockedUserIdRef.current;
@@ -429,6 +507,28 @@ export function usePersonalizedPetDialogue({
           if (w) w.location.href = url || getTodoAppRoute();
         } catch {
           if (w) w.location.href = getTodoAppRoute();
+        }
+        return;
+      }
+
+      if (candidate.dialogueId === DIALOGUE_ID.APPOINTMENT_SOON) {
+        const authUser = getAuthUser();
+        // Same pattern as the Inventory/Todo branches above — always the
+        // Appointment landing page, never a record-specific route (no such
+        // controlled destination exists).
+        const w = window.open('', '_blank');
+        if (!authUser?.username) {
+          if (w) w.location.href = getAppointmentAppRoute();
+          return;
+        }
+        try {
+          const res = (await createAppLink({ app: 'appointment', email: authUser.username, name: authUser.name })) as {
+            result?: { url?: string };
+          };
+          const url = res?.result?.url;
+          if (w) w.location.href = url || getAppointmentAppRoute();
+        } catch {
+          if (w) w.location.href = getAppointmentAppRoute();
         }
         return;
       }

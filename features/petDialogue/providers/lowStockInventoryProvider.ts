@@ -4,18 +4,18 @@ import type { DialogueCandidate } from '../types';
 import type { InventorySnapshot, InventorySnapshotItem } from './inventorySnapshotProvider';
 
 /**
- * Pure P1 (low stock) evaluation over the same InventorySnapshot P0/expiring
+ * Pure P2 (low stock) evaluation over the same InventorySnapshot P0/expiring
  * soon use — no second Supabase fetch. Unlike those two, Low Stock is
  * evaluated purely from `inventory_items.quantity`: the Inventory app
  * already recalculates that column as the sum of `inventory_item_batches.qty`
  * whenever batches change, so it's already the authoritative total — this
  * evaluator must not re-sum batches itself.
  *
- * Returns a plain candidate (no exposed item-id set, unlike the expired/
- * expiring-soon evaluators): nothing ranks below Low Stock within the
- * inventory P1 subtypes, so there's no downstream consumer that would need
- * "every qualifying low-stock item id" the way P0/expiring-soon need theirs
- * exposed for exclusion purposes.
+ * Runs second in the same-item precedence chain (expired → low stock →
+ * expiring soon — see inventorySnapshotProvider.ts), so it exposes its full
+ * qualifying item-id set the same way expired/expiring-soon do: the
+ * expiring-soon evaluator excludes every item already flagged here, not
+ * just this evaluator's own global winner.
  */
 
 export const INVENTORY_LOW_STOCK_THRESHOLD = 10;
@@ -83,7 +83,7 @@ function buildCandidateFromSource(source: LowStockSource): DialogueCandidate {
   return {
     userState: 'ACTIVE_USER_URGENT',
     dialogueId: DIALOGUE_ID.INVENTORY_LOW_STOCK,
-    priority: 'P1',
+    priority: 'P2',
     message,
     action: { label: 'Check Inventory', route: getInventoryAppRoute() },
     source: {
@@ -94,23 +94,31 @@ function buildCandidateFromSource(source: LowStockSource): DialogueCandidate {
     dedupeKey,
     ruleVersion: PET_DIALOGUE_RULE_VERSION,
     // No bypassEntryWalk (only P0 does that) and no autoCloseMs (only the
-    // fixed fallback does that) — Low Stock behaves like an ordinary P1
+    // fixed fallback does that) — Low Stock behaves like an ordinary
     // dialogue: waits for the entry walk, stays until dismissed/acted on.
     createdTime: source.createdTime ?? undefined,
     recordId: source.itemId,
   };
 }
 
+export interface LowStockInventoryEvaluation {
+  candidate: DialogueCandidate | null;
+  /** Every item id with at least one qualifying low-stock source, not just
+   *  the globally-selected winner — the expiring-soon evaluator excludes
+   *  all of these, since low stock now outranks expiring soon for the same
+   *  item (see inventorySnapshotProvider.ts). */
+  lowStockItemIds: Set<string>;
+}
+
 /**
- * `excludedItemIds` is the union of expired (P0) and expiring-soon (P1)
- * qualifying item ids — an item already flagged by either of those must
- * never also produce a Low Stock candidate, regardless of session-handled
- * state for those other candidates.
+ * `excludedItemIds` is the expired (P0) qualifying item-id set — an item
+ * already flagged as expired must never also produce a Low Stock
+ * candidate, regardless of session-handled state for that P0 candidate.
  */
 export function evaluateLowStockInventory(
   snapshot: InventorySnapshot,
   excludedItemIds: Set<string>
-): DialogueCandidate | null {
+): LowStockInventoryEvaluation {
   const sources: LowStockSource[] = [];
   for (const item of snapshot.items) {
     if (excludedItemIds.has(item.id)) continue;
@@ -118,8 +126,13 @@ export function evaluateLowStockInventory(
     if (source) sources.push(source);
   }
 
-  if (sources.length === 0) return null;
+  if (sources.length === 0) {
+    return { candidate: null, lowStockItemIds: new Set() };
+  }
 
   const winner = [...sources].sort(compareSourcesForSelection)[0];
-  return buildCandidateFromSource(winner);
+  return {
+    candidate: buildCandidateFromSource(winner),
+    lowStockItemIds: new Set(sources.map((s) => s.itemId)),
+  };
 }

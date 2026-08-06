@@ -1,10 +1,11 @@
-// Phase 1A/1C/1D dialogue candidate contract.
+// Phase 1A/1C/1D/1E dialogue candidate contract.
 //
 // Shape follows the AI-Personalized Pet Dialogue System engineering
-// reference, with the current priority order (P0 > incomplete profile > P1
-// > P2 > legacy post-login intro > fallback) baked into `DialoguePriority`.
+// reference. Priority order (approved 1E revision): P0 > P1 > incomplete
+// profile > P2 > legacy post-login intro > fallback — see PRIORITY_RANK in
+// resolveDialogue.ts for the authoritative numeric ranking.
 
-export type DialoguePriority = 'P0' | 'PROFILE' | 'P1' | 'P2' | 'LEGACY_INTRO' | 'FALLBACK';
+export type DialoguePriority = 'P0' | 'P1' | 'PROFILE' | 'P2' | 'LEGACY_INTRO' | 'FALLBACK';
 
 export type DialogueUserState =
   | 'ACTIVE_USER_URGENT'
@@ -55,6 +56,7 @@ export interface DialogueCandidate {
 export const DIALOGUE_ID = {
   EXPIRED_INVENTORY: 'expired_inventory',
   OVERDUE_HIGH_TASK: 'overdue_high_task',
+  APPOINTMENT_SOON: 'appointment_soon',
   INVENTORY_EXPIRING_SOON: 'inventory_expiring_soon',
   INVENTORY_LOW_STOCK: 'inventory_low_stock',
   HIGH_TASK_TODAY: 'high_task_today',

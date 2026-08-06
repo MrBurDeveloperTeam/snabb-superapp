@@ -10,7 +10,7 @@ import {
 } from './todoTaskFilters';
 
 /**
- * Pure P2 (High-priority task due today) evaluation over the TodoSnapshot —
+ * Pure P1 (High-priority task due today) evaluation over the TodoSnapshot —
  * no Supabase access here. A task qualifies only when its validated date
  * equals `localToday` exactly; mutually exclusive with the P0 overdue
  * evaluator by construction (`===` here vs `<` there against the same
@@ -18,7 +18,7 @@ import {
  *
  * `time` is deliberately not part of the fetched TodoSnapshotTask fields
  * (see todoSnapshotProvider.ts) and is not used for eligibility or
- * ordering here — a task due today remains P2 for the whole local day
+ * ordering here — a task due today remains P1 for the whole local day
  * regardless of any time-of-day value, per the fixed trigger rules. Tie
  * -breaking therefore falls straight to created_at/id rather than an
  * optional-time comparison.
@@ -39,7 +39,7 @@ function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): Dial
   return {
     userState: 'ACTIVE_USER_URGENT',
     dialogueId: DIALOGUE_ID.HIGH_TASK_TODAY,
-    priority: 'P2',
+    priority: 'P1',
     message,
     action: { label: 'View Task', route: getTodoAppRoute() },
     source: {
@@ -49,7 +49,7 @@ function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): Dial
     },
     dedupeKey: `high_task_today:${source.taskId}:date:${source.validatedDateKey}`,
     ruleVersion: PET_DIALOGUE_RULE_VERSION,
-    // P2 waits for the entry walk like an ordinary dialogue and does not
+    // P1 waits for the entry walk like an ordinary dialogue and does not
     // auto-close — only P0 bypasses/auto-closes.
     eventTime: source.validatedDateKey,
     createdTime: source.createdTime ?? undefined,

@@ -10,13 +10,18 @@ import type { DialogueCandidate } from '../types';
 import type { InventorySnapshot, InventorySnapshotBatch, InventorySnapshotItem } from './inventorySnapshotProvider';
 
 /**
- * Pure P1 (inventory expiring soon) evaluation over the same
+ * Pure P2 (inventory expiring soon) evaluation over the same
  * InventorySnapshot P0 uses — no second Supabase fetch. Mirrors the P0
  * batch-authoritative structure in expiredInventoryProvider.ts (an item
  * with any batch records is evaluated on batch data only; an item with none
  * falls back to its own expiry field) but with the expiring-soon date
- * window instead of the expired-before-today check, and excludes any item
- * that already qualified for P0 (see `expiredItemIds`).
+ * window instead of the expired-before-today check.
+ *
+ * Runs last in the same-item precedence chain (expired → low stock →
+ * expiring soon — see inventorySnapshotProvider.ts): excludes any item that
+ * already qualified for P0, and any item that already qualified for Low
+ * Stock (Low Stock now outranks Expiring Soon for the same item — see
+ * lowStockInventoryProvider.ts).
  */
 
 export const INVENTORY_EXPIRING_SOON_DAYS = 30;
@@ -130,7 +135,7 @@ function buildCandidateFromSource(source: ExpiringSoonSource, todayKey: string):
   return {
     userState: 'ACTIVE_USER_URGENT',
     dialogueId: DIALOGUE_ID.INVENTORY_EXPIRING_SOON,
-    priority: 'P1',
+    priority: 'P2',
     message,
     action: { label: 'Check Inventory', route: getInventoryAppRoute() },
     source: {
@@ -162,14 +167,14 @@ export interface ExpiringSoonInventoryEvaluation {
 }
 
 /**
- * `expiredItemIds` (from evaluateExpiredInventory) is excluded wholesale:
- * an item that already has a qualifying P0 source must never also produce
- * a P1 candidate, even if a different batch on that same item would
- * otherwise qualify as expiring soon — P0 is the more serious state.
+ * `excludedItemIds` is the union of expired (P0) and low-stock (P2)
+ * qualifying item ids — an item already flagged by either of those must
+ * never also produce an Expiring Soon candidate, even if a different batch
+ * on that same item would otherwise qualify.
  */
 export function evaluateExpiringSoonInventory(
   snapshot: InventorySnapshot,
-  expiredItemIds: Set<string>,
+  excludedItemIds: Set<string>,
   now: Date = new Date()
 ): ExpiringSoonInventoryEvaluation {
   const todayKey = toCalendarDateKey(now);
@@ -177,7 +182,7 @@ export function evaluateExpiringSoonInventory(
 
   const sources: ExpiringSoonSource[] = [];
   for (const item of snapshot.items) {
-    if (expiredItemIds.has(item.id)) continue;
+    if (excludedItemIds.has(item.id)) continue;
     const source = selectExpiringSoonSourceForItem(item, snapshot.batchesByItem.get(item.id), todayKey, windowEndKey);
     if (source) sources.push(source);
   }
