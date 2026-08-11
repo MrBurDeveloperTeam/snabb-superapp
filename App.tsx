@@ -85,6 +85,15 @@ const App: React.FC = () => {
   const didInitRef = useRef(false);
   const checkingSessionRef = useRef(false);
   const lastVerifyAtRef = useRef(0);
+  // Monotonically increasing id owned by App.tsx. Every verifySession()
+  // invocation claims the next value as its "generation"; clearAuthState()
+  // also bumps it so a logout/explicit reset invalidates any verifySession
+  // call already in flight. A verifySession call only applies its result to
+  // auth state (isLoggedIn/user/authFormData/profileCompletionStatus/
+  // reconcile) if this ref still equals the generation it claimed at start —
+  // otherwise a newer call (or an intervening logout) has already
+  // superseded it, and it must be a no-op. See verifySession below.
+  const verifySessionGenerationRef = useRef(0);
   const handleClearChat = () => setChatHistory([]);
   const [badgeText, setBadgeText] = useState("Ask Me");
   const { mutateAsync: createAppLink, isPending } = useGetUserId();
@@ -261,6 +270,11 @@ useEffect(() => {
     // apply after this logout (or log the user back in as the outgoing
     // account) — see reconcileSupabaseIdentity's isStaleReconcile() checks.
     reconcileGenerationRef.current += 1;
+    // Same idea for verifySession: an intentional auth reset (logout, a
+    // genuine session failure) must invalidate any verifySession call
+    // already in flight, so it can't resolve afterward and resurrect stale
+    // "logged in" state. See verifySessionGenerationRef above.
+    verifySessionGenerationRef.current += 1;
     setPersonalizedMatchedUserId(null);
   }, []);
 
@@ -276,11 +290,24 @@ useEffect(() => {
     clearLogoutStorage({ userId: outgoingUserId ?? undefined });
   }, []);
 
-    const verifySession = useCallback(async () => {
+    const verifySession = useCallback(async (): Promise<boolean | null> => {
     if (user && (user as any).isSimulated) return true;
+
+    // Claim this invocation's generation before the only await that can
+    // race (getSessionInfo()). If verifySessionGenerationRef has moved on
+    // by the time that await resolves — because a newer verifySession()
+    // call started, or clearAuthState() ran (logout/explicit reset) — this
+    // call's result is stale and must not be applied to auth state at all.
+    // Returning null (rather than true/false) lets callers distinguish
+    // "genuinely not logged in" from "superseded, defer to the newer call".
+    const myGeneration = ++verifySessionGenerationRef.current;
 
     try {
       const res = (await getSessionInfo()) as any;
+
+      if (myGeneration !== verifySessionGenerationRef.current) {
+        return null;
+      }
 
       if (!res?.sessionInfo) {
         if (user && (user as any).isSimulated) return true;
@@ -675,6 +702,28 @@ useEffect(() => {
   }, [verifySessionDebounced]);
 
   const syncmrbursso = async () => {
+    // Local dev: the correct SSO handoff for localhost already happened via
+    // useLoginMutation's own local-dev branch (a same-window navigation to
+    // the local-origin /sso/login, which the Vite dev proxy forwards and
+    // rewrites back to localhost — see vite.config.ts). This function's
+    // unconditional `window.location.href = resurl.result.url` is a SECOND,
+    // real https://sso.snabbb.com navigation with no localhost rewrite,
+    // which races the correct one and can strand the browser on production
+    // (https://app.snabbb.com). It must be a full no-op on localhost —
+    // reusing the repo's single isLocalDevelopmentOrigin() detector rather
+    // than adding another one.
+    if (isLocalDevelopmentOrigin()) {
+      return;
+    }
+
+    // `user` is null on a fresh mount (this is also called from an
+    // empty-deps effect below that fires before any login state exists) —
+    // guard rather than dereference a null user into a crash. No fake user,
+    // no default email: just skip until a real identity is available.
+    if (!user?.email) {
+      return;
+    }
+
     const resurl = await createAppLinks({
       app: 'snabbb',
       email: user.email,
@@ -700,10 +749,18 @@ useEffect(() => {
     const run = async () => {
       const loggedIn = await verifySession();
 
+      // null means this call was superseded (a newer verifySession() or an
+      // intervening clearAuthState() ran before this one resolved) — its
+      // own generation guard already skipped every state write, and the
+      // now-current call owns deciding isLoggedIn. Treating null the same
+      // as false here would be exactly the stale-overwrite bug this guard
+      // exists to prevent, so simply defer to that other call.
+      if (loggedIn === null) return;
+
       if (path === '/login' || path === '/signup') {
         if (loggedIn) {
           window.history.replaceState({}, '', '/');
-          setPath('/'); 
+          setPath('/');
         } else {
           setIsLoggedIn(false);
         }
