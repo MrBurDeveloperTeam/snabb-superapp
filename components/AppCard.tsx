@@ -18,6 +18,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
   const user = getAuthUser();
   const isComingSoon = !app.route;
+  const iconCornerRadius = '20%';
 
   const handleClick = async () => {
     if (!app.route) return;
@@ -30,7 +31,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
       switch (true) {
         case app.route.includes('inventory'): {
-          const res = await createAppLink({
+          const res = await createAppLink({ 
             app: 'inventory',
             email: user.username,
             name: user.name,
@@ -145,7 +146,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   };
 
   const cardBaseStyle: React.CSSProperties = {
-    borderRadius: '2rem',
+    borderRadius: iconCornerRadius,
     overflow: 'hidden',
     position: 'relative',
   };
@@ -167,12 +168,18 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   };
 
   const activeIconWrapStyle: React.CSSProperties = {
-    backgroundColor: 'transparent',
-    borderRadius: '1.65rem',
+    background:
+      'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.95), rgba(255,255,255,0.45) 35%, transparent 60%), linear-gradient(145deg, #dff2ef 0%, #d5ebe6 35%, #c7e2db 100%)',
+    boxShadow:
+      'inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 18px rgba(95,111,148,0.10)',
+    borderRadius: iconCornerRadius,
   };
 
   const comingSoonIconWrapStyle: React.CSSProperties = {
-    borderRadius: '1.65rem',
+    background: 'linear-gradient(145deg, #ececf1 0%, #e3e5eb 100%)',
+    boxShadow:
+      'inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 14px rgba(148,163,184,0.10)',
+    borderRadius: iconCornerRadius,
   };
 
   const glowStyle: React.CSSProperties = {
@@ -241,7 +248,16 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             <div
               className={`${iconContentClass} ${!isImageUrl ? app.colorScheme.text : ''}`}
             >
-              {renderIcon()}
+              {isImageUrl ? (
+                <img
+                  src={app.icon}
+                  alt={app.title}
+                  className="block h-full w-full object-cover"
+                  style={{ borderRadius: iconCornerRadius }}
+                />
+              ) : (
+                <i className={`${app.icon} text-3xl sm:text-4xl`} />
+              )}
             </div>
 
             <div className="absolute inset-0 z-20 flex items-center justify-center">
@@ -340,7 +356,14 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             }`}
           >
             {isImageUrl ? (
-              renderIcon('')
+              <img
+                src={app.icon}
+                alt={app.title}
+                className={`block h-full w-full object-cover ${
+                  isComingSoon ? 'opacity-70 grayscale-[35%]' : ''
+                }`}
+                style={{ borderRadius: iconCornerRadius }}
+              />
             ) : (
               <i className={`${app.icon} text-3xl sm:text-4xl`} />
             )}
