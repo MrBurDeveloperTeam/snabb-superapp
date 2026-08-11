@@ -274,13 +274,18 @@ const COUNTRY_ID_MAP: Record<string, number> = {
 };
 
 // User's selected country → Odoo company ID
+// Japan used to point at company 39 (KANEIKO INTERNATIONAL CO., LTD), but its actual
+// website (MJP, website_id 25 — see COUNTRY_TO_WEBSITE_ID/WEBSITE_BY_COUNTRY below) is
+// owned by company 2 ("MR. BUR (M) SDN. BHD."), same as the other company-2 countries.
+// Repointed to 2 so company_id and website_id agree instead of pointing at two different
+// companies for the same signup.
 const COUNTRY_TO_COMPANY_ID: Record<string, number> = {
   "Malaysia": 2,    // MR. BUR (M) SDN. BHD.
   "Singapore": 3,   // MR. BUR (SG) PTE. LTD.
   "Indonesia": 4,   // PT. MRBUR GLOBAL INDONESIA
   "Thailand": 7,    // MR. BUR (TH) LTD.
   "South Korea": 8, // MR. BUR KOREA LLC
-  "Japan": 39,      // KANEIKO INTERNATIONAL CO., LTD
+  "Japan": 2,       // MR. BUR (M) SDN. BHD. — see note above (was 39/KANEIKO)
 };
 
 // IP country code → Odoo company ID (fallback)
@@ -290,7 +295,7 @@ const COUNTRY_CODE_TO_COMPANY_ID: Record<string, number> = {
   ID: 4,   // PT. MRBUR GLOBAL INDONESIA
   TH: 7,   // MR. BUR (TH) LTD.
   KR: 8,   // MR. BUR KOREA LLC
-  JP: 39,  // KANEIKO INTERNATIONAL CO., LTD
+  JP: 2,   // MR. BUR (M) SDN. BHD. — see note above (was 39/KANEIKO)
 };
 
 // User's selected country → Odoo `website` record ID.
@@ -303,12 +308,12 @@ const COUNTRY_CODE_TO_COMPANY_ID: Record<string, number> = {
 // by resolving the actual per-country website_id at signup, independent of
 // company_id.
 //
-// NOTE: South Korea and Japan appear here (their websites — MKR, MJP — are
-// owned by company 2 in Odoo), but COUNTRY_TO_COMPANY_ID above still routes
-// them to their own separate companies (8 and 39). That's an existing
-// mismatch between the website ownership and the company assignment for
-// those two countries — worth confirming with whoever manages the Odoo
-// company/website structure before relying on both fields together for KR/JP.
+// NOTE: South Korea's website (MKR) is owned by company 2 in Odoo, but
+// COUNTRY_TO_COMPANY_ID above still routes it to its own separate company (8,
+// MR. BUR KOREA LLC). Japan had the same mismatch (was company 39/KANEIKO)
+// until COUNTRY_TO_COMPANY_ID was repointed to company 2 — worth confirming
+// with whoever manages the Odoo company/website structure whether South
+// Korea needs the same treatment.
 const WEBSITE_BY_COUNTRY: Record<string, { id: number; code: string }> = {
   "Malaysia": { id: 1, code: "MMY" },               // https://my.mrbur.shop
   "United States": { id: 13, code: "MUS" },         // https://us.mrbur.shop
@@ -321,7 +326,7 @@ const WEBSITE_BY_COUNTRY: Record<string, { id: number; code: string }> = {
   "United Arab Emirates": { id: 22, code: "MAE" },  // https://ae.mrbur.shop
   "Vietnam": { id: 23, code: "MVN" },               // https://vn.mrbur.shop
   "Philippines": { id: 24, code: "MPH" },           // https://ph.mrbur.shop
-  "Japan": { id: 25, code: "MJP" },                 // https://jp.mrbur.shop (see note above)
+  "Japan": { id: 25, code: "MJP" },                 // https://jp.mrbur.shop
 };
 
 // Falls back to the generic "INT" website (https://www.mrbur.shop) rather
