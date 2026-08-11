@@ -98,6 +98,14 @@ export const MINI_APPS: MiniApp[] = [
     // route: `https://app.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
+  {
+    id: 'app-12',
+    title: 'Charting',
+    category: 'Productivity',
+    icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
+    route: `https://charting.snabbb.com`,
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
+  },
 
   // ======= VALUE ADDED =======
   {
