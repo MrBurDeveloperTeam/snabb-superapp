@@ -1,6 +1,7 @@
 import { AuthFormInputs } from "@/features/auth/types/AuthFormInputs";
 import api from "./api";
 import { getSessionInfoWithRetry } from "./GetSessionInfo";
+import { toast } from "sonner";
 
 type SessionInfoResponse = {
   ok: boolean;
@@ -17,43 +18,386 @@ type LocationResponse = {
   country_code?: string;
 };
 
+// Odoo country IDs for portal profile (must match res.country IDs exactly —
+// keep in sync with the country <select> in SignUpForm.tsx)
+const COUNTRY_ID_MAP: Record<string, number> = {
+  "Afghanistan": 3,
+  "Albania": 6,
+  "Algeria": 62,
+  "American Samoa": 11,
+  "Andorra": 1,
+  "Angola": 8,
+  "Anguilla": 5,
+  "Antarctica": 9,
+  "Antigua and Barbuda": 4,
+  "Argentina": 10,
+  "Armenia": 7,
+  "Aruba": 14,
+  "Australia": 13,
+  "Austria": 12,
+  "Azerbaijan": 16,
+  "Bahamas": 32,
+  "Bahrain": 23,
+  "Bangladesh": 19,
+  "Barbados": 18,
+  "Belarus": 36,
+  "Belgium": 20,
+  "Belize": 37,
+  "Benin": 25,
+  "Bermuda": 27,
+  "Bhutan": 33,
+  "Bolivia": 29,
+  "Bonaire, Sint Eustatius and Saba": 30,
+  "Bosnia and Herzegovina": 17,
+  "Botswana": 35,
+  "Bouvet Island": 34,
+  "Brazil": 31,
+  "British Indian Ocean Territory": 105,
+  "Brunei Darussalam": 28,
+  "Bulgaria": 22,
+  "Burkina Faso": 21,
+  "Burundi": 24,
+  "Cambodia": 116,
+  "Cameroon": 47,
+  "Canada": 38,
+  "Cape Verde": 52,
+  "Cayman Islands": 123,
+  "Central African Republic": 40,
+  "Chad": 214,
+  "Chile": 46,
+  "China": 48,
+  "Christmas Island": 54,
+  "Cocos (Keeling) Islands": 39,
+  "Colombia": 49,
+  "Comoros": 118,
+  "Congo": 42,
+  "Cook Islands": 45,
+  "Costa Rica": 50,
+  "Croatia": 97,
+  "Cuba": 51,
+  "Curaçao": 53,
+  "Cyprus": 55,
+  "Czech Republic": 56,
+  "Côte d'Ivoire": 44,
+  "Democratic Republic of the Congo": 41,
+  "Denmark": 59,
+  "Djibouti": 58,
+  "Dominica": 60,
+  "Dominican Republic": 61,
+  "Ecuador": 63,
+  "Egypt": 65,
+  "El Salvador": 209,
+  "Equatorial Guinea": 87,
+  "Eritrea": 67,
+  "Estonia": 64,
+  "Eswatini": 212,
+  "Ethiopia": 69,
+  "Falkland Islands": 72,
+  "Faroe Islands": 74,
+  "Fiji": 71,
+  "Finland": 70,
+  "France": 75,
+  "French Guiana": 79,
+  "French Polynesia": 174,
+  "French Southern Territories": 215,
+  "Gabon": 76,
+  "Gambia": 84,
+  "Georgia": 78,
+  "Germany": 57,
+  "Ghana": 80,
+  "Gibraltar": 81,
+  "Greece": 88,
+  "Greenland": 83,
+  "Grenada": 77,
+  "Guadeloupe": 86,
+  "Guam": 91,
+  "Guatemala": 90,
+  "Guernsey": 82,
+  "Guinea": 85,
+  "Guinea-Bissau": 92,
+  "Guyana": 93,
+  "Haiti": 98,
+  "Heard Island and McDonald Islands": 95,
+  "Holy See (Vatican City State)": 236,
+  "Honduras": 96,
+  "Hong Kong": 94,
+  "Hungary": 99,
+  "Iceland": 108,
+  "India": 104,
+  "Indonesia": 100,
+  "Iran": 107,
+  "Iraq": 106,
+  "Ireland": 101,
+  "Isle of Man": 103,
+  "Israel": 102,
+  "Italy": 109,
+  "Jamaica": 111,
+  "Japan": 113,
+  "Jersey": 110,
+  "Jordan": 112,
+  "Kazakhstan": 124,
+  "Kenya": 114,
+  "Kiribati": 117,
+  "Kosovo": 250,
+  "Kuwait": 122,
+  "Kyrgyzstan": 115,
+  "Laos": 125,
+  "Latvia": 134,
+  "Lebanon": 126,
+  "Lesotho": 131,
+  "Liberia": 130,
+  "Libya": 135,
+  "Liechtenstein": 128,
+  "Lithuania": 132,
+  "Luxembourg": 133,
+  "Macau": 147,
+  "Madagascar": 141,
+  "Malawi": 155,
+  "Malaysia": 157,
+  "Maldives": 154,
+  "Mali": 144,
+  "Malta": 152,
+  "Marshall Islands": 142,
+  "Martinique": 149,
+  "Mauritania": 150,
+  "Mauritius": 153,
+  "Mayotte": 246,
+  "Mexico": 156,
+  "Micronesia": 73,
+  "Moldova": 138,
+  "Monaco": 137,
+  "Mongolia": 146,
+  "Montenegro": 139,
+  "Montserrat": 151,
+  "Morocco": 136,
+  "Mozambique": 158,
+  "Myanmar": 145,
+  "Namibia": 159,
+  "Nauru": 168,
+  "Nepal": 167,
+  "Netherlands": 165,
+  "New Caledonia": 160,
+  "New Zealand": 170,
+  "Nicaragua": 164,
+  "Niger": 161,
+  "Nigeria": 163,
+  "Niue": 169,
+  "Norfolk Island": 162,
+  "North Korea": 120,
+  "North Macedonia": 143,
+  "Northern Mariana Islands": 148,
+  "Norway": 166,
+  "Oman": 171,
+  "Pakistan": 177,
+  "Palau": 184,
+  "Panama": 172,
+  "Papua New Guinea": 175,
+  "Paraguay": 185,
+  "Peru": 173,
+  "Philippines": 176,
+  "Pitcairn Islands": 180,
+  "Poland": 178,
+  "Portugal": 183,
+  "Puerto Rico": 181,
+  "Qatar": 186,
+  "Romania": 188,
+  "Russian Federation": 190,
+  "Rwanda": 191,
+  "Réunion": 187,
+  "Saint Barthélémy": 26,
+  "Saint Helena, Ascension and Tristan da Cunha": 198,
+  "Saint Kitts and Nevis": 119,
+  "Saint Lucia": 127,
+  "Saint Martin (French part)": 140,
+  "Saint Pierre and Miquelon": 179,
+  "Saint Vincent and the Grenadines": 237,
+  "Samoa": 244,
+  "San Marino": 203,
+  "Saudi Arabia": 192,
+  "Senegal": 204,
+  "Serbia": 189,
+  "Seychelles": 194,
+  "Sierra Leone": 202,
+  "Singapore": 197,
+  "Sint Maarten (Dutch part)": 210,
+  "Slovakia": 201,
+  "Slovenia": 199,
+  "Solomon Islands": 193,
+  "Somalia": 205,
+  "South Africa": 247,
+  "South Georgia and the South Sandwich Islands": 89,
+  "South Korea": 121,
+  "South Sudan": 207,
+  "Spain": 68,
+  "Sri Lanka": 129,
+  "State of Palestine": 182,
+  "Sudan": 195,
+  "Suriname": 206,
+  "Svalbard and Jan Mayen": 200,
+  "Sweden": 196,
+  "Switzerland": 43,
+  "Syria": 211,
+  "São Tomé and Príncipe": 208,
+  "Taiwan": 227,
+  "Tajikistan": 218,
+  "Tanzania": 228,
+  "Thailand": 217,
+  "Timor-Leste": 223,
+  "Togo": 216,
+  "Tokelau": 219,
+  "Tonga": 222,
+  "Trinidad and Tobago": 225,
+  "Tunisia": 221,
+  "Turkmenistan": 220,
+  "Turks and Caicos Islands": 213,
+  "Tuvalu": 226,
+  "Türkiye": 224,
+  "USA Minor Outlying Islands": 232,
+  "Uganda": 230,
+  "Ukraine": 229,
+  "United Arab Emirates": 2,
+  "United Kingdom": 231,
+  "United States": 233,
+  "Uruguay": 234,
+  "Uzbekistan": 235,
+  "Vanuatu": 242,
+  "Venezuela": 238,
+  "Vietnam": 241,
+  "Virgin Islands (British)": 239,
+  "Virgin Islands (USA)": 240,
+  "Wallis and Futuna": 243,
+  "Western Sahara": 66,
+  "Yemen": 245,
+  "Zambia": 248,
+  "Zimbabwe": 249,
+  "Åland Islands": 15,
+};
+
+// User's selected country → Odoo company ID
+// Japan used to point at company 39 (KANEIKO INTERNATIONAL CO., LTD), but its actual
+// website (MJP, website_id 25 — see COUNTRY_TO_WEBSITE_ID/WEBSITE_BY_COUNTRY below) is
+// owned by company 2 ("MR. BUR (M) SDN. BHD."), same as the other company-2 countries.
+// Repointed to 2 so company_id and website_id agree instead of pointing at two different
+// companies for the same signup.
+const COUNTRY_TO_COMPANY_ID: Record<string, number> = {
+  "Malaysia": 2,    // MR. BUR (M) SDN. BHD.
+  "Singapore": 3,   // MR. BUR (SG) PTE. LTD.
+  "Indonesia": 4,   // PT. MRBUR GLOBAL INDONESIA
+  "Thailand": 7,    // MR. BUR (TH) LTD.
+  "South Korea": 8, // MR. BUR KOREA LLC
+  "Japan": 2,       // MR. BUR (M) SDN. BHD. — see note above (was 39/KANEIKO)
+};
+
+// IP country code → Odoo company ID (fallback)
+const COUNTRY_CODE_TO_COMPANY_ID: Record<string, number> = {
+  MY: 2,   // MR. BUR (M) SDN. BHD.
+  SG: 3,   // MR. BUR (SG) PTE. LTD.
+  ID: 4,   // PT. MRBUR GLOBAL INDONESIA
+  TH: 7,   // MR. BUR (TH) LTD.
+  KR: 8,   // MR. BUR KOREA LLC
+  JP: 2,   // MR. BUR (M) SDN. BHD. — see note above (was 39/KANEIKO)
+};
+
+// User's selected country → Odoo `website` record ID.
+// Sourced directly from Odoo (`website.search_read` filtered to
+// company_id = "MR. BUR (M) SDN. BHD.", queried 2026-08-11). These
+// countries share one res.company (id 2) so COUNTRY_TO_COMPANY_ID alone
+// can't tell them apart — company 2's `company_codes` always reports a
+// single code ("MMY"), which is why every one of these countries silently
+// fell back to the Malaysia wallet/reward website. This map fills that gap
+// by resolving the actual per-country website_id at signup, independent of
+// company_id.
+//
+// NOTE: South Korea's website (MKR) is owned by company 2 in Odoo, but
+// COUNTRY_TO_COMPANY_ID above still routes it to its own separate company (8,
+// MR. BUR KOREA LLC). Japan had the same mismatch (was company 39/KANEIKO)
+// until COUNTRY_TO_COMPANY_ID was repointed to company 2 — worth confirming
+// with whoever manages the Odoo company/website structure whether South
+// Korea needs the same treatment.
+const WEBSITE_BY_COUNTRY: Record<string, { id: number; code: string }> = {
+  "Malaysia": { id: 1, code: "MMY" },               // https://my.mrbur.shop
+  "United States": { id: 13, code: "MUS" },         // https://us.mrbur.shop
+  "United Kingdom": { id: 14, code: "MUK" },        // https://uk.mrbur.shop
+  "Australia": { id: 15, code: "MAU" },             // https://au.mrbur.shop
+  "Canada": { id: 18, code: "MCA" },                // https://ca.mrbur.shop
+  "Saudi Arabia": { id: 19, code: "MSA" },          // https://sa.mrbur.shop
+  "New Zealand": { id: 20, code: "MNZ" },           // https://nz.mrbur.shop
+  "South Korea": { id: 21, code: "MKR" },           // https://kr.mrbur.shop (see note above)
+  "United Arab Emirates": { id: 22, code: "MAE" },  // https://ae.mrbur.shop
+  "Vietnam": { id: 23, code: "MVN" },               // https://vn.mrbur.shop
+  "Philippines": { id: 24, code: "MPH" },           // https://ph.mrbur.shop
+  "Japan": { id: 25, code: "MJP" },                 // https://jp.mrbur.shop
+};
+
+// Falls back to the generic "INT" website (https://www.mrbur.shop) rather
+// than silently pretending an unmapped country is Malaysia.
+const DEFAULT_WEBSITE_ID = 9; // INT
+
+const getSignupWebsiteId = (selectedCountry?: string): number => {
+  return selectedCountry && WEBSITE_BY_COUNTRY[selectedCountry]
+    ? WEBSITE_BY_COUNTRY[selectedCountry].id
+    : DEFAULT_WEBSITE_ID;
+};
+
+// Given a country NAME (e.g. from res.partner's country_id[1], which is
+// reliably set at signup regardless of whether website_id/company_id ever
+// got resolved correctly), returns the matching website short code — the
+// same value the wallet/reward API expects for website_scope/website_domain.
+// Works retroactively for existing users too, since it doesn't depend on
+// anything stored beyond country_id.
+export const getWebsiteCodeForCountry = (countryName?: string | null): string | undefined => {
+  if (!countryName) return undefined;
+  return WEBSITE_BY_COUNTRY[countryName]?.code;
+};
+
+const COMPANY_CODE_TO_MRBUR_URL: Record<string, string> = {
+  MY: 'https://my.mrbur.shop',
+  SG: 'https://sg.mrbur.shop',
+  TH: 'https://th.mrbur.shop',
+  IN: 'https://id.mrbur.shop',
+  VN: 'https://vn.mrbur.shop',
+  JP: 'https://jp.mrbur.shop',
+  KR: 'https://kr.mrbur.shop',
+}
+
+export function getMrBurUrlFromCompanyCode(companyCode?: string | null): string {
+  console.log('getMrBurUrlFromCompanyCode called with companyCode:', companyCode);
+  if (!companyCode) return 'https://app.snabbb.com/shop';
+  // company_code is like "MMY", "MSG", "MTH" — last 2 chars are country code
+  const countryCode = companyCode.slice(-2).toUpperCase()
+  return COMPANY_CODE_TO_MRBUR_URL[countryCode] ?? 'https://app.snabbb.com/shop'
+}
+
 const getLocationInfo = async (): Promise<LocationResponse> => {
   try {
     const res = await fetch("/api/location", {
       method: "GET",
       credentials: "include",
     });
-
-    if (!res.ok) {
-      return  Promise.reject(new Error(`Failed to get location: ${res.status}`));
-    }
-
+    if (!res.ok) return Promise.reject(new Error(`Failed to get location: ${res.status}`));
     return await res.json();
   } catch (error) {
     console.error("location error:", error);
-    return { country_code: "MY" };
+    // Don't fake a resolved country here — silently returning "MY" made
+    // every failed lookup look like a real Malaysia signal and pushed
+    // unrelated signups into the Malaysia (MMY) company by default.
+    // Leave country_code undefined so callers fall through to their next
+    // real fallback instead.
+    return {};
   }
 };
 
 const getSessionInfo = async (): Promise<SessionInfoResponse> => {
   const res = await getSessionInfoWithRetry();
-
-  if (!res) {
-    return Promise.reject(new Error(`session_info failed: ${res.status}`));
-  }
-
-  return await res.json();
+  if (!res) return Promise.reject(new Error("session_info failed"));
+  if (typeof res.json === "function") return await res.json();
+  return res as SessionInfoResponse;
 };
 
 const normalizeCountryCandidates = (countryCode: string): string[] => {
   const cc = (countryCode || "").toUpperCase();
-
-  // Primary country code first, then known aliases if needed
   const candidates = [cc];
-
-  // Indonesia is often ID, but your company code appears to use IN
   if (cc === "ID") candidates.push("IN");
-
   return candidates;
 };
 
@@ -62,48 +406,47 @@ const resolveCompanyIdFromCountry = (
   companyCodes: Record<string, string>
 ): number | null => {
   const candidates = normalizeCountryCandidates(countryCode);
-
   for (const candidate of candidates) {
     const matchedEntry = Object.entries(companyCodes).find(([, code]) => {
-      const normalizedCode = String(code).toUpperCase();
-      return normalizedCode.endsWith(candidate);
+      return String(code).toUpperCase().endsWith(candidate);
     });
-
-    if (matchedEntry) {
-      return Number(matchedEntry[0]);
-    }
+    if (matchedEntry) return Number(matchedEntry[0]);
   }
-
   return null;
 };
 
-const getSignupCompanyId = async (): Promise<number> => {
+const getSignupCompanyId = async (selectedCountry?: string): Promise<number> => {
+  // 1. Use the user's selected country first (most accurate)
+  if (selectedCountry && COUNTRY_TO_COMPANY_ID[selectedCountry]) {
+    return COUNTRY_TO_COMPANY_ID[selectedCountry];
+  }
+
   try {
-    console.log("Session company codes");
-    const [{ country_code = "MY" }, sessionInfo] = await Promise.all([
+    const [{ country_code }, sessionInfo] = await Promise.all([
       getLocationInfo(),
       getSessionInfo(),
     ]);
-    console.log("Session country_code: ",country_code);
 
-    const companyCodes = sessionInfo.company_codes || {};
+    // Only treat this as a real signal if the IP lookup actually resolved
+    // a country — don't let a failed lookup masquerade as "MY" before we've
+    // tried the other, more accurate fallbacks below.
+    if (country_code) {
+      const cc = country_code.toUpperCase();
 
-    const resolvedCompanyId = resolveCompanyIdFromCountry(
-      country_code,
-      companyCodes
-    );
+      // 2. Try dynamic session company_codes
+      const companyCodes = sessionInfo.company_codes || {};
+      const resolvedCompanyId = resolveCompanyIdFromCountry(cc, companyCodes);
+      if (resolvedCompanyId) return resolvedCompanyId;
 
-    if (resolvedCompanyId) {
-      return resolvedCompanyId;
+      // 3. Static fallback by IP country code
+      const staticId = COUNTRY_CODE_TO_COMPANY_ID[cc];
+      if (staticId) return staticId;
     }
 
-    // fallback to current session company_id if available
-    if (sessionInfo.company_id) {
-      return Number(sessionInfo.company_id);
-    }
+    // 4. Session fallback
+    if (sessionInfo.company_id) return Number(sessionInfo.company_id);
 
-    // final fallback
-    return 2;
+    return 2; // final fallback → MR. BUR (M), used only once every real signal is exhausted
   } catch (error) {
     console.error("company_id resolve error:", error);
     return 2;
@@ -112,29 +455,66 @@ const getSignupCompanyId = async (): Promise<number> => {
 
 export const authOdoo = async ({
   login,
+  companyEmail,
+  companyName,
   password,
   fullName,
   jobPosition,
   customJobPosition,
   phone,
-  redirect,
-  name,
+  dob,
+  account_type,
+  country,
+  inviteCode,
+  tags,
+  referralCode,
 }: AuthFormInputs) => {
-  const companyId = await getSignupCompanyId();
+  // Pass selected country for accurate company resolution
+  const companyId = await getSignupCompanyId(country);
+  // Independent of companyId — resolves which of the per-country websites
+  // (under MR. BUR (M) SDN. BHD.) this signup should be scoped to, so the
+  // wallet/reward API stops defaulting every non-legal-entity country to MMY.
+  const websiteId = getSignupWebsiteId(country);
+
+  const isCompany = account_type === "company";
+  const effectiveEmail = isCompany ? (companyEmail || login) : login;
+  const effectiveName = isCompany ? companyName : fullName;
+  const effectivePosition = jobPosition === "OTHER" ? customJobPosition : jobPosition;
+  const countryId = country ? COUNTRY_ID_MAP[country] : undefined;
 
   const requestData = {
     jsonrpc: "2.0",
     method: "call",
     params: {
-      email: login,
-      ...(fullName && { name: fullName }),
-      ...(password && { password: password }),
-      ...(name && { name: name || "login" }),
-      company_id: companyId 
+      email: effectiveEmail,
+      name: effectiveName,
+      ...(isCompany && { company_type: "company" }),
+      ...(isCompany && fullName && { contact_name: fullName }),
+      ...(!isCompany && { company_type: "person" }),
+      ...(password && { password }),
+      ...(phone && { phone }),
+      ...(dob && { date_of_birth: dob }),
+      ...(countryId && { country_id: countryId }),
+      ...(effectivePosition && {
+        job_position: effectivePosition
+      }),
+      ...(inviteCode?.trim() && {
+        invite_code: inviteCode.trim()
+      }),
+      ...(tags?.trim() && {
+        tags: tags.trim()
+      }),
+      ...(referralCode?.trim() && {
+        referral_code: referralCode.trim()
+      }),
+      company_id: companyId,
+      website_id: websiteId,
     },
     id: 1,
   };
-  console.log('sign up here')
+
+  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail, country, countryId, companyId, websiteId });
+
   try {
     const response = await api.post("/v1/users", requestData);
 
@@ -143,16 +523,55 @@ export const authOdoo = async ({
     }
 
     await api.post("/auth/create-user", {
-      email: login,
-      password: password,
-      name: name,
-      phone: phone,
-      position: jobPosition,
+      email: effectiveEmail,
+      password,
+      name: fullName,
+      phone,
+      dob,
+      position: effectivePosition,
+      account_type,
+      company_name: isCompany ? companyName : undefined,
     });
 
     return response;
   } catch (err: any) {
-    console.log("err:", err);
-    return Promise.reject(new Error(err.message || "Odoo login failed"));
+    const rawError =
+      err?.response?.data?.error;
+
+    let errorMessage =
+      typeof rawError === "string"
+        ? rawError
+        : rawError?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Registration failed. Please try again.";
+
+    const innerJsonMatch =
+      typeof errorMessage === "string"
+        ? errorMessage.match(
+            /:\s*(\{.*\})$/
+          )
+        : null;
+
+    if (innerJsonMatch) {
+      try {
+        const inner = JSON.parse(
+          innerJsonMatch[1]
+        );
+
+        errorMessage =
+          inner?.msg ||
+          inner?.message ||
+          errorMessage;
+      } catch {
+        // Keep the original error message.
+      }
+    }
+
+    toast.error(errorMessage, {
+      icon: "🔴",
+    });
+
+    throw new Error(errorMessage);
   }
 };

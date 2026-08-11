@@ -1,10 +1,6 @@
 import LoginForm from './LoginForm.tsx';
-import Showcase from './ShowCase.tsx';
-import { Dispatch, SetStateAction, useState } from 'react';
-import { useForm, SubmitHandler, Controller } from 'react-hook-form';
-import { LoginFormInputs } from '../types/LoginPageProps.ts';
+import { useForm } from 'react-hook-form';
 import { Box, Portal } from '@mui/material';
-import { SubmitButton } from '@/shared/ui/SubmitButton.tsx';
 import { handleInputChangeLogin, handleInputChangeSignup } from '../helper/AuthPageHelper.ts';
 import { AuthFormInputs } from '../types/AuthFormInputs.ts';
 import { SignupForm } from './SignUpForm.tsx';
@@ -12,50 +8,137 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { containerVariants } from '@/shared/styles/variants';
 import { View } from '@/types/View.ts';
 import LoadingOverlay from '@/components/LoadingOverlay.tsx';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 // import LoginForm from '@/components/LoginForm.tsx';
-import { getStoredUser } from '@/features/lib/auth.ts';
 import { AuthFormData } from '@/types/AuthFormData.ts';
 
 interface Props {
   authMode: "login" | "signup";
-  setCurrentView: Dispatch<SetStateAction<View>>;
+  setCurrentView: React.Dispatch<React.SetStateAction<string>>;
   onAuthSuccess: () => void;
-  setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData>>;
-  setFormData: Dispatch<SetStateAction<Partial<LoginFormInputs>>>;
+  setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData | null>>;
+  setFormData: React.Dispatch<React.SetStateAction<AuthFormData>>;
+  setToastMsg: (msg: string, options: { type: 'success' | 'error' }) => void;
 }
 
-export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData}: Props) {
-  const [loggedIn, setLoggedIn] = useState(!!getStoredUser());
-  const { control: controlLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorslogin, isSubmitting }, setValue: setValueLogin } = useForm<AuthFormInputs>({
-    defaultValues: { email: "", password: "", name: "login"}
+export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData, setToastMsg}: Props) {
+  // Capture ?invitation=<code> once on load. This only matters for signup —
+  // it rides along in the signup payload so Odoo can link the new account
+  // back to whoever's invite link was used and tag it Student.
+  const pendingInvite = (() => {
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const invitationFromUrl =
+      params.get('invitation')?.trim() || '';
+
+    const tagsFromUrl =
+      params.get('tags')?.trim() || '';
+
+    if (invitationFromUrl) {
+      return {
+        invitation: invitationFromUrl,
+        tags: tagsFromUrl,
+      };
+    }
+
+    try {
+      const raw = sessionStorage.getItem(
+        'snabbb_pending_signup_invite'
+      );
+
+      if (!raw) {
+        return {
+          invitation: '',
+          tags: '',
+        };
+      }
+
+      const stored = JSON.parse(raw);
+
+      return {
+        invitation:
+          typeof stored?.invitation === 'string'
+            ? stored.invitation.trim()
+            : '',
+        tags:
+          typeof stored?.tags === 'string'
+            ? stored.tags.trim()
+            : '',
+      };
+    } catch {
+      return {
+        invitation: '',
+        tags: '',
+      };
+    }
+  })();
+
+  const inviteCode = pendingInvite.invitation;
+  const inviteTags = pendingInvite.tags;
+
+  // Capture ?referral=<code> once on load (a doctor's referral link). Also
+  // accepts ?referral_code= / ?ref= as aliases. Pre-fills the "Referred by"
+  // field on the sign-up form so Snabbb Credit can be awarded once the
+  // referral qualifies. Unrelated to inviteCode above.
+  const referralParams = new URLSearchParams(window.location.search);
+  const referralCode = referralParams.get('referral') || referralParams.get('referral_code') || referralParams.get('ref') || '';
+  const {
+    control: controlLogin,
+    handleSubmit: handleSubmitLogin,
+    formState: { errors: errorslogin },
+    setValue: setValueLogin,
+  } = useForm<AuthFormInputs>({
+    shouldUnregister: false,
+    defaultValues: {
+      account_type: 'individual',  
+      fullName: "",
+      login: "",
+      companyName: '',     
+      companyEmail: '',
+      jobPosition: "",
+      customJobPosition: "",
+      phone: "",
+      country: '',
+      dob: '',
+      password: "",
+      confirmPassword: "",
+      agreedToTerms: false,
+      position: "",  
+    }
   });
 
   const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<AuthFormInputs>({
-  defaultValues: {
-    fullName: "",
-    login: "",
-    jobPosition: "",
-    customJobPosition: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    agreedToTerms: false
-  }
+    shouldUnregister: false,
+    defaultValues: {
+      account_type: 'individual',
+      fullName: "",
+      login: "",
+      companyName: '',
+      companyEmail: '',
+      jobPosition: "",
+      customJobPosition: "",
+      phone: "",
+      country: '',
+      dob: '',
+      password: "",
+      confirmPassword: "",
+      agreedToTerms: false,
+      position: "",
+      inviteCode,
+      tags: inviteTags,
+      referralCode,
+    }
 });
 
   const navigateTo = (view: View) => {
-    setCurrentView(view);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+    const nextPath = view === 'gallery'
+      ? '/'
+      : `/${view}`;
 
-  const toastMessage = (msg: string, options: { type: 'success' | 'error' }) => {
-    if (options.type === 'success') {
-      toast.success(msg);
-    } else if (options.type === 'error') {
-      toast.error(msg);
-    }
+    window.history.pushState({}, '', nextPath);
+    setCurrentView(nextPath);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const setExternalUserId = (id: string) => {
@@ -64,11 +147,6 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
 
 return(
   <>
-   <ToastContainer 
-        position="top-center"    // Position of the toast
-        autoClose={5000}        // Time (ms) before the toast disappears
-        hideProgressBar={false} // Option to show progress bar
-      />
   <Portal>
     <LoadingOverlay isLoading={isSubmittingSignup} message={"Registering..."} />
   </Portal>
@@ -97,7 +175,7 @@ return(
               handleSubmit={handleSubmitLogin}
               error={errorslogin}
               onNavigate={navigateTo}
-              setToastMsg={toastMessage}
+              setToastMsg={setToastMsg}
               setExternalUserId={setExternalUserId}
               setFormData={setFormData}
             />
@@ -108,25 +186,11 @@ return(
               handleSubmit={handleSubmitSignUp}
               onChange={(e) => handleInputChangeSignup(e, setValueSignup)}
               onNavigate={navigateTo}
-              setToastMsg={toastMessage}
+              setToastMsg={setToastMsg}
             />
           )}
-          </AnimatePresence>
+        </AnimatePresence>
 
-
-
-    {/* Toggle */}
-    {/* <AuthToggle
-      isLoginMode={isLoginMode}
-      onToggle={() => {
-        setIsLoginMode(!isLoginMode);
-        setError(null);
-        setShowTermsError(false);
-        setFormData(prev => ({ ...prev, agreedToTerms: false }));
-      }}
-    /> */}
-
-  <Showcase isLoginMode={authMode} />
   </Box>
   </motion.div>
   </>

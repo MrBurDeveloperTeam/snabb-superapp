@@ -12,7 +12,10 @@ interface AppCardProps {
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
-  const isImageUrl = app.icon.startsWith('http');
+
+  // Supports both full image URLs and local public paths like /icons/kaneiko_black.png
+  const isImageUrl = app.icon.startsWith('http') || app.icon.startsWith('/');
+
   const user = getAuthUser();
   const isComingSoon = !app.route;
   const iconCornerRadius = '20%';
@@ -36,8 +39,10 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
+
         case app.route.includes('recruitment'):
           break;
+
         case app.route.includes('appointment'): {
           const res = await createAppLink({
             app: 'appointment',
@@ -47,6 +52,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
+
         case app.route.includes('event'): {
           const res = await createAppLink({
             app: 'event',
@@ -56,15 +62,31 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
-        case app.route.includes('shop'): {
-          // const res = await createAppLink({
-          //   app: 'shop',
-          //   email: user.username,
-          //   name: user.name,
-          // });
-          if (w) w.location.href = 'https://mrbur.shop';
+
+        case app.route.includes('mrbur.shop'): {
+          const res = await createAppLink({
+            app: 'shop',
+            email: user.username,
+            name: user.name,
+          });
+
+          if (res.result?.url && w) {
+            const ssoUrl = new URL(res.result.url);
+            const token = ssoUrl.searchParams.get('token');
+            const companyCode = ssoUrl.searchParams.get('company_code') || 'INT';
+            console.log('SSO token:', token, 'company_code:', companyCode);
+            if (token) {
+              w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
+                token
+              )}&company_code=${encodeURIComponent(companyCode)}`;
+            } else {
+              w.location.href = res.result.url;
+            }
+          }
+
           break;
         }
+
         case app.route.includes('calculator'): {
           const res = await createAppLink({
             app: 'calculator',
@@ -74,6 +96,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
+
         case app.route.includes('todo'): {
           const res = await createAppLink({
             app: 'todo',
@@ -83,6 +106,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
+
         case app.route.includes('imageai'): {
           const res = await createAppLink({
             app: 'imageai',
@@ -92,6 +116,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
+
         case app.route.includes('e-learning'): {
           const res = await createAppLink({
             app: 'e-learning',
@@ -101,6 +126,17 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
+
+        case app.route.includes('reward'): {
+          const res = await createAppLink({
+            app: 'reward',
+            email: user.username,
+            name: user.name,
+          });
+          if (res.result?.url && w) w.location.href = res.result.url;
+          break;
+        }
+
         default:
           break;
       }
@@ -117,36 +153,18 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
   const activeCardStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background:
-      'linear-gradient(145deg, #f6f9fc 0%, #eef3f8 45%, #e5edf5 100%)',
-    boxShadow:
-      '0 10px 30px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.75)',
-    border: '1px solid rgba(255,255,255,0.7)',
   };
 
   const activeCardHoverStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background:
-      'linear-gradient(145deg, #f6f9fc 0%, #eef3f8 45%, #e5edf5 100%)',
-    boxShadow:
-      '0 20px 40px rgba(95,111,148,0.14), inset 0 1px 0 rgba(255,255,255,0.8)',
-    border: '1px solid rgba(255,255,255,0.72)',
   };
 
   const comingSoonCardStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background: 'linear-gradient(145deg, #f7f7f9 0%, #f1f2f5 100%)',
-    boxShadow:
-      '0 8px 24px rgba(15,23,42,0.04), inset 0 1px 0 rgba(255,255,255,0.7)',
-    border: '1px solid rgba(255,255,255,0.6)',
   };
 
   const comingSoonCardHoverStyle: React.CSSProperties = {
     ...cardBaseStyle,
-    background: 'linear-gradient(145deg, #f7f7f9 0%, #f1f2f5 100%)',
-    boxShadow:
-      '0 12px 24px rgba(148,163,184,0.08), inset 0 1px 0 rgba(255,255,255,0.72)',
-    border: '1px solid rgba(255,255,255,0.62)',
   };
 
   const activeIconWrapStyle: React.CSSProperties = {
@@ -169,27 +187,59 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   };
 
   const iconInsetClass = 'absolute inset-[3px]';
+
   const cardClass =
-    'relative z-10 w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-500';
+    'relative z-10 w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-150';
+
   const wrapperClass =
     'group flex flex-col items-center gap-3 sm:gap-4 w-full pb-4 pt-2';
+
   const iconContentClass =
     'relative z-10 flex items-center justify-center h-full w-full select-none transition-all duration-300';
+
+  const renderIcon = (imageClass = '') => {
+    if (isImageUrl) {
+      if (app.iconDark) {
+        return (
+          <div className="w-full h-full">
+            <img
+              src={app.icon}
+              alt={app.title}
+              className={`block dark:hidden w-full h-full object-cover ${imageClass}`}
+            />
+            <img
+              src={app.iconDark}
+              alt={app.title}
+              className={`hidden dark:block w-full h-full object-cover ${imageClass}`}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <img
+          src={app.icon}
+          alt={app.title}
+          className={`w-full h-full object-cover ${imageClass}`}
+        />
+      );
+    }
+
+    return <i className={`${app.icon} text-3xl sm:text-4xl`} />;
+  };
 
   if (isPending) {
     return (
       <motion.div
-        layout
-        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.8, y: 20, transition: { duration: 0.08 } }}
         transition={{
-          layout: { type: 'spring', stiffness: 300, damping: 30 },
-          opacity: { duration: 0.3 },
-          scale: { duration: 0.3 },
-          y: { duration: 0.3 },
+          opacity: { duration: 0.18 },
+          scale: { duration: 0.18 },
+          y: { duration: 0.18 },
         }}
         className={wrapperClass}
+        data-no-cat="true"
       >
         <div className="relative">
           <div className={cardClass} style={activeCardStyle}>
@@ -212,6 +262,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
             <div className="absolute inset-0 z-20 flex items-center justify-center">
               <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px]" />
+
               <svg
                 className="relative animate-spin h-6 w-6 text-white"
                 xmlns="http://www.w3.org/2000/svg"
@@ -226,6 +277,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
                   stroke="currentColor"
                   strokeWidth="4"
                 />
+
                 <path
                   className="opacity-75"
                   fill="currentColor"
@@ -236,7 +288,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           </div>
         </div>
 
-        <h3 className="text-[12px] sm:text-[14px] font-bold text-slate-800 text-center px-1 truncate w-full tracking-tight">
+        <h3 className="text-[12px] sm:text-[14px] font-bold text-slate-800 dark:text-slate-100 text-center px-1 truncate w-full tracking-tight">
           {app.title}
         </h3>
       </motion.div>
@@ -246,17 +298,15 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   return (
     <motion.div
       onClick={isComingSoon ? undefined : handleClick}
-      layout
-      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+      initial={{ opacity: 0, scale: 0.96, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.8, y: 20, transition: { duration: 0.08 } }}
       transition={{
-        layout: { type: 'spring', stiffness: 300, damping: 30 },
-        opacity: { duration: 0.3 },
-        scale: { duration: 0.3 },
-        y: { duration: 0.3 },
+        opacity: { duration: 0.18 },
+        scale: { duration: 0.18 },
+        y: { duration: 0.18 },
       }}
       className={`${wrapperClass} ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      data-no-cat="true"
     >
       <div className="relative">
         <motion.div
@@ -271,22 +321,22 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           }
           whileTap={isComingSoon ? {} : { scale: 0.98 }}
           onHoverStart={(e) => {
-              const el = e.currentTarget as HTMLDivElement;
-              if (el) {
-                  Object.assign(
-                      el.style,
-                      isComingSoon ? comingSoonCardHoverStyle : activeCardHoverStyle
-                  );
-              }
+            const el = e.currentTarget as HTMLDivElement;
+            if (el) {
+              Object.assign(
+                el.style,
+                isComingSoon ? comingSoonCardHoverStyle : activeCardHoverStyle
+              );
+            }
           }}
           onHoverEnd={(e) => {
-              const el = e.currentTarget as HTMLDivElement;
-              if (el) {
-                  Object.assign(
-                      el.style,
-                      isComingSoon ? comingSoonCardStyle : activeCardStyle
-                  );
-              }
+            const el = e.currentTarget as HTMLDivElement;
+            if (el) {
+              Object.assign(
+                el.style,
+                isComingSoon ? comingSoonCardStyle : activeCardStyle
+              );
+            }
           }}
           className={cardClass}
           style={isComingSoon ? comingSoonCardStyle : activeCardStyle}
@@ -301,9 +351,9 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           )}
 
           <div
-            className={`${iconContentClass} ${
-              isComingSoon ? 'opacity-75 grayscale-[20%]' : 'group-hover:scale-110'
-            } ${!isImageUrl ? app.colorScheme.text : ''}`}
+            className={`${iconContentClass} group-hover:scale-100 ${
+              !isImageUrl ? app.colorScheme.text : ''
+            }`}
           >
             {isImageUrl ? (
               <img
@@ -315,11 +365,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
                 style={{ borderRadius: iconCornerRadius }}
               />
             ) : (
-              <i
-                className={`${app.icon} text-3xl sm:text-4xl ${
-                  isComingSoon ? 'text-slate-400' : ''
-                }`}
-              />
+              <i className={`${app.icon} text-3xl sm:text-4xl`} />
             )}
           </div>
 
@@ -328,13 +374,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
               <span className="text-[8px] font-black uppercase tracking-[0.14em] bg-white/80 text-slate-500 px-2.5 py-1 rounded-full border border-slate-200/80 shadow-sm">
                 Coming Soon
               </span>
-            </div>
-          )}
+            </div>)}
         </motion.div>
 
         {!isComingSoon && (
           <div
-            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl -z-10 scale-110"
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl -z-10 scale-100"
             style={glowStyle}
           />
         )}
@@ -343,9 +388,10 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       <h3
         className={`text-[12px] sm:text-[14px] font-bold transition-colors text-center px-1 truncate w-full tracking-tight ${
           isComingSoon
-            ? 'text-slate-500'
-            : 'text-slate-800 group-hover:text-slate-950'
+            ? 'text-slate-500 dark:text-slate-400'
+            : 'group-hover:opacity-90'
         }`}
+        style={!isComingSoon ? { color: app.colorScheme.icon } : undefined}
       >
         {app.title}
       </h3>

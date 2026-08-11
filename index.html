@@ -4,13 +4,55 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Snabbb.io</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>App.Snabbb</title>
+    <link rel="icon" type="image/png" href="/icons/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              tiffany: {
+                50:  '#f0fdfb',
+                100: '#ccfbf4',
+                200: '#99f5e9',
+                300: '#5eead4',
+                400: '#2dd4bf',
+                500: '#14b8a6',
+                600: '#0abfbc',
+                700: '#089a98',
+                800: '#0a7a78',
+                900: '#0c5f5e',
+              }
+            }
+          }
+        }
+      }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Apply persisted/system theme before paint to avoid a light-mode flash (FOUC) -->
+    <script>
+      (function () {
+        try {
+          var key = "snabbb-theme";
+          var stored = localStorage.getItem(key);
+          var theme = "light";
+          if (stored) {
+            // Zustand persist() wraps state in JSON; read the nested `theme` if present.
+            var parsed = JSON.parse(stored);
+            theme = (parsed && parsed.state && parsed.state.theme) || parsed.theme || "light";
+          }
+          var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var isDark = theme === "dark" || (theme === "system" && prefersDark);
+          var root = document.documentElement;
+          root.classList.toggle("dark", isDark);
+          root.style.colorScheme = isDark ? "dark" : "light";
+        } catch (e) { /* no-op: fall back to light until React hydrates */ }
+      })();
+    </script>
     <style>
       :root {
         --mesh-bg: radial-gradient(at 0% 0%, hsla(210,100%,98%,1) 0, transparent 50%), 
@@ -77,10 +119,9 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>

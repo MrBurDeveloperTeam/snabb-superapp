@@ -9,6 +9,7 @@ const MALLOW_FRAME_HEIGHT = 208;
 const MALLOW_SCALE = 0.42;
 const PET_SLEEPING_KEY = 'pet_is_sleeping';
 const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
+const DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS = 6000;
 const MALLOW_ROWS = {
   idle: { row: 0, frames: 6, duration: '1.1s' },
   runRight: { row: 1, frames: 8, duration: '0.7s' },
@@ -119,7 +120,9 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
   const [facingLeft, setFacingLeft] = useState(false);
   const [isMeowing, setIsMeowing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isPetSleeping, setIsPetSleeping] = useState(false);
+  const [isPetSleeping, setIsPetSleeping] = useState(() => {
+    try { return localStorage.getItem(PET_SLEEPING_KEY) === 'true'; } catch { return false; }
+  });
   const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(localStorage.getItem('pet_name')));
   const selectedPet = getPetOption(selectedPetId);
   const [walkDuration, setWalkDuration] = useState(0.8);
@@ -129,41 +132,117 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const autoCloseTimerRef = useRef<any>(null);
   const isEntryWalkComplete = useRef(false);
-  const hasDismissedDialog = useRef(false);
+  // Which dialog type is currently prepared to show ('intro' | 'welcomeBack' | null),
+  // and which dialog types have already been dismissed during this page lifecycle.
+  // Tracking dismissal per-type (rather than one shared flag) means dismissing the
+  // Post-Login Intro no longer permanently blocks the Welcome Back dialog, or vice versa.
+  const currentDialogType = useRef<'intro' | 'welcomeBack' | null>(null);
+  const dismissedDialogs = useRef<Set<'intro' | 'welcomeBack'>>(new Set());
+  // Holds the auto-close duration for a prepared 'welcomeBack' dialog, set when
+  // its content is fetched but only ever consumed by tryActivateDialog() at the
+  // moment it actually shows — see the comment on tryActivateDialog for why.
+  const welcomeBackAutoCloseMsRef = useRef(DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS);
+  // Mirrors isDialogActive synchronously (React state updates aren't immediate).
+  // Without this, tryActivateDialog() can be called again while a dialog is
+  // already showing (e.g. StrictMode's dev double-invoke of the fetch effect,
+  // or the click-to-move handler firing again) and would re-arm the Welcome
+  // Back timer from scratch every time, so it could keep getting reset before
+  // ever completing a full countdown.
+  const isDialogActiveRef = useRef(false);
 
-  const closeDialog = () => {
-    hasDismissedDialog.current = true;
-    setIsDialogActive(false);
-    if (autoCloseTimerRef.current) {
+  const clearWelcomeBackAutoCloseTimer = () => {
+    if (autoCloseTimerRef.current !== null) {
       clearTimeout(autoCloseTimerRef.current);
       autoCloseTimerRef.current = null;
     }
-    if (!disabled && currentUserId) {
-      localStorage.setItem(`intro_shown_${currentUserId}`, 'true');
+  };
+
+  const startWelcomeBackAutoCloseTimer = () => {
+    clearWelcomeBackAutoCloseTimer();
+
+    const configuredDuration = Number(welcomeBackAutoCloseMsRef.current);
+    const duration = Number.isFinite(configuredDuration) && configuredDuration > 0
+      ? configuredDuration
+      : DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS;
+
+    autoCloseTimerRef.current = setTimeout(() => {
+      autoCloseTimerRef.current = null;
+      closeDialog();
+    }, duration);
+  };
+
+  // Marks the Post-Login Intro stage complete for a given user — either because
+  // they actually dismissed a visible Intro, or because a successful query
+  // confirmed there's no Intro configured/usable to show. Takes an explicit
+  // userId (rather than reading currentUserId state) so it's safe to call from
+  // inside initDialog() itself, where the just-fetched userId may not yet be
+  // reflected in currentUserId (state updates aren't synchronous).
+  const markIntroCompleted = (uid: string | null) => {
+    if (!uid) return;
+    localStorage.setItem(`intro_shown_${uid}`, 'true');
+  };
+
+  const closeDialog = () => {
+    const dialogType = currentDialogType.current;
+    if (dialogType) {
+      dismissedDialogs.current.add(dialogType);
+    }
+    isDialogActiveRef.current = false;
+    setIsDialogActive(false);
+    clearWelcomeBackAutoCloseTimer();
+    if (dialogType === 'intro' && !disabled && currentUserId) {
+      markIntroCompleted(currentUserId);
     }
   };
 
-  const [dialogSteps, setDialogSteps] = useState([
-    "👋 Hi there! I'm your AI assistant for Snabbb.io.\nI'm here to help you explore and understand all the features available.",
-    "Click on me to open the Virtual Pet ecosystem, or ask me any questions about the app!"
-  ]);
+  // Single source of truth for showing a prepared dialog: only activates once the
+  // entry walk has finished AND a dialog type has been prepared AND that specific
+  // type hasn't already been dismissed this page lifecycle. Idempotent via
+  // isDialogActiveRef — once active, further calls (StrictMode's dev double-invoke
+  // of the fetch effect, click-to-move, etc.) are no-ops instead of re-arming the
+  // Welcome Back timer from scratch every time.
+  const tryActivateDialog = () => {
+    const dialogType = currentDialogType.current;
+    if (
+      !isEntryWalkComplete.current ||
+      !dialogType ||
+      dismissedDialogs.current.has(dialogType) ||
+      isDialogActiveRef.current
+    ) {
+      return;
+    }
+
+    isDialogActiveRef.current = true;
+    setIsDialogActive(true);
+
+    if (dialogType === 'welcomeBack') {
+      startWelcomeBackAutoCloseTimer();
+    }
+  };
+
+  const [dialogSteps, setDialogSteps] = useState<string[]>([]);
 
   const [meowMsg, setMeowMsg] = useState(null);
   const [petStates, setPetStates] = useState(['Normal']);
-  const meowTimerRef = useRef(null);
-  const isHiddenRef = useRef(isHidden);
 
-  useEffect(() => {
-    isHiddenRef.current = isHidden;
-  }, [isHidden]);
-  
-  // Clear message bubble immediately when state changes
+  // ─── Refs used inside loops to avoid stale closures / dep-array restarts ───
+  const meowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const meowInnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // FIX: track inner timer too
+  const isHiddenRef = useRef(isHidden);
+  // isDialogActiveRef is declared above (kept in sync synchronously inside
+  // closeDialog()/tryActivateDialog()) — reused here for the meow loop instead of a second,
+  // effect-synced ref of the same name (that duplicate declaration broke the build).
+  const petStatesRef = useRef(['Normal']);           // FIX: ref so loop doesn't restart on state change
+
+  useEffect(() => { isHiddenRef.current = isHidden; }, [isHidden]);
+
+  // Clear message bubble immediately when pet state changes
   useEffect(() => {
     setMeowMsg(null);
+    petStatesRef.current = petStates; // keep ref in sync
   }, [petStates]);
 
-  const petStatesRef = useRef(['Normal']);
-
+  // ─── Pet stats polling ────────────────────────────────────────────────────
   useEffect(() => {
     if (disabled) return;
 
@@ -174,10 +253,10 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
       const HAPPY_ENTER = 40,  HAPPY_EXIT = 45;
 
       const active = [];
-      if (stats.hunger < HUNGRY_ENTER || (prevStates.includes('Hungry') && stats.hunger < HUNGRY_EXIT)) active.push('Hungry');
-      if (stats.hygiene < DIRTY_ENTER  || (prevStates.includes('Dirty')  && stats.hygiene < DIRTY_EXIT))  active.push('Dirty');
-      if (stats.energy < ENERGY_ENTER  || (prevStates.includes('Low Energy') && stats.energy < ENERGY_EXIT)) active.push('Low Energy');
-      if (stats.happiness < HAPPY_ENTER || (prevStates.includes('Unhappy') && stats.happiness < HAPPY_EXIT)) active.push('Unhappy');
+      if (stats.hunger   < HUNGRY_ENTER || (prevStates.includes('Hungry')     && stats.hunger   < HUNGRY_EXIT)) active.push('Hungry');
+      if (stats.hygiene  < DIRTY_ENTER  || (prevStates.includes('Dirty')      && stats.hygiene  < DIRTY_EXIT))  active.push('Dirty');
+      if (stats.energy   < ENERGY_ENTER || (prevStates.includes('Low Energy') && stats.energy   < ENERGY_EXIT)) active.push('Low Energy');
+      if (stats.happiness< HAPPY_ENTER  || (prevStates.includes('Unhappy')    && stats.happiness< HAPPY_EXIT))  active.push('Unhappy');
 
       if (active.length === 0) active.push('Normal');
       return active;
@@ -188,20 +267,21 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
 
       let finalStats = { ...stats };
 
-      // Apply offline decay based on updated_at
       if (updatedAt) {
         const elapsedSecs = Math.max(0, (Date.now() - new Date(updatedAt).getTime()) / 1000);
         if (elapsedSecs > 0) {
-          finalStats.hunger = Math.max(0, (stats.hunger || 0) - 0.01 * elapsedSecs);
-          finalStats.energy = Math.max(0, (stats.energy || 0) - 0.005 * elapsedSecs);
-          finalStats.hygiene = Math.max(0, (stats.hygiene || 0) - 0.004 * elapsedSecs);
+          finalStats.hunger    = Math.max(0, (stats.hunger    || 0) - 0.01  * elapsedSecs);
+          finalStats.energy    = Math.max(0, (stats.energy    || 0) - 0.005 * elapsedSecs);
+          finalStats.hygiene   = Math.max(0, (stats.hygiene   || 0) - 0.004 * elapsedSecs);
           finalStats.happiness = Math.max(0, (stats.happiness || 0) - 0.006 * elapsedSecs);
         }
       }
 
       const newStates = computeStates(finalStats, petStatesRef.current);
-      const isDifferent = newStates.length !== petStatesRef.current.length || !newStates.every((v, i) => v === petStatesRef.current[i]);
-      
+      const isDifferent =
+        newStates.length !== petStatesRef.current.length ||
+        !newStates.every((v, i) => v === petStatesRef.current[i]);
+
       if (isDifferent) {
         console.log('[CatMascot] States: ' + petStatesRef.current.join(', ') + ' -> ' + newStates.join(', '));
         petStatesRef.current = newStates;
@@ -209,10 +289,10 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
       }
     };
 
-    // 1. Initial check from localStorage (with 5-min freshness check)
-    const saved = localStorage.getItem('pet_stats');
+    // Initial check from localStorage (5-min freshness)
+    const saved      = localStorage.getItem('pet_stats');
     const lastSavedAt = localStorage.getItem('pet_last_saved_at');
-    const isFresh = lastSavedAt && (Date.now() - new Date(lastSavedAt).getTime() < 300000);
+    const isFresh    = lastSavedAt && (Date.now() - new Date(lastSavedAt).getTime() < 300000);
     if (saved && isFresh) {
       try { updateStateFromStats(JSON.parse(saved), lastSavedAt); } catch (e) { /* ignore */ }
     }
@@ -253,8 +333,8 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
       if (document.visibilityState !== 'visible') return;
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('[CatMascot] Fetching pet stats for user:', session.user.id);
         if (!session?.user) return;
-
         const { data, error } = await supabase
           .from('inventory_pet')
           .select('hunger, hygiene, energy, happiness, is_sleeping, pet_name, updated_at')
@@ -276,107 +356,162 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
 
     fetchStats();
     const interval = setInterval(fetchStats, 120000);
+    // Staggered retries: SSO exchange can take 0.5–4s; the first successful call wins
+    const r1 = setTimeout(fetchStats, 500);
+    const r2 = setTimeout(fetchStats, 2000);
+    const r3 = setTimeout(fetchStats, 5000);
     return () => {
       clearInterval(interval);
+      clearTimeout(r1); clearTimeout(r2); clearTimeout(r3);
       window.removeEventListener('virtual-pet-sleep-change', handlePetSleepChange);
       window.removeEventListener('virtual-pet-selection-change', handlePetSelectionChange);
       window.removeEventListener('storage', handleStorage);
     };
   }, [disabled]);
 
+  // ─── Dialog init ─────────────────────────────────────────────────────────
   useEffect(() => {
     const initDialog = async () => {
       let userId: string | null = null;
+      let userMeta: Record<string, any> | null = null;
+      let userEmail: string | null = null;
       try {
         const { data: { session } } = await supabase.auth.getSession();
         userId = session?.user?.id || null;
+        userMeta = session?.user?.user_metadata || null;
+        userEmail = session?.user?.email || null;
         setCurrentUserId(userId);
       } catch (err) {
         console.error("Error fetching session in initDialog:", err);
       }
 
-      // If user is logged in (disabled = false) and has seen the intro, show Welcome Back and auto-close
+      // If user is logged in (disabled = false) and has seen the intro, fetch
+      // the configurable Welcome Back message and auto-close after a few seconds.
       if (!disabled && userId && localStorage.getItem(`intro_shown_${userId}`) === 'true') {
-        setDialogSteps(["Welcome back! 👋"]);
-        setDialogStep(0);
-        
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-          setIsDialogActive(true);
+        try {
+          const { data: config, error } = await supabase
+            .from('aiboard_simulator_configs')
+            .select('welcome_back_text, welcome_back_auto_close_ms')
+            .eq('module_name', 'Snabbb.io')
+            .limit(1)
+            .maybeSingle();
+
+          let welcomeText = !error ? config?.welcome_back_text : null;
+          const autoCloseMs = (!error && config?.welcome_back_auto_close_ms) || 6000;
+
+          if (welcomeText && /\[name\]/i.test(welcomeText)) {
+            let displayName: string | null = null;
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('name, full_name')
+                .eq('user_id', userId)
+                .maybeSingle();
+              displayName = profile?.name || profile?.full_name || null;
+            } catch (err) {
+              console.error("Error fetching profile for welcome back name:", err);
+            }
+            if (!displayName) displayName = userMeta?.name || null;
+            if (!displayName && userEmail) displayName = userEmail.split('@')[0];
+            // Never show a raw email address, even if it came from profiles.name/full_name.
+            if (displayName && displayName.includes('@')) displayName = displayName.split('@')[0];
+
+            welcomeText = displayName
+              ? welcomeText.replace(/\[name\]/gi, displayName)
+              : welcomeText
+                  .replace(/,\s*\[name\]/gi, '')
+                  .replace(/\[name\],\s*/gi, '')
+                  .replace(/\[name\]/gi, '')
+                  .replace(/\s{2,}/g, ' ')
+                  .trim();
+          }
+
+          if (welcomeText) {
+            setDialogSteps([welcomeText]);
+            setDialogStep(0);
+            currentDialogType.current = 'welcomeBack';
+            welcomeBackAutoCloseMsRef.current = autoCloseMs;
+            tryActivateDialog();
+          }
+        } catch (err) {
+          console.error("Error fetching welcome back message:", err);
         }
-        
-        if (autoCloseTimerRef.current) {
-          clearTimeout(autoCloseTimerRef.current);
-        }
-        autoCloseTimerRef.current = setTimeout(() => {
-          hasDismissedDialog.current = true;
-          setIsDialogActive(false);
-        }, 6000); // disappear after 6 seconds
         return;
       }
 
-      // Default fallback dialogs
-      const fallbackPreLogin = [
-        "👋 Welcome to Snabbb.io!",
-        "Please sign in to access your modules, or ask me any questions."
-      ];
-      
-      const fallbackPostLogin = [
-        "👋 Welcome back! I'm your Snabbb.io Assistant.",
-        "Click on me to open the Virtual Pet ecosystem, or ask me for help!"
-      ];
-
       try {
-        const { data: configs } = await supabase
+        const { data: configs, error: configsError } = await supabase
           .from('aiboard_simulator_configs')
           .select('id')
           .eq('module_name', 'Snabbb.io')
           .limit(1);
 
-        if (configs && configs.length > 0) {
-          const configId = configs[0].id;
-
-          const { data, error } = await supabase
-            .from('aiboard_simulator_dialog_steps')
-            .select('step_text, sort_order')
-            .eq('config_id', configId)
-            .eq('is_post_login', !disabled)
-            .order('sort_order', { ascending: true });
-
-          if (!error && data && data.length > 0) {
-            setDialogSteps(data.map(d => d.step_text));
-            setDialogStep(0);
-            if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-              setIsDialogActive(true);
-            }
-            return;
-          }
-        }
-        
-        // If no config found or no steps returned, use fallback based on login state
-        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
-        setDialogStep(0);
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-          setIsDialogActive(true);
+        if (configsError) {
+          // Infrastructure/query failure — do not mark the intro stage
+          // complete; preserve the ability to retry on the next login/reload.
+          return;
         }
 
+        if (!configs || configs.length === 0) {
+          // Query succeeded and confirmed no simulator config exists at all
+          // for this module — there is no Intro to ever show. Mark the stage
+          // complete so future post-login visits proceed to Welcome Back
+          // instead of retrying the missing Intro forever.
+          if (!disabled) markIntroCompleted(userId);
+          return;
+        }
+
+        const configId = configs[0].id;
+
+        const { data, error } = await supabase
+          .from('aiboard_simulator_dialog_steps')
+          .select('step_text, sort_order')
+          .eq('config_id', configId)
+          .eq('is_post_login', !disabled)
+          .order('sort_order', { ascending: true });
+
+        if (error) {
+          // Infrastructure/query failure — do not mark the intro stage complete.
+          return;
+        }
+
+        const steps = (data || [])
+          .map(d => d.step_text)
+          .filter((text): text is string => typeof text === 'string' && text.trim().length > 0);
+
+        if (steps.length > 0) {
+          setDialogSteps(steps);
+          setDialogStep(0);
+          currentDialogType.current = 'intro';
+          tryActivateDialog();
+          return;
+        }
+
+        // Query succeeded but returned no usable intro content (zero rows, or
+        // every row was empty/whitespace-only) — there is nothing to show.
+        // Mark the stage complete so this doesn't retry forever on every login.
+        if (!disabled) markIntroCompleted(userId);
       } catch (err) {
         console.error("Error fetching dialog steps:", err);
-        // Fallback on error
-        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
-        setDialogStep(0);
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-          setIsDialogActive(true);
-        }
       }
     };
-    
+
     initDialog();
   }, [disabled]);
 
+  // ─── Meow message loop ────────────────────────────────────────────────────
+  // FIX: dep array is only [disabled] — petStates and isDialogActive are read
+  // via refs so changing them does NOT restart the loop (and cause instant meow).
   useEffect(() => {
-    if (disabled || isDialogActive) return;
+    if (disabled) return;
 
     let isSubscribed = true;
+
+    // FIX: helper that clears BOTH timers
+    const clearAllTimers = () => {
+      if (meowTimerRef.current)      { clearTimeout(meowTimerRef.current);      meowTimerRef.current = null; }
+      if (meowInnerTimerRef.current) { clearTimeout(meowInnerTimerRef.current); meowInnerTimerRef.current = null; }
+    };
 
     const runMeowLoop = async () => {
       try {
@@ -384,7 +519,8 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
         if (!configs || configs.length === 0) return;
         const configId = configs[0].id;
 
-        const primaryState = petStates[0] || 'Normal';
+        // Read current states from ref — no stale closure
+        const primaryState = petStatesRef.current[0] || 'Normal';
 
         const { data: timingData, error: timingError } = await supabase
           .from('aiboard_meow_timing')
@@ -398,7 +534,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
 
         if (timingError || !activeTiming || activeTiming.disabled) {
           if (primaryState !== 'Normal') {
-            console.log(`[CatMascot] No active timing for "${primaryState}" (Error: ${timingError?.message}), falling back to "Normal"`);
+            console.log(`[CatMascot] No active timing for "${primaryState}", falling back to "Normal"`);
           }
           const { data: normalTiming, error: nError } = await supabase
             .from('aiboard_meow_timing')
@@ -407,7 +543,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
             .eq('state', 'Normal')
             .order('updated_at', { ascending: false })
             .limit(1);
-          
+
           if (normalTiming?.[0] && !normalTiming[0].disabled) {
             activeTiming = normalTiming[0];
           } else {
@@ -416,42 +552,52 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
           }
         }
 
-        // Fetch messages for ALL active states
+        // Fetch messages for ALL active states via ref
         const { data: msgsData, error: msgsError } = await supabase
           .from('aiboard_meow_messages')
           .select('message, state, sort_order')
           .eq('config_id', configId)
-          .in('state', petStates)
+          .in('state', petStatesRef.current)
           .eq('is_audio', false)
           .order('state', { ascending: true })
           .order('sort_order', { ascending: true });
 
         if (msgsError) {
-          console.error(`[CatMascot] Error fetching messages for states [${petStates.join(', ')}]:`, msgsError);
+          console.error(`[CatMascot] Error fetching messages:`, msgsError);
           return;
         }
 
         if (!msgsData || msgsData.length === 0) {
-          console.log(`[CatMascot] No messages found for states [${petStates.join(', ')}]`);
+          console.log(`[CatMascot] No messages found for states [${petStatesRef.current.join(', ')}]`);
           return;
         }
 
         const intervalMs = (activeTiming.message_interval_minutes || 0.25) * 60 * 1000;
-        const durationMs = (activeTiming.message_duration_minutes || 0.1) * 60 * 1000;
+        const durationMs  = (activeTiming.message_duration_minutes  || 0.1)  * 60 * 1000;
 
-        console.log(`[CatMascot] Loop started: States=[${petStates.join(', ')}], Msgs=${msgsData.length}, Interval=${intervalMs/1000}s, Duration=${durationMs/1000}s`);
+        console.log(`[CatMascot] Loop started: States=[${petStatesRef.current.join(', ')}], Msgs=${msgsData.length}, Interval=${intervalMs/1000}s, Duration=${durationMs/1000}s`);
 
         let currentIndex = 0;
 
         const loop = () => {
+          // FIX: outer timer stored in meowTimerRef
           meowTimerRef.current = setTimeout(() => {
             if (!isSubscribed) return;
+
+            // FIX: skip showing message while dialog is open — read via ref
+            if (isDialogActiveRef.current) {
+              loop(); // wait another interval, don't show message
+              return;
+            }
+
             const seqMsg = msgsData[currentIndex].message;
             setMeowMsg(seqMsg);
             currentIndex = (currentIndex + 1) % msgsData.length;
 
-            setTimeout(() => {
-              if (isSubscribed) setMeowMsg(null);
+            // FIX: inner timer stored in meowInnerTimerRef so cleanup can cancel it
+            meowInnerTimerRef.current = setTimeout(() => {
+              if (!isSubscribed) return;
+              setMeowMsg(null);
               loop();
             }, durationMs);
           }, intervalMs);
@@ -467,11 +613,12 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
 
     return () => {
       isSubscribed = false;
-      if (meowTimerRef.current) clearTimeout(meowTimerRef.current);
+      clearAllTimers(); // FIX: clears both outer and inner timers
     };
-  }, [disabled, isDialogActive, petStates]);
+  }, [disabled]); // FIX: only [disabled] — petStates/isDialogActive read via refs
 
-  const audioLoopTimerRef = useRef(null);
+  // ─── Audio loop ───────────────────────────────────────────────────────────
+  const audioLoopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (disabled) return;
@@ -532,25 +679,25 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
     };
   }, [disabled]);
 
+  // ─── Walking / click-to-move ──────────────────────────────────────────────
   const walkTimeoutRef = useRef(null);
   const audioRef = useRef(null);
-  const lastMoveStartPos = useRef({ x: -10, y: 85 });
+  const lastMoveStartPos  = useRef({ x: -10, y: 85 });
   const lastMoveStartTime = useRef(Date.now());
-  const lastMoveDuration = useRef(0.8);
-  const lastMoveTarget = useRef({ x: -10, y: 85 });
+  const lastMoveDuration  = useRef(0.8);
+  const lastMoveTarget    = useRef({ x: -10, y: 85 });
 
   useEffect(() => {
     audioRef.current = new Audio('/images/cat-meow.mp3');
 
-    // Walk into screen from left
-    const destX = 20 + Math.random() * 60;
-    const destY = 80 + Math.random() * 10;
-    const duration = 2.8; // Entry walk duration
+    const destX    = 20 + Math.random() * 60;
+    const destY    = 80 + Math.random() * 10;
+    const duration = 2.8;
 
-    lastMoveStartPos.current = { x: -10, y: 85 };
-    lastMoveTarget.current = { x: destX, y: destY };
+    lastMoveStartPos.current  = { x: -10, y: 85 };
+    lastMoveTarget.current    = { x: destX, y: destY };
     lastMoveStartTime.current = Date.now();
-    lastMoveDuration.current = duration;
+    lastMoveDuration.current  = duration;
 
     setFacingLeft(false);
     setWalkDuration(duration);
@@ -561,13 +708,11 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
     walkTimeoutRef.current = setTimeout(() => {
       setIsWalking(false);
       isEntryWalkComplete.current = true;
-      if (!hasDismissedDialog.current) {
-        setIsDialogActive(true);
-      }
+      tryActivateDialog();
     }, duration * 1000);
 
     const getInterpolatedPos = () => {
-      const elapsed = (Date.now() - lastMoveStartTime.current) / 1000;
+      const elapsed  = (Date.now() - lastMoveStartTime.current) / 1000;
       const progress = Math.min(elapsed / lastMoveDuration.current, 1);
       return {
         x: lastMoveStartPos.current.x + (lastMoveTarget.current.x - lastMoveStartPos.current.x) * progress,
@@ -579,27 +724,55 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
       if (isHiddenRef.current) return;
 
       const target = e.target;
-      if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('[data-cat]')) return;
+
+      // Ignore clicks on or inside any interactive element or overlay
+      if (
+        target.closest('button') ||
+        target.closest('a') ||
+        target.closest('input') ||
+        target.closest('select') ||
+        target.closest('textarea') ||
+        target.closest('label') ||
+        target.closest('img') ||
+        target.closest('[data-no-cat]') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('[role="menu"]') ||
+        target.closest('[role="menuitem"]') ||
+        target.closest('[role="listbox"]') ||
+        target.closest('[role="option"]') ||
+        target.closest('[role="tab"]') ||
+        target.closest('[role="switch"]') ||
+        target.closest('[data-cat]') ||
+        target.closest('[class*="modal"]') ||
+        target.closest('[class*="dropdown"]') ||
+        target.closest('[class*="popover"]') ||
+        target.closest('[class*="dialog"]') ||
+        target.closest('[class*="overlay"]') ||
+        target.closest('[class*="toast"]') ||
+        target.closest('[class*="tooltip"]') ||
+        target.closest('.fixed') ||
+        target.closest('.absolute') ||
+        target.closest('.cat-mascot-wrapper')
+      ) return;
 
       const targetX_px = e.clientX;
       const targetY_px = e.clientY;
+      const targetX    = (targetX_px / window.innerWidth)  * 100;
+      const targetY    = (targetY_px / window.innerHeight) * 100;
 
-      const targetX = (targetX_px / window.innerWidth) * 100;
-      const targetY = (targetY_px / window.innerHeight) * 100;
-      const currentPos = getInterpolatedPos();
-      const currentX_px = (currentPos.x / 100) * window.innerWidth;
-      const currentY_px = (currentPos.y / 100) * window.innerHeight;
-
-      const distance_px = Math.sqrt(Math.pow(targetX_px - currentX_px, 2) + Math.pow(targetY_px - currentY_px, 2));
+      const currentPos   = getInterpolatedPos();
+      const currentX_px  = (currentPos.x / 100) * window.innerWidth;
+      const currentY_px  = (currentPos.y / 100) * window.innerHeight;
+      const distance_px  = Math.sqrt(Math.pow(targetX_px - currentX_px, 2) + Math.pow(targetY_px - currentY_px, 2));
 
       if (distance_px < 5) return;
 
       const duration = distance_px / 200;
 
-      lastMoveStartPos.current = currentPos;
-      lastMoveTarget.current = { x: targetX, y: targetY };
+      lastMoveStartPos.current  = currentPos;
+      lastMoveTarget.current    = { x: targetX, y: targetY };
       lastMoveStartTime.current = Date.now();
-      lastMoveDuration.current = duration;
+      lastMoveDuration.current  = duration;
 
       setFacingLeft(targetX < currentPos.x);
       setWalkDuration(duration);
@@ -611,41 +784,36 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
       walkTimeoutRef.current = setTimeout(() => {
         setIsWalking(false);
         isEntryWalkComplete.current = true;
-        if (!hasDismissedDialog.current) {
-          setIsDialogActive(true);
-        }
+        tryActivateDialog();
       }, duration * 1000);
     };
 
-    document.addEventListener('click', handleGlobalClick);
+    document.addEventListener('dblclick', handleGlobalClick);
     return () => {
-      document.removeEventListener('click', handleGlobalClick);
-      if (autoCloseTimerRef.current) {
-        clearTimeout(autoCloseTimerRef.current);
-      }
+      document.removeEventListener('dblclick', handleGlobalClick);
+      if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
     };
   }, []);
 
+  // ─── Cat click handler ────────────────────────────────────────────────────
   const handleCatClick = (e) => {
     e.stopPropagation();
-    // Only close the dialog on click if we are NOT in pre-login mode (disabled=true)
-    if (!disabled) {
-      closeDialog();
-    }
+    if (!disabled) closeDialog();
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => { });
+      audioRef.current.play().catch(() => {});
       setIsMeowing(true);
       setTimeout(() => setIsMeowing(false), 800);
     }
     if (!disabled && onCatClick) onCatClick();
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
         @keyframes cat-sound-wave {
-          0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+          0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.6; }
           100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
         }
         .cat-sound-ring {
@@ -698,7 +866,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
         }
         @keyframes mallow-sprite {
           from { background-position-x: 0; }
-          to { background-position-x: calc(-1 * var(--sprite-frames) * ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px); }
+          to   { background-position-x: calc(-1 * var(--sprite-frames) * ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px); }
         }
         @keyframes mascot-sleep-float {
           0%, 100% { transform: translateY(0); opacity: 0.65; }
@@ -723,7 +891,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
         }}
       >
         <AnimatePresence mode="wait">
-          {isDialogActive && (
+          {isDialogActive && dialogSteps.length > 0 && (
             <motion.div
               data-cat="true"
               key={`dialog-bubble-${dialogStep}`}
@@ -731,10 +899,10 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="w-max shrink-0 max-w-[280px] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
+              className="w-max shrink-0 max-w-[min(85vw,340px)] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
-              <div 
+              <div
                 className="p-4 text-sm font-semibold leading-relaxed flex flex-col relative z-10 bg-white rounded-lg"
                 style={{ color: '#334155', backgroundColor: '#ffffff' }}
               >
@@ -745,8 +913,7 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
                   <button
                     onClick={(e) => { e.stopPropagation(); setDialogStep(p => Math.max(0, p - 1)); }}
                     disabled={dialogStep === 0}
-                    className={`flex items-center gap-1 text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-slate-900 cursor-pointer ${dialogStep === 0 ? 'invisible' : ''
-                      }`}
+                    className={`flex items-center gap-1 text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-slate-900 cursor-pointer ${dialogStep === 0 ? 'invisible' : ''}`}
                   >
                     <ChevronLeft className="w-4 h-4" /> Back
                   </button>
@@ -788,18 +955,11 @@ export default function CatMascot({ onCatClick, disabled = false, isHidden = fal
         </AnimatePresence>
 
         {/* Mallow pet mascot */}
-          <div
+        <div
           data-cat="true"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCatClick(e);
-          }}
-          onMouseEnter={() => {
-            if (!isWalking) setIsHovered(true);
-          }}
-          onMouseOver={() => {
-            if (!isWalking) setIsHovered(true);
-          }}
+          onClick={(e) => { e.stopPropagation(); handleCatClick(e); }}
+          onMouseEnter={() => { if (!isWalking) setIsHovered(true); }}
+          onMouseOver={() =>  { if (!isWalking) setIsHovered(true); }}
           onMouseLeave={() => setIsHovered(false)}
           style={{ pointerEvents: 'auto' }}
         >

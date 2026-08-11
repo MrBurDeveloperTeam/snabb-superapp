@@ -123,7 +123,7 @@ interface MolarChatProps {
     setChatInput: (val: string) => void;
     onSendMessage: (e?: React.FormEvent) => void;
     onClearChat: () => void;
-    chatEndRef: React.RefObject<HTMLDivElement>;
+    chatEndRef: React.RefObject<HTMLDivElement | null>;
     onPetToggle?: () => void;
 }
 
@@ -141,8 +141,8 @@ export const MolarChat = React.memo(({
 }: MolarChatProps) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const [config, setConfig] = React.useState({
-        title: 'Snabbb.io Assistant',
-        subtitle: 'Ready to assist with questions about Snabbb.io and its supported applications.'
+        title: 'App.Snabbb Assistant',
+        subtitle: 'Ready to assist with questions about App.Snabbb and its supported applications.'
     });
     const [prompts, setPrompts] = React.useState<{ text: string; icon_name: string }[]>([]);
 
@@ -152,13 +152,13 @@ export const MolarChat = React.memo(({
                 const { data: configs } = await supabase
                     .from('aiboard_simulator_configs')
                     .select('id, title, subtitle')
-                    .eq('module_name', 'Snabbb.io')
+                    .eq('module_name', 'App.Snabbb')
                     .limit(1);
 
                 if (configs && configs.length > 0) {
                     setConfig({
-                        title: configs[0].title || 'Snabbb.io Assistant',
-                        subtitle: configs[0].subtitle || 'Ready to assist with questions about Snabbb.io and its supported applications.',
+                        title: configs[0].title || 'App.Snabbb Assistant',
+                        subtitle: configs[0].subtitle || 'Ready to assist with questions about App.Snabbb and its supported applications.',
                     });
 
                     const { data: promptData } = await supabase
@@ -171,7 +171,7 @@ export const MolarChat = React.memo(({
                         setPrompts(promptData);
                     } else {
                         setPrompts([
-                            { text: "What is Snabbb.io?", icon_name: 'Zap' },
+                            { text: "What is App.Snabbb?", icon_name: 'Zap' },
                             { text: "What apps are available?", icon_name: 'ShieldCheck' },
                             { text: "Tell me about the Inventory app", icon_name: 'AlertCircle' },
                             { text: "Tell me about the Appointment app", icon_name: 'BarChart3' },
@@ -179,7 +179,7 @@ export const MolarChat = React.memo(({
                     }
                 } else {
                     setPrompts([
-                        { text: "What is Snabbb.io?", icon_name: 'Zap' },
+                        { text: "What is App.Snabbb?", icon_name: 'Zap' },
                         { text: "What apps are available?", icon_name: 'ShieldCheck' },
                         { text: "Tell me about the Inventory app", icon_name: 'AlertCircle' },
                         { text: "Tell me about the Appointment app", icon_name: 'BarChart3' },
