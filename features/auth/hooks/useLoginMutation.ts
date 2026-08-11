@@ -2,6 +2,7 @@ import { loginOdoo } from "@/services/LoginOdoo";
 import { useMutation } from "@tanstack/react-query";
 import { AuthFormInputs } from "../types/AuthFormInputs";
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
+import { isLocalDevelopmentOrigin } from "@/utils/localDevOrigin";
 
 async function plantSnabbbIdentity(sessionInfo: any) {
   const snabbbToken =
@@ -58,8 +59,6 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
    mutationFn: async (data: AuthFormInputs) => {
   const loginResult = await loginOdoo(data.login, data.password);
 
-  console.log("loginResult:", JSON.stringify(loginResult));
-
   return {
     sessionInfo: loginResult.data?.result ?? loginResult.sessionInfo,
     session_id: loginResult.session_id ?? loginResult.data?.result?.session_id,
@@ -92,6 +91,17 @@ onSuccess: async ({ sessionInfo, session_id }) => {
     } catch {
       onAuthSuccess();
     }
+  } else if (isLocalDevelopmentOrigin()) {
+    // Local dev: onAuthSuccess() only updates local React state — in
+    // production, the subsequent window.location.href navigation below is
+    // actually what triggers a fresh App.tsx bootstrapSession() →
+    // verifySession() → Odoo/Supabase identity reconciliation on the next
+    // page load. Reload the current local origin (onAuthSuccess() has
+    // already pushState'd it to '/') instead of navigating to the
+    // production Snabbb URL, so that same reconciliation chain still runs
+    // here, on localhost, rather than being silently skipped.
+    onAuthSuccess();
+    window.location.reload();
   } else {
     // No redirect param — stay on Snabbb (normal login)
     onAuthSuccess();

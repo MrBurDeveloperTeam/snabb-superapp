@@ -36,6 +36,7 @@ import ThemeToggle from './components/ThemeToggle';
 import { useThemeStore } from './store/themeStore';
 import LoadingOverlay from './components/LoadingOverlay';
 import { clearLogoutStorage, clearLocalSupabaseSession, resolveOutgoingSupabaseUserId } from './utils/logoutStorage';
+import { isLocalDevelopmentOrigin } from './utils/localDevOrigin';
 import type { ProfileCompletionStatus } from './features/petDialogue/types';
 
 const initialFormData: AuthFormData = {
@@ -756,14 +757,25 @@ useEffect(() => {
     try {
       // signOut() now owns the full sequence: capture outgoing user id, Odoo
       // logout, Supabase sign-out, then scoped storage cleanup — see
-      // services/signOut.ts / utils/logoutStorage.ts.
+      // services/signOut.ts / utils/logoutStorage.ts. Unchanged for both
+      // local dev and production — only the final destination below differs.
       await signOut();
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
       clearAuthState();
-    window.location.href =
-      "https://e-learning.snabbb.com/logout?next=https%3A%2F%2Fapp.snabbb.com";
+      if (isLocalDevelopmentOrigin()) {
+        // Local dev: stay on the local Gallery's own login route instead of
+        // the production e-learning logout/redirect chain. clearAuthState()
+        // above already fully resets isLoggedIn/user/profile/reconcile
+        // state synchronously, and CatMascot's `key={isLoggedIn ? ... }`
+        // remount (see App.tsx render below) discards any leftover
+        // personalized-dialogue UI state — no extra cleanup needed here.
+        navigate('/login');
+      } else {
+        window.location.href =
+          "https://e-learning.snabbb.com/logout?next=https%3A%2F%2Fapp.snabbb.com";
+      }
     }
   };
 
