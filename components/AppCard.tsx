@@ -10,20 +10,9 @@ interface AppCardProps {
   index: number;
 }
 
-const ICON_SCALE_BY_TITLE: Record<string, number> = {
-  'Mr.Bur': 1.04,
-  Inventory: 1,
-  Events: 1,
-  Appointment: 1.06,
-  'Content Studio': 1,
-  'Profit Calculator': 1.02,
-  'To-Do Manager': 1.1,
-  'E-Learning': 1.08,
-  Expenses: 1,
-  Insurance: 1,
-  Lease: 1,
-  'Snabbb Reward': 1,
-};
+// Render a 120px image inside the 112px desktop icon viewport.
+// The viewport clips the excess evenly on every side.
+const ICON_SCALE = 120 / 112;
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
@@ -34,7 +23,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   const user = getAuthUser();
   const isComingSoon = !app.route;
   const iconCornerRadius = '20%';
-  const iconScale = ICON_SCALE_BY_TITLE[app.title] ?? 1;
 
   const handleClick = async () => {
     if (!app.route) return;
@@ -273,7 +261,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
                   className="block h-full w-full object-cover"
                   style={{
                     borderRadius: iconCornerRadius,
-                    transform: `scale(${iconScale})`,
+                    transform: `scale(${ICON_SCALE})`,
                   }}
                 />
               ) : (
@@ -383,7 +371,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
                 src={app.icon}
                 alt={app.title}
                 className="block h-full w-full object-cover transition-transform duration-200"
-                style={{ transform: `scale(${iconScale})` }}
+                style={{ transform: `scale(${ICON_SCALE})` }}
               />
             ) : (
               <i className={`${app.icon} text-3xl sm:text-4xl`} />
