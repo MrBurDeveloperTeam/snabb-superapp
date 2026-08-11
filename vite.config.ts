@@ -44,6 +44,33 @@ export default defineConfig(({ mode }) => {
             changeOrigin: true,
             secure: false,
           },
+          // The Worker-owned SSO handoff page (proven: /api/v1/sso/app_link's
+          // Worker handler text-rewrites Odoo's raw response so the returned
+          // launch URL's host is exactly "sso.snabbb.com" — see
+          // cloudflare_ref.js). Visiting /sso/login?token=... is what
+          // actually sets the mrbur_sso cookie /api/sso/exchange requires;
+          // the previous localhost fix (47fbf38) skipped this navigation
+          // entirely, so /api/sso/exchange had no SSO credential to read.
+          // cookieDomainRewrite strips the upstream `Domain=.snabbb.com` so
+          // the re-issued cookie is host-only and can bind to localhost
+          // (HttpOnly/Secure/SameSite/Path/Max-Age all pass through
+          // unchanged — Secure cookies are accepted on http://localhost per
+          // the Secure Contexts spec, confirmed for both Chrome and
+          // Firefox). hostRewrite/protocolRewrite rewrite the Worker's
+          // subsequent 302 Location (which points at whatever production
+          // app.snabbb.com-style URL the signed token's `aud` claim
+          // resolves to) back to this local origin, so the browser lands
+          // back on localhost instead of navigating away to production —
+          // using Vite/http-proxy's built-in redirect-rewrite options, not
+          // a hand-rolled transform.
+          '/sso/login': {
+            target: 'https://sso.snabbb.com',
+            changeOrigin: true,
+            secure: false,
+            cookieDomainRewrite: { '.snabbb.com': '' },
+            hostRewrite: 'localhost:3000',
+            protocolRewrite: 'http',
+          },
           // Production's own Snabbb API/Worker layer (proven from
           // cloudflare_ref.js: its own routing logic checks
           // `url.hostname === "app.snabbb.com"` and it makes absolute
@@ -55,11 +82,15 @@ export default defineConfig(({ mode }) => {
           // previous direct-to-raw-Odoo-sandbox routing, which lacked both
           // the correct database and the /api/sso/exchange controller
           // (that logic only exists in the Worker, never in any Odoo
-          // instance).
+          // instance). cookieDomainRewrite handles the Odoo `session_id`
+          // cookie the same way as /sso/login above — /api/web/session/
+          // get_session_info and /api/partner/profile both depend on it
+          // being usable on localhost, not just mrbur_sso.
           '/api': {
             target: 'https://app.snabbb.com',
             changeOrigin: true,
             secure: false,
+            cookieDomainRewrite: { '.snabbb.com': '' },
           },
           '/web/session/get_session_info': {
             target: 'https://mrbur-staging-bur-26090883.dev.odoo.com',  

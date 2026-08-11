@@ -24,6 +24,36 @@ async function plantSnabbbIdentity(sessionInfo: any) {
   });
 }
 
+// The only host `res.result.url` is proven (via cloudflare_ref.js's
+// /api/v1/sso/app_link handler, which text-rewrites Odoo's raw SSO-link
+// response so its host is exactly this) to ever legitimately be for the
+// normal (no ?redirect=) login path. Visiting this URL's /sso/login route
+// is what actually sets the mrbur_sso cookie /api/sso/exchange depends on
+// — see vite.config.ts's /sso/login dev proxy rule, which is the only
+// thing that can safely turn this into a local-origin navigation.
+const TRUSTED_SSO_HANDOFF_HOST = "sso.snabbb.com";
+
+/**
+ * Local dev only: rewrites a trusted `https://sso.snabbb.com/sso/login?...`
+ * URL to the equivalent path on the current local origin, so the Vite dev
+ * proxy (not this code) forwards it to the real upstream and rewrites its
+ * Set-Cookie/redirect back to localhost. Returns `null` — never a guessed
+ * or partially-trusted URL — for anything that isn't exactly this known
+ * host, so an unexpected response can never be turned into a navigation
+ * target.
+ */
+function toLocalSsoHandoffUrl(rawUrl: unknown): string | null {
+  if (typeof rawUrl !== "string" || !rawUrl) return null;
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "https:") return null;
+    if (parsed.hostname !== TRUSTED_SSO_HANDOFF_HOST) return null;
+    return `${window.location.origin}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Reads the ?redirect= query param from the CURRENT Snabbb login page URL.
  * e.g. app.snabbb.com/login?redirect=https://my.mrbur.shop/shop/some-bur
@@ -96,12 +126,21 @@ onSuccess: async ({ sessionInfo, session_id }) => {
     // production, the subsequent window.location.href navigation below is
     // actually what triggers a fresh App.tsx bootstrapSession() →
     // verifySession() → Odoo/Supabase identity reconciliation on the next
-    // page load. Reload the current local origin (onAuthSuccess() has
-    // already pushState'd it to '/') instead of navigating to the
-    // production Snabbb URL, so that same reconciliation chain still runs
-    // here, on localhost, rather than being silently skipped.
+    // page load, AND (proven — see toLocalSsoHandoffUrl above) is what
+    // establishes the mrbur_sso cookie /api/sso/exchange requires. A plain
+    // reload skips that handoff entirely, so preserve it: rewrite the
+    // trusted SSO URL to the local origin and navigate there — the Vite
+    // dev proxy forwards it to the real upstream and rewrites its
+    // Set-Cookie/redirect back to localhost. Only ever navigates to a
+    // known-trusted, locally-rewritten URL; an unexpected res.result.url
+    // shape falls back to a plain reload rather than guessing.
     onAuthSuccess();
-    window.location.reload();
+    const localSsoHandoffUrl = toLocalSsoHandoffUrl(res?.result?.url);
+    if (localSsoHandoffUrl) {
+      window.location.href = localSsoHandoffUrl;
+    } else {
+      window.location.reload();
+    }
   } else {
     // No redirect param — stay on Snabbb (normal login)
     onAuthSuccess();
