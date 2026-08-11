@@ -243,7 +243,9 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       >
         <div className="relative">
           <div className={cardClass} style={activeCardStyle}>
-            <div className={iconInsetClass} style={activeIconWrapStyle} />
+            {!isImageUrl && (
+              <div className={iconInsetClass} style={activeIconWrapStyle} />
+            )}
 
             <div
               className={`${iconContentClass} ${!isImageUrl ? app.colorScheme.text : ''}`}
@@ -341,10 +343,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           className={cardClass}
           style={isComingSoon ? comingSoonCardStyle : activeCardStyle}
         >
-          <div
-            className={iconInsetClass}
-            style={isComingSoon ? comingSoonIconWrapStyle : activeIconWrapStyle}
-          />
+          {!isImageUrl && (
+            <div
+              className={iconInsetClass}
+              style={isComingSoon ? comingSoonIconWrapStyle : activeIconWrapStyle}
+            />
+          )}
 
           {!isImageUrl && (
             <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent pointer-events-none z-20" />
@@ -359,10 +363,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
               <img
                 src={app.icon}
                 alt={app.title}
-                className={`block h-full w-full object-cover ${
-                  isComingSoon ? 'opacity-70 grayscale-[35%]' : ''
-                }`}
-                style={{ borderRadius: iconCornerRadius }}
+                className="block h-full w-full object-cover"
               />
             ) : (
               <i className={`${app.icon} text-3xl sm:text-4xl`} />
