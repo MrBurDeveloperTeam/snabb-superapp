@@ -56,20 +56,52 @@ export default defineConfig(({ mode }) => {
           // (HttpOnly/Secure/SameSite/Path/Max-Age all pass through
           // unchanged — Secure cookies are accepted on http://localhost per
           // the Secure Contexts spec, confirmed for both Chrome and
-          // Firefox). hostRewrite/protocolRewrite rewrite the Worker's
-          // subsequent 302 Location (which points at whatever production
-          // app.snabbb.com-style URL the signed token's `aud` claim
-          // resolves to) back to this local origin, so the browser lands
-          // back on localhost instead of navigating away to production —
-          // using Vite/http-proxy's built-in redirect-rewrite options, not
-          // a hand-rolled transform.
+          // Firefox).
+          //
+          // The Worker's subsequent 302 Location must also be rewritten
+          // back to this local origin. Vite/http-proxy's built-in
+          // hostRewrite/protocolRewrite options were tried first but real
+          // browser evidence proved the browser-visible Location header
+          // still came through as the unmodified `https://app.snabbb.com`
+          // — so this uses an explicit configure() hook instead, which
+          // gives full, deterministic control rather than depending on
+          // that automatic (and apparently unreliable, in this bundled
+          // http-proxy version) rewrite path.
           '/sso/login': {
             target: 'https://sso.snabbb.com',
             changeOrigin: true,
             secure: false,
             cookieDomainRewrite: { '.snabbb.com': '' },
-            hostRewrite: 'localhost:3000',
-            protocolRewrite: 'http',
+            configure: (proxy) => {
+              proxy.on('proxyRes', (proxyRes) => {
+                const location = proxyRes.headers['location'];
+                // Missing Location (e.g. a non-redirect response, such as
+                // a 400/401 from an invalid/expired token) — nothing to
+                // rewrite, leave the response exactly as received.
+                if (typeof location !== 'string' || location.length === 0) return;
+
+                let parsed: URL;
+                try {
+                  parsed = new URL(location);
+                } catch {
+                  // Malformed Location — leave unchanged rather than guess.
+                  console.warn('[dev-proxy] /sso/login: could not parse upstream Location header');
+                  return;
+                }
+
+                // Exact, strict trusted-destination check — only the one
+                // proven production destination is ever rewritten. Never
+                // reads anything from the incoming request, so this can't
+                // become an open redirect: the only value that ever
+                // decides the outcome is the upstream response itself,
+                // compared against a hardcoded host.
+                const isTrustedSnabbbGalleryOrigin =
+                  parsed.protocol === 'https:' && parsed.hostname === 'app.snabbb.com';
+                if (!isTrustedSnabbbGalleryOrigin) return;
+
+                proxyRes.headers['location'] = `http://localhost:3000${parsed.pathname}${parsed.search}${parsed.hash}`;
+              });
+            },
           },
           // Production's own Snabbb API/Worker layer (proven from
           // cloudflare_ref.js: its own routing logic checks
