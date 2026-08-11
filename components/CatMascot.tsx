@@ -244,20 +244,22 @@ export default function CatMascot({
   // of the fetch effect, click-to-move, etc.) are no-ops instead of re-arming the
   // Welcome Back timer from scratch every time.
   //
-  // P0 personalized candidates (bypassEntryWalk) are the one exception to the
-  // entry-walk gate: the wrapper's left/top position is already set to its
-  // final value synchronously on mount (only the CSS transition animates
-  // visually), so showing the bubble immediately never structurally
-  // mis-positions it — it just rides along the walk-in motion instead of
-  // waiting up to ~2.8s behind a cosmetic animation for a critical alert.
+  // No dialog type — including a P0 personalized candidate's bypassEntryWalk
+  // flag — skips this gate. bypassEntryWalk only ever meant "urgent enough to
+  // skip the cosmetic *legacy Intro/Welcome Back* dialog queue ahead of it",
+  // never "urgent enough to visually open while the mascot is still
+  // physically walking to its resting position" — showing the bubble mid-walk
+  // reads as visually broken (the bubble anchors to the sprite, which is
+  // still translating across the screen) regardless of priority. The
+  // candidate itself may still be selected/adopted (see the effect below)
+  // arbitrarily early; only its visual activation waits here.
   const tryActivateDialog = () => {
     const dialogType = currentDialogType.current;
     if (!dialogType || dismissedDialogs.current.has(dialogType) || isDialogActiveRef.current) {
       return;
     }
 
-    const canBypassEntryWalk = dialogType === 'personalized' && !!personalizedCandidateRef.current?.bypassEntryWalk;
-    if (!isEntryWalkComplete.current && !canBypassEntryWalk) {
+    if (!isEntryWalkComplete.current) {
       return;
     }
 
