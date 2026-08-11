@@ -30,6 +30,8 @@ import SsoCheck from './components/SsoCheck';
 import { useCreateAppLink } from './mutation/useCreateAppLink';
 import { useGetUserId } from './mutation/useGetUserId';
 import { getActiveCompanyFromOdooSession } from './services/getCompanies';
+import { loadUserProfile } from './services/loadProfile';
+import { getWebsiteCodeForCountry } from './services/authOdoo';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
 import { useProfileImage } from './hooks/useProfileImage';
 import ThemeToggle from './components/ThemeToggle';
@@ -183,24 +185,52 @@ useEffect(() => {
   // The /api/wallet Cloudflare Worker proxy forwards query params straight
   // to Odoo's /snabbb/reward/api/wallet/my, and picks which per-company
   // wallet to return using `website_scope` / `website_domain` — defaulting
-  // to "MMY" whenever neither is present. company_id/X-Company-Code (what
-  // we sent before) are never read by that worker at all, so every request
-  // silently fell back to the Malaysia wallet. Send the resolved company
-  // code as website_scope instead.
-  const company = getActiveCompanyFromOdooSession();
-  const params = new URLSearchParams({ partner_id: String(partnerId) });
-  if (authFormData?.email) params.set('email', authFormData.email);
-  if (company?.companyCode) {
-    params.set('website_scope', company.companyCode);
-    params.set('website_domain', company.companyCode);
-  }
+  // to "MMY" whenever neither is present.
+  //
+  // company_codes (from getActiveCompanyFromOdooSession) is keyed by
+  // company_id, and most countries (US, UK, AU, CA, SA, NZ, KR, AE, VN, PH,
+  // JP) share ONE company ("MR. BUR (M) SDN. BHD.", id 2) whose code is
+  // always "MMY" — so company-based resolution can never tell those
+  // countries apart and silently defaults everyone to Malaysia.
+  //
+  // res.partner.country_id, on the other hand, IS reliably set per-user at
+  // signup regardless of the company/website mixup (confirmed via
+  // GET https://account.snabbb.com/api/account/profile — country_id comes
+  // back correct even for users whose wallet was defaulting to MMY). So
+  // resolve website_scope from the account profile's country first, and
+  // only fall back to the company-code path for countries with their own
+  // dedicated company (Singapore, Indonesia, Thailand) where that already
+  // works correctly today.
+  (async () => {
+    const params = new URLSearchParams({ partner_id: String(partnerId) });
+    if (authFormData?.email) params.set('email', authFormData.email);
 
-  fetch(`https://app.snabbb.com/api/wallet?${params.toString()}`, {
-    credentials: 'include',
-  })
-    .then(r => r.json())
-    .then(data => setCreditBalance(data?.data?.balance ?? null))
-    .catch(() => setCreditBalance(null))
+    let websiteCode: string | undefined;
+    try {
+      const profile = await loadUserProfile();
+      const countryName = profile?.partner?.country_id?.[1];
+      websiteCode = getWebsiteCodeForCountry(countryName);
+    } catch (e) {
+      console.warn('[Wallet] Failed to load account profile for country resolution:', e);
+    }
+
+    if (!websiteCode) {
+      const company = getActiveCompanyFromOdooSession();
+      websiteCode = company?.companyCode;
+    }
+
+    if (websiteCode) {
+      params.set('website_scope', websiteCode);
+      params.set('website_domain', websiteCode);
+    }
+
+    fetch(`https://app.snabbb.com/api/wallet?${params.toString()}`, {
+      credentials: 'include',
+    })
+      .then(r => r.json())
+      .then(data => setCreditBalance(data?.data?.balance ?? null))
+      .catch(() => setCreditBalance(null))
+  })();
 }, [authFormData?.partner_id, authFormData?.email])
 
   useEffect(() => {

@@ -293,6 +293,58 @@ const COUNTRY_CODE_TO_COMPANY_ID: Record<string, number> = {
   JP: 39,  // KANEIKO INTERNATIONAL CO., LTD
 };
 
+// User's selected country → Odoo `website` record ID.
+// Sourced directly from Odoo (`website.search_read` filtered to
+// company_id = "MR. BUR (M) SDN. BHD.", queried 2026-08-11). These
+// countries share one res.company (id 2) so COUNTRY_TO_COMPANY_ID alone
+// can't tell them apart — company 2's `company_codes` always reports a
+// single code ("MMY"), which is why every one of these countries silently
+// fell back to the Malaysia wallet/reward website. This map fills that gap
+// by resolving the actual per-country website_id at signup, independent of
+// company_id.
+//
+// NOTE: South Korea and Japan appear here (their websites — MKR, MJP — are
+// owned by company 2 in Odoo), but COUNTRY_TO_COMPANY_ID above still routes
+// them to their own separate companies (8 and 39). That's an existing
+// mismatch between the website ownership and the company assignment for
+// those two countries — worth confirming with whoever manages the Odoo
+// company/website structure before relying on both fields together for KR/JP.
+const WEBSITE_BY_COUNTRY: Record<string, { id: number; code: string }> = {
+  "Malaysia": { id: 1, code: "MMY" },               // https://my.mrbur.shop
+  "United States": { id: 13, code: "MUS" },         // https://us.mrbur.shop
+  "United Kingdom": { id: 14, code: "MUK" },        // https://uk.mrbur.shop
+  "Australia": { id: 15, code: "MAU" },             // https://au.mrbur.shop
+  "Canada": { id: 18, code: "MCA" },                // https://ca.mrbur.shop
+  "Saudi Arabia": { id: 19, code: "MSA" },          // https://sa.mrbur.shop
+  "New Zealand": { id: 20, code: "MNZ" },           // https://nz.mrbur.shop
+  "South Korea": { id: 21, code: "MKR" },           // https://kr.mrbur.shop (see note above)
+  "United Arab Emirates": { id: 22, code: "MAE" },  // https://ae.mrbur.shop
+  "Vietnam": { id: 23, code: "MVN" },               // https://vn.mrbur.shop
+  "Philippines": { id: 24, code: "MPH" },           // https://ph.mrbur.shop
+  "Japan": { id: 25, code: "MJP" },                 // https://jp.mrbur.shop (see note above)
+};
+
+// Falls back to the generic "INT" website (https://www.mrbur.shop) rather
+// than silently pretending an unmapped country is Malaysia.
+const DEFAULT_WEBSITE_ID = 9; // INT
+
+const getSignupWebsiteId = (selectedCountry?: string): number => {
+  return selectedCountry && WEBSITE_BY_COUNTRY[selectedCountry]
+    ? WEBSITE_BY_COUNTRY[selectedCountry].id
+    : DEFAULT_WEBSITE_ID;
+};
+
+// Given a country NAME (e.g. from res.partner's country_id[1], which is
+// reliably set at signup regardless of whether website_id/company_id ever
+// got resolved correctly), returns the matching website short code — the
+// same value the wallet/reward API expects for website_scope/website_domain.
+// Works retroactively for existing users too, since it doesn't depend on
+// anything stored beyond country_id.
+export const getWebsiteCodeForCountry = (countryName?: string | null): string | undefined => {
+  if (!countryName) return undefined;
+  return WEBSITE_BY_COUNTRY[countryName]?.code;
+};
+
 const COMPANY_CODE_TO_MRBUR_URL: Record<string, string> = {
   MY: 'https://my.mrbur.shop',
   SG: 'https://sg.mrbur.shop',
@@ -414,6 +466,10 @@ export const authOdoo = async ({
 }: AuthFormInputs) => {
   // Pass selected country for accurate company resolution
   const companyId = await getSignupCompanyId(country);
+  // Independent of companyId — resolves which of the per-country websites
+  // (under MR. BUR (M) SDN. BHD.) this signup should be scoped to, so the
+  // wallet/reward API stops defaulting every non-legal-entity country to MMY.
+  const websiteId = getSignupWebsiteId(country);
 
   const isCompany = account_type === "company";
   const effectiveEmail = isCompany ? (companyEmail || login) : login;
@@ -447,11 +503,12 @@ export const authOdoo = async ({
         referral_code: referralCode.trim()
       }),
       company_id: companyId,
+      website_id: websiteId,
     },
     id: 1,
   };
 
-  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail, country, countryId, companyId });
+  console.log("authOdoo:", { isCompany, effectiveName, effectiveEmail, country, countryId, companyId, websiteId });
 
   try {
     const response = await api.post("/v1/users", requestData);
