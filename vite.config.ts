@@ -17,7 +17,13 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
-        strictPort: false,
+        // Proven (cloudflare_ref.js's own allowedOrigins list) that only
+        // http://localhost:3000 and http://localhost:5173 are allowlisted
+        // by the live Snabbb Worker's CORS policy. Falling back to a
+        // different port would silently authenticate from an origin the
+        // Worker doesn't recognize — fail fast instead so the developer
+        // frees port 3000 rather than debugging a CORS rejection.
+        strictPort: true,
         allowedHosts: true,  // Changed to true instead of 'all'
         hmr: {
           clientPort: 3000,
@@ -34,18 +40,24 @@ export default defineConfig(({ mode }) => {
             secure: false,
           },
           '/odoo': {
-            target: 'https://mrbur-sandbox.odoo.com',  
+            target: 'https://mrbur-sandbox.odoo.com',
             changeOrigin: true,
             secure: false,
           },
-          '/api/web': {
-            target: 'https://mrbur-sandbox.odoo.com',  
-            changeOrigin: true,
-            secure: false,
-            rewrite: (p) => p.replace(/^\/api/, ''),
-          },
+          // Production's own Snabbb API/Worker layer (proven from
+          // cloudflare_ref.js: its own routing logic checks
+          // `url.hostname === "app.snabbb.com"` and it makes absolute
+          // self-referential calls to `https://app.snabbb.com/api/...`) —
+          // NOT raw Odoo. The Worker's routes match the full `/api/...`
+          // path unchanged (e.g. `url.pathname === "/api/web/session/authenticate"`,
+          // `"/api/sso/exchange"`), so every /api/* request below is
+          // forwarded with its path intact — no rewrite. This replaces the
+          // previous direct-to-raw-Odoo-sandbox routing, which lacked both
+          // the correct database and the /api/sso/exchange controller
+          // (that logic only exists in the Worker, never in any Odoo
+          // instance).
           '/api': {
-            target: 'https://mrbur-sandbox.odoo.com',  
+            target: 'https://app.snabbb.com',
             changeOrigin: true,
             secure: false,
           },
