@@ -14,7 +14,6 @@ export const useCreateAppLink = () => {
       name: string;
     }) => {
       const company = getActiveCompanyFromOdooSession();
-      console.log('the company info is', company);
 
       if (!company?.companyId) {
         throw new Error(
