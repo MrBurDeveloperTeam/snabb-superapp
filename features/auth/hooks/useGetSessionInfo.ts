@@ -11,16 +11,27 @@ const useGetSessionInfo = () => {
                 return new Error("No session info found");
             }
 
-            // If the response is valid, try to get sessionInfo with retry
-            const sessionInfo = await getSessionInfoWithRetry();
-            if (!sessionInfo) {
-                return new Error("Session info with retry failed");
+            // getSessionInfoWithRetry() hits a supplementary endpoint
+            // (/api/odoo/session_info) that only ever *augments* `response`
+            // above — which already carries name/username/partner_id, the
+            // only fields App.tsx's verifySession() actually reads. Its
+            // failure (e.g. unreachable in an environment that doesn't
+            // proxy/implement this exact path) must never be treated as
+            // "no session at all": that previously caused verifySession()
+            // to call clearAuthState() and log an otherwise-successfully-
+            // authenticated user straight back out. Isolate its failure so
+            // a genuinely valid primary session is never discarded because
+            // of a best-effort secondary call.
+            let sessionInfo: any = null;
+            try {
+                sessionInfo = await getSessionInfoWithRetry();
+            } catch (retryError) {
+                console.warn("Session info retry endpoint unavailable, continuing with primary session info:", retryError);
             }
 
-            // Ensure sessionInfo exists before proceeding
-            const res = { ...response, ...sessionInfo };
+            const res = sessionInfo ? { ...response, ...sessionInfo } : response;
 
-            // Return the merged session info
+            // Return the merged (or primary-only) session info
             return { sessionInfo: res };
         } catch (error) {
             console.error("Error fetching session info:", error);
