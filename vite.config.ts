@@ -13,6 +13,68 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
 
     const isDev = mode === "development";
+
+    // Development-only: rewrites Set-Cookie response headers for the two
+    // named Snabbb SSO/session cookies so they can be sent over plain
+    // http://localhost, and only for those two cookie names — an unrelated
+    // cookie like `snabbb-theme` passes through completely untouched. This
+    // function is only ever wired into the isDev-only proxy config below,
+    // so it has no effect on a production build.
+    //
+    // Two independent transport blockers were found via real Chrome
+    // DevTools evidence, each requiring its own rewrite:
+    //
+    // 1. Secure: Request Cookies on /api/sso/exchange showed mrbur_sso/
+    //    session_id present in Application → Cookies but absent from the
+    //    actual outgoing request, proving Secure cookies were being
+    //    withheld on this specific dev setup despite Domain already being
+    //    correctly rewritten to host-only localhost. Secure is stripped
+    //    for both cookie names.
+    //
+    // 2. SameSite=None: separately, real evidence showed the upstream
+    //    session_id cookie (Set-Cookie: ...; SameSite=None; ...) never
+    //    appears in Application → Cookies at all once Secure is removed
+    //    from it — per the browser cookie spec, a SameSite=None cookie
+    //    *requires* Secure, so a Secure-less SameSite=None cookie is
+    //    rejected outright rather than merely downgraded. mrbur_sso's
+    //    upstream SameSite is already Lax (no such requirement, and
+    //    already proven working), so only session_id needs its SameSite
+    //    downgraded to Lax in dev — scoped to this one cookie name so no
+    //    other cookie's SameSite behavior changes.
+    //
+    // Every other attribute (HttpOnly, Path, Max-Age/Expires) and the
+    // cookie value itself are preserved exactly; only the bare `Secure`
+    // token and (session_id only) the `SameSite` value are touched, via
+    // safe semicolon-delimited attribute parsing with case-insensitive
+    // name matching — never a substring replacement that could reach into
+    // the cookie value.
+    const DEV_INSECURE_COOKIE_NAMES = new Set(['mrbur_sso', 'session_id']);
+    const DEV_SAMESITE_LAX_COOKIE_NAMES = new Set(['session_id']);
+    function rewriteDevAuthCookies(setCookieHeaders: string[] | undefined): string[] | undefined {
+      if (!setCookieHeaders) return setCookieHeaders;
+      return setCookieHeaders.map((cookieHeader) => {
+        const parts = cookieHeader.split(';');
+        const cookieName = parts[0]?.split('=')[0]?.trim();
+        if (!cookieName || !DEV_INSECURE_COOKIE_NAMES.has(cookieName)) return cookieHeader;
+
+        const forceSameSiteLax = DEV_SAMESITE_LAX_COOKIE_NAMES.has(cookieName);
+
+        return parts
+          .filter((part) => part.trim().toLowerCase() !== 'secure')
+          .map((part) => {
+            if (!forceSameSiteLax) return part;
+            const attrName = part.trim().split('=')[0]?.trim();
+            if (!attrName || attrName.toLowerCase() !== 'samesite') return part;
+            // Preserve the header's original leading-space formatting
+            // (every attribute after the first is normally " Name=Value"
+            // once split on ';') without touching anything else.
+            const leadingSpace = part.startsWith(' ') ? ' ' : '';
+            return `${leadingSpace}SameSite=Lax`;
+          })
+          .join(';');
+      });
+    }
+
     return {
       server: {
         port: 3000,
@@ -53,10 +115,15 @@ export default defineConfig(({ mode }) => {
           // entirely, so /api/sso/exchange had no SSO credential to read.
           // cookieDomainRewrite strips the upstream `Domain=.snabbb.com` so
           // the re-issued cookie is host-only and can bind to localhost
-          // (HttpOnly/Secure/SameSite/Path/Max-Age all pass through
-          // unchanged — Secure cookies are accepted on http://localhost per
-          // the Secure Contexts spec, confirmed for both Chrome and
-          // Firefox).
+          // (HttpOnly/SameSite/Path/Max-Age all pass through unchanged).
+          // Secure is separately stripped by rewriteDevAuthCookies
+          // below: real Chrome DevTools evidence (Application → Cookies
+          // showed the cookie stored, but Request Cookies on
+          // /api/sso/exchange did not include it) proved this specific dev
+          // setup was withholding Secure cookies over http://localhost
+          // despite the general "localhost is a potentially trustworthy
+          // origin" spec allowance — live runtime evidence overrides that
+          // assumption here.
           //
           // The Worker's subsequent 302 Location must also be rewritten
           // back to this local origin. Vite/http-proxy's built-in
@@ -74,6 +141,11 @@ export default defineConfig(({ mode }) => {
             cookieDomainRewrite: { '.snabbb.com': '' },
             configure: (proxy) => {
               proxy.on('proxyRes', (proxyRes) => {
+                // Compose with the existing Location rewrite below rather
+                // than a second listener — mrbur_sso is set on this exact
+                // response.
+                proxyRes.headers['set-cookie'] = rewriteDevAuthCookies(proxyRes.headers['set-cookie']);
+
                 const location = proxyRes.headers['location'];
                 // Missing Location (e.g. a non-redirect response, such as
                 // a 400/401 from an invalid/expired token) — nothing to
@@ -117,12 +189,22 @@ export default defineConfig(({ mode }) => {
           // instance). cookieDomainRewrite handles the Odoo `session_id`
           // cookie the same way as /sso/login above — /api/web/session/
           // get_session_info and /api/partner/profile both depend on it
-          // being usable on localhost, not just mrbur_sso.
+          // being usable on localhost, not just mrbur_sso. Secure is
+          // stripped from session_id the same way and for the same proven
+          // reason as mrbur_sso above, and session_id's SameSite is
+          // additionally downgraded from None to Lax — see
+          // rewriteDevAuthCookies above for why that second rewrite is
+          // required only for session_id.
           '/api': {
             target: 'https://app.snabbb.com',
             changeOrigin: true,
             secure: false,
             cookieDomainRewrite: { '.snabbb.com': '' },
+            configure: (proxy) => {
+              proxy.on('proxyRes', (proxyRes) => {
+                proxyRes.headers['set-cookie'] = rewriteDevAuthCookies(proxyRes.headers['set-cookie']);
+              });
+            },
           },
           '/web/session/get_session_info': {
             target: 'https://mrbur-staging-bur-26090883.dev.odoo.com',  
