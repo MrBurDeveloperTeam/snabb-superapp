@@ -140,6 +140,15 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
+        case app.route.includes('charting'): {
+          const res = await createAppLink({
+            app: 'charting',
+            email: user.username,
+            name: user.name,
+          });
+          if (res.result?.url && w) w.location.href = res.result.url;
+          break;
+        }
 
         default:
           break;
