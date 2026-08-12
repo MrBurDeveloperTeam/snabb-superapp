@@ -183,15 +183,15 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose, onExitApp }
                 {!(requiresLandscape && isPortrait) && (<button
                     type="button"
                     onClick={() => void leaveGame(onExitApp)}
-                    className="absolute left-[calc(env(safe-area-inset-left)_+_0.75rem)] top-[calc(env(safe-area-inset-top)_+_0.75rem)] z-[70] flex h-8 w-8 items-center justify-center rounded-lg border border-white/60 bg-white/75 p-0 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95 sm:h-10 sm:w-10 sm:rounded-xl lg:left-[calc(env(safe-area-inset-left)_+_1.5rem)] lg:top-[calc(env(safe-area-inset-top)_+_1.5rem)] lg:h-14 lg:w-14 lg:rounded-2xl"
+                    className="absolute left-[max(1.5rem,env(safe-area-inset-left))] top-[max(1.5rem,env(safe-area-inset-top))] z-[70] flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/60 bg-white/75 p-0 text-black shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95"
                     title="Back to main page"
                     aria-label="Back to main page"
                 >
-                    <TiArrowBack className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10" strokeWidth={0} />
+                    <TiArrowBack className="h-8 w-8" strokeWidth={0} />
                 </button>)}
 
                 {/* Top UI Area */}
-                <div className="absolute top-6 right-6 z-50 flex flex-col items-end gap-2">
+                <div className="absolute right-[max(1.5rem,env(safe-area-inset-right))] top-[max(1.5rem,env(safe-area-inset-top))] z-50 flex flex-col items-end gap-2">
                     <div className="flex items-center gap-3">
                         {/* Session Progress (Pending Coins) */}
                         {sessionCoins > 0 && (
