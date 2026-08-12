@@ -1,8 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MiniApp } from '../types';
-import { getAuthUser } from '@/utils/authStorage';
-import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 
 interface AppCardProps {
   isLoggedIn: boolean | null;
@@ -15,143 +13,85 @@ interface AppCardProps {
 const ICON_SCALE = 120 / 112;
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
-  const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
-
   // Supports both full image URLs and local public paths like /icons/kaneiko_black.png
   const isImageUrl = app.icon.startsWith('http') || app.icon.startsWith('/');
 
-  const user = getAuthUser();
   const isComingSoon = !app.route;
   const iconCornerRadius = '20%';
 
-  const handleClick = async () => {
+  // Opens the destination directly via the worker's server-side
+  // /api/launch/:appCode redirect, instead of the previous pattern of
+  // opening a blank tab (window.open('', '_blank')) and only relocating it
+  // *after* an async fetch('/api/v1/sso/app_link') resolved. That old
+  // pattern -- blank tab now, silent JS redirect later -- is structurally
+  // identical to how malicious popunder/redirect ads dodge popup blockers,
+  // and Chrome's Enhanced Safe Browsing (and other browsers' anti-abuse
+  // heuristics) can silently block the delayed relocation step, leaving the
+  // tab stuck at about:blank with no visible error. Opening the real
+  // destination URL synchronously, in direct response to the click, avoids
+  // that pattern entirely -- the worker does the same session/company-code
+  // resolution server-side and responds with a normal HTTP redirect, so
+  // there's no JS-driven relocation of an already-open tab involved at all.
+  const handleClick = () => {
     if (!app.route) return;
 
     const isExternal =
       app.route.startsWith('http://') || app.route.startsWith('https://');
 
     if (isExternal && isLoggedIn) {
-      const w = window.open('', '_blank');
+      let appCode: string | null = null;
 
       switch (true) {
-        case app.route.includes('inventory'): {
-          const res = await createAppLink({ 
-            app: 'inventory',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
+        case app.route.includes('inventory'):
+          appCode = 'inventory';
           break;
-        }
 
         case app.route.includes('recruitment'):
+          // Not wired up yet -- previously a no-op here too.
+          return;
+
+        case app.route.includes('appointment'):
+          appCode = 'appointment';
           break;
 
-        case app.route.includes('appointment'): {
-          const res = await createAppLink({
-            app: 'appointment',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
+        case app.route.includes('event'):
+          appCode = 'event';
           break;
-        }
 
-        case app.route.includes('event'): {
-          const res = await createAppLink({
-            app: 'event',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
+        case app.route.includes('mrbur.shop'):
+          appCode = 'shop';
           break;
-        }
 
-        case app.route.includes('mrbur.shop'): {
-          const res = await createAppLink({
-            app: 'shop',
-            email: user.username,
-            name: user.name,
-          });
-
-          if (res.result?.url && w) {
-            const ssoUrl = new URL(res.result.url);
-            const token = ssoUrl.searchParams.get('token');
-            const companyCode = ssoUrl.searchParams.get('company_code') || 'INT';
-            console.log('SSO token:', token, 'company_code:', companyCode);
-            if (token) {
-              w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
-                token
-              )}&company_code=${encodeURIComponent(companyCode)}`;
-            } else {
-              w.location.href = res.result.url;
-            }
-          }
-
+        case app.route.includes('calculator'):
+          appCode = 'calculator';
           break;
-        }
 
-        case app.route.includes('calculator'): {
-          const res = await createAppLink({
-            app: 'calculator',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
+        case app.route.includes('todo'):
+          appCode = 'todo';
           break;
-        }
 
-        case app.route.includes('todo'): {
-          const res = await createAppLink({
-            app: 'todo',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
+        case app.route.includes('imageai'):
+          appCode = 'imageai';
           break;
-        }
 
-        case app.route.includes('imageai'): {
-          const res = await createAppLink({
-            app: 'imageai',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
+        case app.route.includes('e-learning'):
+          appCode = 'e-learning';
           break;
-        }
 
-        case app.route.includes('e-learning'): {
-          const res = await createAppLink({
-            app: 'e-learning',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
+        case app.route.includes('reward'):
+          appCode = 'reward';
           break;
-        }
 
-        case app.route.includes('reward'): {
-          const res = await createAppLink({
-            app: 'reward',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
+        case app.route.includes('charting'):
+          appCode = 'charting';
           break;
-        }
-        case app.route.includes('charting'): {
-          const res = await createAppLink({
-            app: 'charting',
-            email: user.username,
-            name: user.name,
-          });
-          if (res.result?.url && w) w.location.href = res.result.url;
-          break;
-        }
 
         default:
-          break;
+          return;
+      }
+
+      if (appCode) {
+        window.open(`https://app.snabbb.com/api/launch/${appCode}`, '_blank');
       }
     } else {
       window.open(app.route, '_blank');
@@ -241,77 +181,11 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
     return <i className={`${app.icon} text-3xl sm:text-4xl`} />;
   };
 
-  if (isPending) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{
-          opacity: { duration: 0.18 },
-          scale: { duration: 0.18 },
-          y: { duration: 0.18 },
-        }}
-        className={wrapperClass}
-        data-no-cat="true"
-      >
-        <div className="relative">
-          <div className={cardClass} style={activeCardStyle}>
-            {!isImageUrl && (
-              <div className={iconInsetClass} style={activeIconWrapStyle} />
-            )}
-
-            <div
-              className={`${iconContentClass} ${!isImageUrl ? app.colorScheme.text : ''}`}
-            >
-              {isImageUrl ? (
-                <img
-                  src={app.icon}
-                  alt={app.title}
-                  className="block h-full w-full object-cover"
-                  style={{
-                    borderRadius: iconCornerRadius,
-                    transform: `scale(${ICON_SCALE})`,
-                  }}
-                />
-              ) : (
-                <i className={`${app.icon} text-3xl sm:text-4xl`} />
-              )}
-            </div>
-
-            <div className="absolute inset-0 z-20 flex items-center justify-center">
-              <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px]" />
-
-              <svg
-                className="relative animate-spin h-6 w-6 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <h3 className="text-[12px] sm:text-[14px] font-bold text-slate-800 dark:text-slate-100 text-center px-1 truncate w-full tracking-tight">
-          {app.title}
-        </h3>
-      </motion.div>
-    );
-  }
+  // There used to be an isPending-driven spinner state here while the
+  // app-link fetch resolved before opening a blank tab. Now that the click
+  // handler navigates directly (see handleClick above), there's no local
+  // async gap on this page to show a spinner for anymore -- the new tab's
+  // own loading indicator covers that instead.
 
   return (
     <motion.div
