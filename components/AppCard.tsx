@@ -40,7 +40,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
           window.open(res.result.url, '_blank');
           break;
         }
@@ -54,7 +53,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
 
@@ -64,7 +63,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
 
@@ -84,8 +83,11 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
               // w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
               //   token
               // )}&company_code=${encodeURIComponent(companyCode)}`;
+              window.open(`https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
+                token
+              )}&company_code=${encodeURIComponent(companyCode)}`, '_blank');
             } else {
-              // w.location.href = res.result.url;
+              window.open(res.result.url, '_blank');
             }
           }
 
@@ -98,7 +100,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
 
@@ -108,7 +110,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
 
@@ -118,7 +120,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
 
@@ -128,7 +130,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
 
@@ -138,7 +140,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
         case app.route.includes('charting'): {
@@ -147,7 +149,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          // if (res.result?.url && w) w.location.href = res.result.url;
           window.open(res.result.url, '_blank');
           break;
         }
