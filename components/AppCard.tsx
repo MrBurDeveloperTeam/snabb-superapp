@@ -41,6 +41,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             name: user.name,
           });
           // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
 
