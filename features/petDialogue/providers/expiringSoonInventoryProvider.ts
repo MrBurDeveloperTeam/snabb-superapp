@@ -6,8 +6,20 @@ import {
 } from '../dateUtils';
 import { getInventoryAppRoute } from '../knownRoutes';
 import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';
-import type { DialogueCandidate } from '../types';
+import type { DialogueCandidate, InsightCandidate } from '../types';
 import type { InventorySnapshot, InventorySnapshotBatch, InventorySnapshotItem } from './inventorySnapshotProvider';
+
+/** See expiredInventoryProvider.ts's ExpiredInventoryFacts for the same
+ *  design intent. */
+export interface ExpiringSoonInventoryFacts {
+  itemId: string;
+  itemName: string | null;
+  quantity: number;
+  expiryDate: string;
+  daysRemaining: number;
+  windowDays: number;
+  batchId?: string;
+}
 
 /**
  * Pure P2 (inventory expiring soon) evaluation over the same
@@ -36,6 +48,10 @@ interface ExpiringSoonSource {
   expiryDate: string;
   createdTime: string | null;
   batchId?: string;
+  /** Same intent as expiredInventoryProvider.ts's ExpiredSource.quantity —
+   *  the already-checked (>0) qty this source qualified on, carried through
+   *  purely for facts exposure. */
+  quantity: number;
 }
 
 function toNumber(value: number | string | null): number {
@@ -77,6 +93,7 @@ function selectExpiringSoonSourceForItem(
       expiryDate: earliest.expiry_date as string,
       createdTime: earliest.created_at,
       batchId: earliest.id,
+      quantity: toNumber(earliest.qty),
     };
   }
 
@@ -88,6 +105,7 @@ function selectExpiringSoonSourceForItem(
       itemName: item.name,
       expiryDate: item.expiry_date as string,
       createdTime: item.created_at,
+      quantity: toNumber(item.quantity),
     };
   }
 
@@ -122,17 +140,39 @@ function buildMessage(safeName: string | null, daysRemaining: number): string {
     : `An inventory item will expire in ${daysRemaining} days. Please review it.`;
 }
 
-function buildCandidateFromSource(source: ExpiringSoonSource, todayKey: string): DialogueCandidate {
+function buildCandidateFromSource(source: ExpiringSoonSource, todayKey: string): InsightCandidate<ExpiringSoonInventoryFacts> {
   const safeName = typeof source.itemName === 'string' && source.itemName.trim().length > 0 ? source.itemName.trim() : null;
   const daysRemaining = Math.max(0, daysBetweenDateKeys(todayKey, source.expiryDate));
   const message = buildMessage(safeName, daysRemaining);
+  // buildMessage has three wordings (today/tomorrow/N days) selected purely
+  // by `daysRemaining`, which is already exposed in `facts` below — one
+  // canonical placeholder template covers all three without altering any of
+  // them.
+  const messageTemplate = '{itemName} will expire in {daysRemaining} days. Please review it.';
 
   const dedupeKey =
     source.kind === 'batch'
       ? `inventory_expiring_soon:${source.itemId}:batch:${source.batchId}:${source.expiryDate}:window30`
       : `inventory_expiring_soon:${source.itemId}:item:${source.expiryDate}:window30`;
 
+  const evaluatedAt = new Date().toISOString();
+  const facts: ExpiringSoonInventoryFacts = {
+    itemId: source.itemId,
+    itemName: source.itemName,
+    quantity: source.quantity,
+    expiryDate: source.expiryDate,
+    daysRemaining,
+    windowDays: INVENTORY_EXPIRING_SOON_DAYS,
+    ...(source.kind === 'batch' ? { batchId: source.batchId } : {}),
+  };
+
   return {
+    app: 'inventory',
+    triggerId: DIALOGUE_ID.INVENTORY_EXPIRING_SOON,
+    facts,
+    messageTemplate,
+    sourceRecordId: source.itemId,
+    evaluatedAt,
     userState: 'ACTIVE_USER_URGENT',
     dialogueId: DIALOGUE_ID.INVENTORY_EXPIRING_SOON,
     priority: 'P2',
@@ -141,7 +181,7 @@ function buildCandidateFromSource(source: ExpiringSoonSource, todayKey: string):
     source: {
       app: 'inventory',
       recordId: source.itemId,
-      evaluatedAt: new Date().toISOString(),
+      evaluatedAt,
       // Internal provenance only — never rendered in the UI.
       ...(source.kind === 'batch' ? { batchId: source.batchId } : {}),
     },

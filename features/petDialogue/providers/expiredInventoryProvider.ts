@@ -1,7 +1,7 @@
 import { isExpiredBeforeToday } from '../dateUtils';
 import { getInventoryAppRoute } from '../knownRoutes';
 import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';
-import type { DialogueCandidate } from '../types';
+import type { DialogueCandidate, InsightCandidate } from '../types';
 import type { InventorySnapshot, InventorySnapshotBatch, InventorySnapshotItem } from './inventorySnapshotProvider';
 
 /**
@@ -21,6 +21,23 @@ interface ExpiredSource {
   itemName: string | null;
   expiryDate: string;
   createdTime: string | null;
+  batchId?: string;
+  /** The already-checked (>0) qty this source qualified on — batch `qty` or
+   *  item `quantity` — carried through purely for AI Experience Phase 1's
+   *  `facts` exposure; never re-derived or re-checked, and never affects
+   *  eligibility (that's decided above, in selectExpiredSourceForItem). */
+  quantity: number;
+}
+
+/** Structured facts a future Landing Insight / Data-Driven Chat surface can
+ *  read without re-querying Supabase or reverse-parsing `message`. Every
+ *  field here is already computed by selectExpiredSourceForItem above —
+ *  this is a pure exposure of existing values, not a new calculation. */
+export interface ExpiredInventoryFacts {
+  itemId: string;
+  itemName: string | null;
+  quantity: number;
+  expiryDate: string;
   batchId?: string;
 }
 
@@ -75,6 +92,7 @@ function selectExpiredSourceForItem(
       expiryDate: earliest.expiry_date as string,
       createdTime: earliest.created_at,
       batchId: earliest.id,
+      quantity: toNumber(earliest.qty),
     };
   }
 
@@ -86,6 +104,7 @@ function selectExpiredSourceForItem(
       itemName: item.name,
       expiryDate: item.expiry_date as string,
       createdTime: item.created_at,
+      quantity: toNumber(item.quantity),
     };
   }
 
@@ -106,18 +125,38 @@ function compareSourcesForSelection(a: ExpiredSource, b: ExpiredSource): number 
   return aBatch < bBatch ? -1 : aBatch > bBatch ? 1 : 0;
 }
 
-function buildCandidateFromSource(source: ExpiredSource): DialogueCandidate {
+function buildCandidateFromSource(source: ExpiredSource): InsightCandidate<ExpiredInventoryFacts> {
   const safeName = typeof source.itemName === 'string' && source.itemName.trim().length > 0 ? source.itemName.trim() : null;
   const message = safeName
     ? `${safeName} has expired. Please review it now.`
     : 'An inventory item has expired. Please review it now.';
+  // messageTemplate is deliberately identical in shape to `message` — the
+  // only variation in this candidate's wording is whether a name is known,
+  // and `{itemName}` marks exactly that substitution point. `message` above
+  // is untouched, byte-for-byte identical to before this refactor.
+  const messageTemplate = '{itemName} has expired. Please review it now.';
 
   const dedupeKey =
     source.kind === 'batch'
       ? `inventory_expired:${source.itemId}:batch:${source.batchId}:${source.expiryDate}`
       : `inventory_expired:${source.itemId}:item:${source.expiryDate}`;
 
+  const evaluatedAt = new Date().toISOString();
+  const facts: ExpiredInventoryFacts = {
+    itemId: source.itemId,
+    itemName: source.itemName,
+    quantity: source.quantity,
+    expiryDate: source.expiryDate,
+    ...(source.kind === 'batch' ? { batchId: source.batchId } : {}),
+  };
+
   return {
+    app: 'inventory',
+    triggerId: DIALOGUE_ID.EXPIRED_INVENTORY,
+    facts,
+    messageTemplate,
+    sourceRecordId: source.itemId,
+    evaluatedAt,
     userState: 'ACTIVE_USER_URGENT',
     dialogueId: DIALOGUE_ID.EXPIRED_INVENTORY,
     priority: 'P0',
@@ -126,7 +165,7 @@ function buildCandidateFromSource(source: ExpiredSource): DialogueCandidate {
     source: {
       app: 'inventory',
       recordId: source.itemId,
-      evaluatedAt: new Date().toISOString(),
+      evaluatedAt,
       // Internal provenance only — never rendered in the UI.
       ...(source.kind === 'batch' ? { batchId: source.batchId } : {}),
     },

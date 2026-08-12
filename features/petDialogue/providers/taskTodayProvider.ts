@@ -1,13 +1,22 @@
 import { sanitizeTaskTitleForDialogue } from '../safeTaskTitle';
 import { getTodoAppRoute } from '../knownRoutes';
 import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';
-import type { DialogueCandidate } from '../types';
+import type { DialogueCandidate, InsightCandidate } from '../types';
 import type { TodoSnapshot } from './todoSnapshotProvider';
 import {
   compareByCreatedTimeThenTaskId,
   extractQualifyingHighUrgencyTaskSource,
   type QualifyingHighUrgencyTaskSource,
 } from './todoTaskFilters';
+
+/** See overdueTaskProvider.ts's OverdueHighTaskFacts for the same design
+ *  intent — same source type, `urgency` is always 'HIGH' by construction. */
+export interface HighTaskTodayFacts {
+  taskId: string;
+  title: string | null;
+  dueDate: string;
+  urgency: 'HIGH';
+}
 
 /**
  * Pure P1 (High-priority task due today) evaluation over the TodoSnapshot —
@@ -30,13 +39,28 @@ function compareSourcesForSelection(a: QualifyingHighUrgencyTaskSource, b: Quali
   return compareByCreatedTimeThenTaskId(a, b);
 }
 
-function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): DialogueCandidate {
+function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): InsightCandidate<HighTaskTodayFacts> {
   const safeTitle = sanitizeTaskTitleForDialogue(source.title);
   const message = safeTitle
     ? `Your important task "${safeTitle}" is due today.`
     : 'You have an important task due today.';
+  const messageTemplate = 'Your important task "{title}" is due today.';
+
+  const evaluatedAt = new Date().toISOString();
+  const facts: HighTaskTodayFacts = {
+    taskId: source.taskId,
+    title: source.title,
+    dueDate: source.validatedDateKey,
+    urgency: 'HIGH',
+  };
 
   return {
+    app: 'todo',
+    triggerId: DIALOGUE_ID.HIGH_TASK_TODAY,
+    facts,
+    messageTemplate,
+    sourceRecordId: source.taskId,
+    evaluatedAt,
     userState: 'ACTIVE_USER_URGENT',
     dialogueId: DIALOGUE_ID.HIGH_TASK_TODAY,
     priority: 'P1',
@@ -45,7 +69,7 @@ function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): Dial
     source: {
       app: 'todo',
       recordId: source.taskId,
-      evaluatedAt: new Date().toISOString(),
+      evaluatedAt,
     },
     dedupeKey: `high_task_today:${source.taskId}:date:${source.validatedDateKey}`,
     ruleVersion: PET_DIALOGUE_RULE_VERSION,

@@ -1,7 +1,17 @@
 import { getInventoryAppRoute } from '../knownRoutes';
 import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';
-import type { DialogueCandidate } from '../types';
+import type { DialogueCandidate, InsightCandidate } from '../types';
 import type { InventorySnapshot, InventorySnapshotItem } from './inventorySnapshotProvider';
+
+/** See expiredInventoryProvider.ts's ExpiredInventoryFacts for the same
+ *  design intent — a pure exposure of values already computed by
+ *  selectLowStockSourceForItem below, never a new calculation. */
+export interface LowStockInventoryFacts {
+  itemId: string;
+  itemName: string | null;
+  quantity: number;
+  threshold: number;
+}
 
 /**
  * Pure P2 (low stock) evaluation over the same InventorySnapshot P0/expiring
@@ -70,9 +80,10 @@ function compareSourcesForSelection(a: LowStockSource, b: LowStockSource): numbe
   return a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0;
 }
 
-function buildCandidateFromSource(source: LowStockSource): DialogueCandidate {
+function buildCandidateFromSource(source: LowStockSource): InsightCandidate<LowStockInventoryFacts> {
   const safeName = typeof source.itemName === 'string' && source.itemName.trim().length > 0 ? source.itemName.trim() : null;
   const message = safeName ? `${safeName} is nearly out of stock.` : 'An inventory item is nearly out of stock.';
+  const messageTemplate = '{itemName} is nearly out of stock.';
 
   // Quantity is part of the dedupe key (not the message) so a materially
   // changed stock level — e.g. dropping further — is treated as a new
@@ -80,7 +91,21 @@ function buildCandidateFromSource(source: LowStockSource): DialogueCandidate {
   // suppressed for the rest of the tab session.
   const dedupeKey = `inventory_low_stock:${source.itemId}:quantity:${source.quantity}:threshold${INVENTORY_LOW_STOCK_THRESHOLD}`;
 
+  const evaluatedAt = new Date().toISOString();
+  const facts: LowStockInventoryFacts = {
+    itemId: source.itemId,
+    itemName: source.itemName,
+    quantity: source.quantity,
+    threshold: INVENTORY_LOW_STOCK_THRESHOLD,
+  };
+
   return {
+    app: 'inventory',
+    triggerId: DIALOGUE_ID.INVENTORY_LOW_STOCK,
+    facts,
+    messageTemplate,
+    sourceRecordId: source.itemId,
+    evaluatedAt,
     userState: 'ACTIVE_USER_URGENT',
     dialogueId: DIALOGUE_ID.INVENTORY_LOW_STOCK,
     priority: 'P2',
@@ -89,7 +114,7 @@ function buildCandidateFromSource(source: LowStockSource): DialogueCandidate {
     source: {
       app: 'inventory',
       recordId: source.itemId,
-      evaluatedAt: new Date().toISOString(),
+      evaluatedAt,
     },
     dedupeKey,
     ruleVersion: PET_DIALOGUE_RULE_VERSION,

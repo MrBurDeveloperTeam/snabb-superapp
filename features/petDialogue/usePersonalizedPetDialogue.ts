@@ -16,11 +16,42 @@ import {
   DIALOGUE_ID,
   PET_DIALOGUE_RULE_VERSION,
   type DialogueCandidate,
+  type InsightCandidate,
   type PersonalizedDialogueLifecycle,
   type ProfileCompletionStatus,
 } from './types';
 
 const DEFAULT_FALLBACK_AUTO_CLOSE_MS = 6000;
+
+/** See providers/expiredInventoryProvider.ts's ExpiredInventoryFacts for the
+ *  same design intent. `messageSource` is included because it has a real
+ *  architectural purpose: distinguishing an admin-configured AIBoard message
+ *  from the emergency hardcoded one is exactly the kind of provenance a
+ *  future Landing Insight/Data-Driven Chat consumer would need to decide
+ *  whether the wording is safe to reuse/rephrase elsewhere. */
+export interface WelcomeFallbackFacts {
+  userId: string;
+  firstName: string | null;
+  messageSource: 'aiboard' | 'hardcoded_fallback';
+}
+
+// Existing, source-proven placeholder convention for `welcome_back_text` —
+// reused verbatim from CatMascot.tsx's legacy (flag-disabled) `initDialog()`
+// welcomeBack path, which already implements this exact `[name]` substitution
+// against this exact column. Not a new placeholder syntax: this mirrors that
+// code's regex and graceful-strip-when-no-name behavior so an admin-authored
+// `[name]` works identically regardless of which code path is active.
+function applyNamePlaceholder(text: string, firstName: string | null): string {
+  if (!/\[name\]/i.test(text)) return text;
+  return firstName
+    ? text.replace(/\[name\]/gi, firstName)
+    : text
+        .replace(/,\s*\[name\]/gi, '')
+        .replace(/\[name\],\s*/gi, '')
+        .replace(/\[name\]/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}
 
 interface UsePersonalizedPetDialogueOptions {
   /** Feature flag enabled AND the user is logged in (mirrors CatMascot's `!disabled`). */
@@ -57,16 +88,57 @@ function buildFallbackCandidate(params: {
   metaName?: string | null;
   email?: string | null;
   autoCloseMs: number;
-}): DialogueCandidate {
+  /**
+   * Raw `aiboard_simulator_configs.welcome_back_text` for this evaluation,
+   * as resolved by fetchLegacyIntroCandidate — `undefined` when that fetch
+   * failed/found no config row, `null` when the row exists but the column
+   * is null, a string for any stored value (including empty/whitespace).
+   * This is the ONLY thing that decides whether AIBoard or the hardcoded
+   * text is authoritative for this candidate — see the eligibility check
+   * below (non-empty after trim).
+   */
+  configuredWelcomeBackText?: string | null;
+}): InsightCandidate<WelcomeFallbackFacts> {
   const firstName = resolveSafeFirstName(params);
-  const message = firstName ? `Welcome back, ${firstName}!` : 'Welcome back!';
+
+  const trimmedConfigured = params.configuredWelcomeBackText?.trim() ?? '';
+  const useAiboardText = trimmedConfigured.length > 0;
+
+  // Emergency hardcoded path — byte-for-byte identical to before this
+  // change whenever AIBoard's config is missing/null/blank/whitespace-only
+  // or the config fetch itself failed. Never reached when useAiboardText.
+  const hardcodedMessage = firstName ? `Welcome back, ${firstName}!` : 'Welcome back!';
+  const hardcodedMessageTemplate = 'Welcome back, {firstName}!';
+
+  // AIBoard path — the raw, untrimmed, un-rewritten admin text is the
+  // canonical template; `message` is that same text with the existing
+  // `[name]` placeholder (if present) resolved, and nothing else changed —
+  // no prepended/appended sentence, no punctuation/wording changes.
+  const configuredRaw = params.configuredWelcomeBackText as string; // only read when useAiboardText
+  const message = useAiboardText ? applyNamePlaceholder(configuredRaw, firstName) : hardcodedMessage;
+  const messageTemplate = useAiboardText ? configuredRaw : hardcodedMessageTemplate;
+
+  const evaluatedAt = new Date().toISOString();
+  const facts: WelcomeFallbackFacts = {
+    userId: params.userId,
+    firstName,
+    messageSource: useAiboardText ? 'aiboard' : 'hardcoded_fallback',
+  };
 
   return {
+    // Neutral, no-urgent-condition fallback — not tied to any one mini-app
+    // (see legacyIntroProvider.ts's identical reasoning for 'legacy').
+    app: 'system',
+    triggerId: DIALOGUE_ID.WELCOME_FALLBACK,
+    facts,
+    messageTemplate,
+    sourceRecordId: params.userId,
+    evaluatedAt,
     userState: 'GENERAL_USER_NO_URGENT',
     dialogueId: DIALOGUE_ID.WELCOME_FALLBACK,
     priority: 'FALLBACK',
     message,
-    source: { app: 'gallery', evaluatedAt: new Date().toISOString() },
+    source: { app: 'gallery', evaluatedAt },
     dedupeKey: `welcome_fallback:${params.userId}`,
     ruleVersion: PET_DIALOGUE_RULE_VERSION,
     autoCloseMs: params.autoCloseMs,
@@ -289,6 +361,12 @@ export function usePersonalizedPetDialogue({
           metaName,
           email,
           autoCloseMs: DEFAULT_FALLBACK_AUTO_CLOSE_MS,
+          // Reuses the same aiboard_simulator_configs row fetchLegacyIntroCandidate
+          // already resolved above (Promise.all) — no second config query.
+          // Independent of inventory/todo/appointment's own success/failure
+          // below: this fallback should still use the configured AIBoard
+          // wording even when one of those three providers failed.
+          configuredWelcomeBackText: introResult.welcomeBackText,
         });
 
         if (inventoryResult.status === 'failed' || todoResult.status === 'failed' || appointmentResult.status === 'failed') {

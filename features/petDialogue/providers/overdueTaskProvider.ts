@@ -1,13 +1,24 @@
 import { sanitizeTaskTitleForDialogue } from '../safeTaskTitle';
 import { getTodoAppRoute } from '../knownRoutes';
 import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';
-import type { DialogueCandidate } from '../types';
+import type { DialogueCandidate, InsightCandidate } from '../types';
 import type { TodoSnapshot } from './todoSnapshotProvider';
 import {
   compareByCreatedTimeThenTaskId,
   extractQualifyingHighUrgencyTaskSource,
   type QualifyingHighUrgencyTaskSource,
 } from './todoTaskFilters';
+
+/** See expiredInventoryProvider.ts's ExpiredInventoryFacts for the same
+ *  design intent. `urgency` is always 'HIGH' by construction — see
+ *  todoTaskFilters.ts's extractQualifyingHighUrgencyTaskSource, the only
+ *  source of QualifyingHighUrgencyTaskSource values. */
+export interface OverdueHighTaskFacts {
+  taskId: string;
+  title: string | null;
+  dueDate: string;
+  urgency: 'HIGH';
+}
 
 /**
  * Pure P0 (overdue High-priority task) evaluation over the TodoSnapshot —
@@ -28,11 +39,26 @@ function compareSourcesForSelection(a: QualifyingHighUrgencyTaskSource, b: Quali
   return compareByCreatedTimeThenTaskId(a, b);
 }
 
-function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): DialogueCandidate {
+function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): InsightCandidate<OverdueHighTaskFacts> {
   const safeTitle = sanitizeTaskTitleForDialogue(source.title);
   const message = safeTitle ? `Your urgent task "${safeTitle}" is overdue.` : 'You have an overdue urgent task.';
+  const messageTemplate = 'Your urgent task "{title}" is overdue.';
+
+  const evaluatedAt = new Date().toISOString();
+  const facts: OverdueHighTaskFacts = {
+    taskId: source.taskId,
+    title: source.title,
+    dueDate: source.validatedDateKey,
+    urgency: 'HIGH',
+  };
 
   return {
+    app: 'todo',
+    triggerId: DIALOGUE_ID.OVERDUE_HIGH_TASK,
+    facts,
+    messageTemplate,
+    sourceRecordId: source.taskId,
+    evaluatedAt,
     userState: 'ACTIVE_USER_URGENT',
     dialogueId: DIALOGUE_ID.OVERDUE_HIGH_TASK,
     priority: 'P0',
@@ -41,7 +67,7 @@ function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): Dial
     source: {
       app: 'todo',
       recordId: source.taskId,
-      evaluatedAt: new Date().toISOString(),
+      evaluatedAt,
     },
     dedupeKey: `overdue_high_task:${source.taskId}:date:${source.validatedDateKey}`,
     ruleVersion: PET_DIALOGUE_RULE_VERSION,

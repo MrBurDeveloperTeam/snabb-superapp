@@ -4,6 +4,21 @@
 // reference. Priority order (approved 1E revision): P0 > P1 > incomplete
 // profile > P2 > legacy post-login intro > fallback — see PRIORITY_RANK in
 // resolveDialogue.ts for the authoritative numeric ranking.
+//
+// AI Experience Phase 1: `DialogueCandidate` below is now a direct alias of
+// the canonical `InsightCandidate` contract (see
+// features/aiExperience/contracts/insightCandidate.ts) rather than its own
+// interface. This is a type-only, additive change — every field this file
+// used to declare directly is still present, verbatim, on `InsightCandidate`
+// under its "legacy-compatible fields" heading, so resolveDialogue.ts,
+// usePersonalizedPetDialogue.ts, and CatMascot.tsx all keep compiling and
+// behaving identically. Only the candidate-building code in
+// features/petDialogue/providers/*.ts was touched, to additionally populate
+// the new canonical fields (`app`, `triggerId`, `facts`, `messageTemplate`,
+// `sourceRecordId`, `evaluatedAt`).
+
+export type { InsightCandidate, InsightApp, InsightTriggerId } from '@/features/aiExperience/contracts/insightCandidate';
+import type { InsightCandidate } from '@/features/aiExperience/contracts/insightCandidate';
 
 export type DialoguePriority = 'P0' | 'P1' | 'PROFILE' | 'P2' | 'LEGACY_INTRO' | 'FALLBACK';
 
@@ -26,27 +41,13 @@ export interface DialogueSource {
   batchId?: string;
 }
 
-export interface DialogueCandidate {
-  userState: DialogueUserState;
-  dialogueId: string;
-  priority: DialoguePriority;
-  message: string;
-  action?: DialogueAction;
-  source: DialogueSource;
-  expiresAt?: string;
-  dedupeKey: string;
-  ruleVersion: string;
-  /** P0 alerts may bypass the cosmetic entry-walk gate; everything else waits for it. */
-  bypassEntryWalk?: boolean;
-  /** Only the fixed welcome fallback uses this today. */
-  autoCloseMs?: number;
-  /** Event/condition time (e.g. an expiry date) — first tie-breaker within the same priority. */
-  eventTime?: string;
-  /** Record creation time — second tie-breaker within the same priority. */
-  createdTime?: string;
-  /** Stable record id — final tie-breaker. Callers fall back to dedupeKey when no natural id exists. */
-  recordId?: string;
-}
+/**
+ * Backward-compatible alias: every consumer that imports `DialogueCandidate`
+ * from this file continues to get the exact same field set it always did
+ * (see InsightCandidate's "legacy-compatible fields") — plus the new
+ * canonical fields, which every provider in ./providers now populates.
+ */
+export type DialogueCandidate = InsightCandidate;
 
 /**
  * Controlled set of dialogue ids. The action-execution layer switches on
