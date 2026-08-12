@@ -31,7 +31,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       app.route.startsWith('http://') || app.route.startsWith('https://');
 
     if (isExternal && isLoggedIn) {
-      const w = window.open('', '_blank');
+      
 
       switch (true) {
         case app.route.includes('inventory'): {
@@ -40,7 +40,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
 
@@ -53,7 +53,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
 
@@ -63,7 +63,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
 
@@ -74,17 +74,17 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             name: user.name,
           });
 
-          if (res.result?.url && w) {
+          if (res.result?.url) {
             const ssoUrl = new URL(res.result.url);
             const token = ssoUrl.searchParams.get('token');
             const companyCode = ssoUrl.searchParams.get('company_code') || 'INT';
             console.log('SSO token:', token, 'company_code:', companyCode);
             if (token) {
-              w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
-                token
-              )}&company_code=${encodeURIComponent(companyCode)}`;
+              // w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
+              //   token
+              // )}&company_code=${encodeURIComponent(companyCode)}`;
             } else {
-              w.location.href = res.result.url;
+              // w.location.href = res.result.url;
             }
           }
 
@@ -97,7 +97,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
 
@@ -107,7 +107,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
 
@@ -117,7 +117,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
 
@@ -127,7 +127,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
 
@@ -137,7 +137,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
           break;
         }
         case app.route.includes('charting'): {
@@ -146,7 +146,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
             email: user.username,
             name: user.name,
           });
-          if (res.result?.url && w) w.location.href = res.result.url;
+          // if (res.result?.url && w) w.location.href = res.result.url;
+          window.open(res.result.url, '_blank');
           break;
         }
 
