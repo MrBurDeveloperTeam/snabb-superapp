@@ -100,9 +100,9 @@ export const MINI_APPS: MiniApp[] = [
   },
   {
     id: 'app-12',
-    title: 'Charting',
+    title: 'Dental Charting',
     category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
+    icon: 'https://app.snabbb.com/icons/dental_charting.png',
     route: `https://charting.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
