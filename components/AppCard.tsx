@@ -20,7 +20,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   const iconCornerRadius = '20%';
 
   // Opens the destination directly via the worker's server-side
-  // /api/launch/:appCode redirect, instead of the previous pattern of
+  // /api/sso/launch/:appCode redirect, instead of the previous pattern of
   // opening a blank tab (window.open('', '_blank')) and only relocating it
   // *after* an async fetch('/api/v1/sso/app_link') resolved. That old
   // pattern -- blank tab now, silent JS redirect later -- is structurally
@@ -91,7 +91,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       }
 
       if (appCode) {
-        window.open(`https://app.snabbb.com/api/launch/${appCode}`, '_blank');
+        window.open(`https://app.snabbb.com/api/sso/launch/${appCode}`, '_blank');
       }
     } else {
       window.open(app.route, '_blank');
