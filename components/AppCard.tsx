@@ -90,7 +90,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       }
 
       if (appCode) {
-        window.open(`https://app.snabbb.com/launch/${appCode}`, '_blank');
+        window.open(`https://app.snabbb.com/api/launch/${appCode}`, '_blank');
       }
     } else {
       window.open(app.route, '_blank');
