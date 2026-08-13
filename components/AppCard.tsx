@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 import { MiniApp } from '../types';
 import { getAuthUser } from '@/utils/authStorage';
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
@@ -31,130 +32,75 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       app.route.startsWith('http://') || app.route.startsWith('https://');
 
     if (isExternal && isLoggedIn) {
-      
+      // Figure out which app we're launching synchronously — no awaits yet.
+      const appCode = app.route.includes('inventory')
+        ? 'inventory'
+        : app.route.includes('recruitment')
+        ? null // not wired up yet
+        : app.route.includes('appointment')
+        ? 'appointment'
+        : app.route.includes('event')
+        ? 'event'
+        : app.route.includes('mrbur.shop')
+        ? 'shop'
+        : app.route.includes('calculator')
+        ? 'calculator'
+        : app.route.includes('todo')
+        ? 'todo'
+        : app.route.includes('imageai')
+        ? 'imageai'
+        : app.route.includes('e-learning')
+        ? 'e-learning'
+        : app.route.includes('reward')
+        ? 'reward'
+        : app.route.includes('charting')
+        ? 'charting'
+        : null;
 
-      switch (true) {
-        case app.route.includes('inventory'): {
-          const res = await createAppLink({ 
-            app: 'inventory',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
-        }
+      if (!appCode) return;
 
-        case app.route.includes('recruitment'):
-          break;
+      // Safari requires window.open() to happen synchronously inside the
+      // click handler, before any `await`. If we wait for createAppLink()
+      // to resolve first, Safari's popup blocker silently kills the tab
+      // (Chrome is more lenient, which is why this worked there). So we
+      // open a blank tab right away and navigate it once we have the URL.
+      const newTab = window.open('', '_blank');
 
-        case app.route.includes('appointment'): {
-          const res = await createAppLink({
-            app: 'appointment',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
-        }
+      try {
+        const res = await createAppLink({
+          app: appCode,
+          email: user.username,
+          name: user.name,
+        });
 
-        case app.route.includes('event'): {
-          const res = await createAppLink({
-            app: 'event',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
-        }
+        let targetUrl = res.result?.url;
 
-        case app.route.includes('mrbur.shop'): {
-          const res = await createAppLink({
-            app: 'shop',
-            email: user.username,
-            name: user.name,
-          });
-
-          if (res.result?.url) {
-            const ssoUrl = new URL(res.result.url);
-            const token = ssoUrl.searchParams.get('token');
-            const companyCode = ssoUrl.searchParams.get('company_code') || 'INT';
-            console.log('SSO token:', token, 'company_code:', companyCode);
-            if (token) {
-              // w.location.href = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
-              //   token
-              // )}&company_code=${encodeURIComponent(companyCode)}`;
-              window.open(`https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
-                token
-              )}&company_code=${encodeURIComponent(companyCode)}`, '_blank');
-            } else {
-              window.open(res.result.url, '_blank');
-            }
+        if (appCode === 'shop' && targetUrl) {
+          const ssoUrl = new URL(targetUrl);
+          const token = ssoUrl.searchParams.get('token');
+          const companyCode = ssoUrl.searchParams.get('company_code') || 'INT';
+          if (token) {
+            targetUrl = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
+              token
+            )}&company_code=${encodeURIComponent(companyCode)}`;
           }
-
-          break;
         }
 
-        case app.route.includes('calculator'): {
-          const res = await createAppLink({
-            app: 'calculator',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
+        if (!targetUrl) {
+          throw new Error('No launch URL was returned.');
         }
 
-        case app.route.includes('todo'): {
-          const res = await createAppLink({
-            app: 'todo',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
+        if (newTab) {
+          newTab.location.href = targetUrl;
+        } else {
+          // Popup blocker still caught it (e.g. blocked at the OS/browser
+          // level) — fall back to a direct open as a last resort.
+          window.open(targetUrl, '_blank');
         }
-
-        case app.route.includes('imageai'): {
-          const res = await createAppLink({
-            app: 'imageai',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
-        }
-
-        case app.route.includes('e-learning'): {
-          const res = await createAppLink({
-            app: 'e-learning',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
-        }
-
-        case app.route.includes('reward'): {
-          const res = await createAppLink({
-            app: 'reward',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
-        }
-        case app.route.includes('charting'): {
-          const res = await createAppLink({
-            app: 'charting',
-            email: user.username,
-            name: user.name,
-          });
-          window.open(res.result.url, '_blank');
-          break;
-        }
-
-        default:
-          break;
+      } catch (e: any) {
+        newTab?.close();
+        console.error(`Failed to open ${app.title}:`, e);
+        toast.error(e?.message || `Could not open ${app.title}. Please try again.`);
       }
     } else {
       window.open(app.route, '_blank');

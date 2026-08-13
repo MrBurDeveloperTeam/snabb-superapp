@@ -1086,6 +1086,9 @@ useEffect(() => {
                       {/* Snabbb Credit */}
                       <button
                         onClick={async () => {
+                          // Open the tab synchronously (before any await) so Safari's
+                          // popup blocker doesn't treat it as an unrequested popup.
+                          const w = window.open('', '_blank');
                           try {
                             const res = await createAppLink({
                               app: 'reward',
@@ -1094,11 +1097,13 @@ useEffect(() => {
                             });
 
                             const supabaseUserId = res.result?.supabase_user_id;
-                            const w = window.open('', '_blank');
                             if (supabaseUserId && w) {
                               w.location.href = `https://reward.snabbb.com`;
+                            } else {
+                              w?.close();
                             }
                           } catch (e: any) {
+                            w?.close();
                             console.error('Failed to open Snabbb Credit:', e);
                             toast.error(e?.message || 'Could not open Snabbb Credit. Please try logging in again.');
                           }
@@ -1120,6 +1125,9 @@ useEffect(() => {
                       {/* My Channel */}
                       <button
                         onClick={async () => {
+                          // Open the tab synchronously (before any await) so Safari's
+                          // popup blocker doesn't treat it as an unrequested popup.
+                          const w = window.open('', '_blank');
                           try {
                             const res = await createAppLink({
                               app: 'e-learning',
@@ -1128,11 +1136,13 @@ useEffect(() => {
                             });
 
                             const supabaseUserId = res.result?.supabase_user_id;
-                            const w = window.open('', '_blank');
                             if (supabaseUserId && w) {
                               w.location.href = `https://e-learning.snabbb.com/channel/${supabaseUserId}`;
+                            } else {
+                              w?.close();
                             }
                           } catch (e: any) {
+                            w?.close();
                             console.error('Failed to open My Channel:', e);
                             toast.error(e?.message || 'Could not open My Channel. Please try logging in again.');
                           }
