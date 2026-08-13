@@ -93,9 +93,13 @@ onSuccess: async ({ sessionInfo, session_id }) => {
       onAuthSuccess();
     }
   } else {
-    // No redirect param — stay on Snabbb (normal login)
+    // No redirect param — stay on Snabbb (normal login).
+    // onAuthSuccess() flips the app into its logged-in "ready" state
+    // (session stored, React state updated, URL pushed to '/'); once
+    // that's done, refresh so the whole page (not just React state)
+    // picks up the newly-authenticated session.
     onAuthSuccess();
-    window.location.href = res.result.url;
+    window.location.reload();
   }
 },
 
