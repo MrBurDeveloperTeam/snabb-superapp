@@ -33,7 +33,20 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
 
     if (isExternal && isLoggedIn) {
       // Figure out which app we're launching synchronously — no awaits yet.
-      const appCode = app.route.includes('inventory')
+      //
+      // Shop is matched on app.id, not app.route, on purpose: constants.ts
+      // resolves Shop's route from the user's company_code, which is read
+      // from localStorage once, at module-load time. Right after a fresh
+      // login that data usually isn't populated yet, so the route silently
+      // falls back to 'https://app.snabbb.com/shop' — a string that doesn't
+      // contain 'mrbur.shop', so the old substring match here would fail to
+      // recognize it as the Shop app and just no-op on click (no tab, no
+      // error). Matching on the stable id sidesteps that entirely; the real
+      // shop URL still comes from the backend's createAppLink response
+      // below, not from app.route.
+      const appCode = app.id === 'app-1'
+        ? 'shop'
+        : app.route.includes('inventory')
         ? 'inventory'
         : app.route.includes('recruitment')
         ? null // not wired up yet
@@ -41,8 +54,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
         ? 'appointment'
         : app.route.includes('event')
         ? 'event'
-        : app.route.includes('mrbur.shop')
-        ? 'shop'
         : app.route.includes('calculator')
         ? 'calculator'
         : app.route.includes('todo')
