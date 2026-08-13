@@ -93,7 +93,13 @@ onSuccess: async ({ sessionInfo, session_id }) => {
       onAuthSuccess();
     }
   } else {
-    // No redirect param — stay on Snabbb (normal login)
+    // No redirect param — stay on Snabbb (normal login).
+    // Mark that we're coming from a fresh login so the app knows, once it
+    // lands back here after the SSO handshake below, to force one real
+    // reload (see the bootstrapSession check in App.tsx). Doesn't change
+    // the handshake itself — res.result.url still has to be visited to
+    // actually establish the session.
+    sessionStorage.setItem('snabbb_just_logged_in', '1');
     onAuthSuccess();
     window.location.href = res.result.url;
   }

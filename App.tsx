@@ -731,6 +731,16 @@ useEffect(() => {
     didInitRef.current = true;
 
     const bootstrapSession = async () => {
+      // If we just landed here fresh off completing a login's SSO handshake,
+      // force one real browser reload so the whole page — not just this
+      // mount — reflects the newly-established session. The marker is
+      // cleared immediately so this can only ever fire once per login.
+      if (sessionStorage.getItem('snabbb_just_logged_in')) {
+        sessionStorage.removeItem('snabbb_just_logged_in');
+        window.location.reload();
+        return;
+      }
+
       await hydrateSupabaseSession();
 
       const params = new URLSearchParams(window.location.search);
