@@ -84,6 +84,16 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
           name: user.name,
         });
 
+        // Odoo's /v1/sso/app_link returns { ok: false, error: 'blocked', reason }
+        // instead of a url when an admin has blocked this account from this
+        // app (see snabbb_app_access). Surface the real reason instead of
+        // falling through to the generic "No launch URL" error below.
+        if (res.result?.ok === false) {
+          throw new Error(
+            res.result.reason || `You don't have access to ${app.title}.`
+          );
+        }
+
         let targetUrl = res.result?.url;
 
         if (appCode === 'shop' && targetUrl) {
