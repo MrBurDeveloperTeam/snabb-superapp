@@ -1214,7 +1214,9 @@ useEffect(() => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/signup')}
+                  onClick={() => {
+                    window.location.href = 'https://calculator.snabbb.com/register';
+                  }}
                   className="px-4 sm:px-6 py-2 sm:py-2.5 bg-tiffany-600 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-tiffany-600/20 hover:bg-tiffany-700 transition-all"
                 >
                   Sign Up
