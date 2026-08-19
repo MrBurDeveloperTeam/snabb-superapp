@@ -74,6 +74,7 @@ export const DOBPicker: React.FC<DOBPickerProps> = ({
     <Controller
       name={name}
       control={control}
+      rules={{ required: required ? 'Date of birth is required.' : false }}
       render={({ field }) => {
         const parsed = parseISO(field.value || '');
         const displayDay = tempDay ?? parsed.day;

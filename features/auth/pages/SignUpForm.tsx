@@ -179,6 +179,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         name="companyEmail"
                         defaultValue=""
                         control={control}
+                        rules={{ required: 'Company email is required.' }}
                         render={({ field }) => (
                           <input
                             {...field}
@@ -192,6 +193,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                       />
                     </div>
                     <p className="mt-1 text-xs text-slate-400 italic">Company email for login and communication.</p>
+                    {error.companyEmail && <p className="mt-1 text-xs text-red-500">{error.companyEmail.message}</p>}
                   </div>
                 </>
               )}
@@ -205,6 +207,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     <Controller
                       name="login"
                       control={control}
+                      rules={{ required: 'Email is required.' }}
                       render={({ field }) => (
                         <input
                           {...field}
@@ -218,6 +221,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     />
                   </div>
                   <p className="mt-1 text-xs text-slate-400 italic">This will be your login email.</p>
+                  {error.login && <p className="mt-1 text-xs text-red-500">{error.login.message}</p>}
                 </div>
               )}
 
@@ -252,6 +256,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="fullName"
                     control={control}
+                    rules={{ required: 'Your name is required.' }}
                     render={({ field }) => (
                       <input
                         {...field}
@@ -267,6 +272,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 {accountType === 'company' && (
                   <p className="mt-1 text-xs text-slate-400 italic">Your name as the company representative.</p>
                 )}
+                {error.fullName && <p className="mt-1 text-xs text-red-500">{error.fullName.message}</p>}
               </div>
 
               {/* Phone */}
@@ -277,6 +283,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="phone"
                     control={control}
+                    rules={{ required: 'Phone number is required.' }}
                     render={({ field }) => (
                       <input
                         {...field}
@@ -319,6 +326,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="jobPosition"
                     control={control}
+                    rules={{ required: 'Please select a job position.' }}
                     render={({ field }) => (
                       <select
                         {...field}
@@ -342,6 +350,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   />
                   <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] pointer-events-none" />
                 </div>
+                {error.jobPosition && <p className="mt-1 text-xs text-red-500">{error.jobPosition.message}</p>}
               </div>
 
               {/* Custom Job Position */}
@@ -354,6 +363,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                       <Controller
                         name="customJobPosition"
                         control={control}
+                        rules={{ required: isOtherMode ? 'Please specify your job position.' : false }}
                         render={({ field }) => (
                           <input
                             {...field}
@@ -366,6 +376,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         )}
                       />
                     </div>
+                    {error.customJobPosition && <p className="mt-1 text-xs text-red-500">{error.customJobPosition.message}</p>}
                   </motion.div>
                 )}
               </AnimatePresence>
