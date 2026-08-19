@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { View } from '@/types/View';
 import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
-import { Control, Controller, FieldErrors, SubmitHandler, UseFormHandleSubmit } from 'react-hook-form';
+import { Control, Controller, FieldErrors, SubmitHandler, UseFormHandleSubmit, useWatch } from 'react-hook-form';
 import { AuthFormInputs } from '../types/AuthFormInputs';
 import { Box } from "@mui/material";
 import { inputClasses, labelClasses } from '@/shared/styles/style';
@@ -29,6 +29,8 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
   const [accountType, setAccountType] = useState<'individual' | 'company'>('individual');
 
   const signupMutation = useAuthMutation();
+
+  const passwordValue = useWatch({ control, name: 'password' });
 
   const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
     try {
@@ -665,6 +667,10 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="password"
                     control={control}
+                    rules={{
+                      required: 'Password is required.',
+                      minLength: { value: 8, message: 'Password must be at least 8 characters.' },
+                    }}
                     render={({ field }) => (
                       <input
                         {...field}
@@ -688,6 +694,10 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="confirmPassword"
                     control={control}
+                    rules={{
+                      required: 'Please confirm your password.',
+                      validate: (value) => value === passwordValue || 'Passwords do not match.',
+                    }}
                     render={({ field }) => (
                       <input
                         {...field}
