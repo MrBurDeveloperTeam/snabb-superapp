@@ -5,6 +5,7 @@ import { supabase } from '../services/supabaseClient';
 import { getPetOption, normalizePetId } from '../VirtualPet/petOptions';
 import { isPersonalizedPetDialogueEnabled } from '../features/petDialogue/dialogueFlag';
 import { usePersonalizedPetDialogue } from '../features/petDialogue/usePersonalizedPetDialogue';
+import { markDialogueDismissed, buildDialogueDismissalKey } from '../features/petDialogue/sessionDedupe';
 import { DIALOGUE_ID, type DialogueCandidate, type ProfileCompletionStatus } from '../features/petDialogue/types';
 
 const MALLOW_FRAME_WIDTH = 192;
@@ -224,10 +225,25 @@ export default function CatMascot({
     localStorage.setItem(`intro_shown_${uid}`, 'true');
   };
 
-  const closeDialog = () => {
+  // persistDismissal defaults to true (Close button, CTA button, and the
+  // auto-close timer all count as this tab actually finishing with the
+  // dialogue, so they write the cross-tab localStorage dismissal). The one
+  // caller that must NOT write again is the cross-tab `storage` event
+  // listener below — the dismissal key is already present in shared
+  // localStorage (that's what triggered the event), so re-writing it here
+  // would be a pointless redundant write, not merely idempotent; passing
+  // persistDismissal: false keeps that handler a pure local-UI suppression.
+  const closeDialog = (options?: { persistDismissal?: boolean }) => {
+    const persistDismissal = options?.persistDismissal ?? true;
     const dialogType = currentDialogType.current;
     if (dialogType) {
       dismissedDialogs.current.add(dialogType);
+    }
+    if (persistDismissal && dialogType === 'personalized') {
+      const candidate = personalizedCandidateRef.current;
+      if (candidate && personalizedUserId) {
+        markDialogueDismissed(personalizedUserId, candidate.dedupeKey);
+      }
     }
     isDialogActiveRef.current = false;
     setIsDialogActive(false);
@@ -354,6 +370,38 @@ export default function CatMascot({
       // evaluation once it resolves.
     }
   }, [personalizedUserId, personalizedDialogueEnabled, disabled]);
+
+  // Cross-tab dismissal sync: if the SAME dialogue (same userId + dedupeKey)
+  // is dismissed (Close or CTA) in another tab, that tab's write to
+  // localStorage fires the native `storage` event here — but only in THIS
+  // tab, never in the tab that performed the write, so reusing closeDialog()
+  // (which itself re-writes the identical key/value) cannot loop. Only acts
+  // on the 'personalized' dialog type and only while it's actually visible
+  // for the matching candidate; unrelated storage writes (theme, other
+  // dedupeKeys, other users) are ignored.
+  useEffect(() => {
+    if (!personalizedDialogueEnabled) return;
+
+    const handleStorage = (event: StorageEvent) => {
+      if (!event.key || event.newValue === null) return;
+      if (currentDialogType.current !== 'personalized') return;
+      if (!isDialogActiveRef.current) return;
+
+      const candidate = personalizedCandidateRef.current;
+      if (!candidate || !personalizedUserId) return;
+
+      const expectedKey = buildDialogueDismissalKey(personalizedUserId, candidate.dedupeKey);
+      if (event.key === expectedKey) {
+        // Local UI suppression only — the dismissal key is already in
+        // shared localStorage (that's what fired this event), so this must
+        // never write it again.
+        closeDialog({ persistDismissal: false });
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [personalizedDialogueEnabled, personalizedUserId]);
 
   // Adopts the resolver's selection into the same dialogSteps/currentDialogType
   // machinery the legacy Intro/Welcome Back paths already use, so rendering,
@@ -1089,7 +1137,7 @@ export default function CatMascot({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="w-max shrink-0 max-w-[min(85vw,340px)] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
+              className="w-max shrink-0 max-w-[min(80vw,310px)] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
               <div

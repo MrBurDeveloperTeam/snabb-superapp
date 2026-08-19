@@ -9,7 +9,7 @@ import { fetchAppointmentDialogueEvaluation } from './providers/appointmentSnaps
 import { buildProfileCandidate } from './providers/profileProvider';
 import { fetchLegacyIntroCandidate } from './providers/legacyIntroProvider';
 import { resolveSafeFirstName } from './nameResolution';
-import { hasHandledInSession, markHandledInSession } from './sessionDedupe';
+import { isDialogueIneligible, markDialogueDismissed, markDialogueSeenThisSession } from './sessionDedupe';
 import { getInventoryAppRoute, getTodoAppRoute, getAppointmentAppRoute, getProfileSettingsRoute } from './knownRoutes';
 import { toCalendarDateKey } from './dateUtils';
 import {
@@ -402,10 +402,10 @@ export function usePersonalizedPetDialogue({
         // shared resolver, so resolveDialogue.ts never has to compare an
         // inventory expiry date against a Todo task date — at most one P0
         // candidate is ever passed into it.
-        const unhandledExpired = expiredCandidate && !hasHandledInSession(capturedUserId, expiredCandidate.dedupeKey)
+        const unhandledExpired = expiredCandidate && !isDialogueIneligible(capturedUserId, expiredCandidate.dedupeKey)
           ? expiredCandidate
           : null;
-        const unhandledOverdueTask = overdueCandidate && !hasHandledInSession(capturedUserId, overdueCandidate.dedupeKey)
+        const unhandledOverdueTask = overdueCandidate && !isDialogueIneligible(capturedUserId, overdueCandidate.dedupeKey)
           ? overdueCandidate
           : null;
         const p0 = unhandledExpired ?? unhandledOverdueTask;
@@ -424,10 +424,10 @@ export function usePersonalizedPetDialogue({
         // reaches the shared resolver, exactly like the P0 subtypes above —
         // an appointment start instant is never compared against a Todo
         // due-date to decide this.
-        const unhandledAppointmentSoon = appointmentSoonCandidate && !hasHandledInSession(capturedUserId, appointmentSoonCandidate.dedupeKey)
+        const unhandledAppointmentSoon = appointmentSoonCandidate && !isDialogueIneligible(capturedUserId, appointmentSoonCandidate.dedupeKey)
           ? appointmentSoonCandidate
           : null;
-        const unhandledHighTaskToday = taskTodayCandidate && !hasHandledInSession(capturedUserId, taskTodayCandidate.dedupeKey)
+        const unhandledHighTaskToday = taskTodayCandidate && !isDialogueIneligible(capturedUserId, taskTodayCandidate.dedupeKey)
           ? taskTodayCandidate
           : null;
         const p1 = unhandledAppointmentSoon ?? unhandledHighTaskToday;
@@ -451,18 +451,18 @@ export function usePersonalizedPetDialogue({
         }
 
         const profileCandidateRaw = buildProfileCandidate(profileStatus, capturedUserId);
-        const profileCandidate = hasHandledInSession(capturedUserId, profileCandidateRaw?.dedupeKey ?? '')
+        const profileCandidate = isDialogueIneligible(capturedUserId, profileCandidateRaw?.dedupeKey ?? '')
           ? null
           : profileCandidateRaw;
 
-        // Session dedupe is applied independently to each P2 subtype before
+        // Dismissal dedupe is applied independently to each P2 subtype before
         // choosing between them — a handled Low Stock must not block an
         // otherwise-eligible Expiring Soon candidate on a different item,
         // and vice versa.
-        const unhandledLowStock = lowStockCandidate && !hasHandledInSession(capturedUserId, lowStockCandidate.dedupeKey)
+        const unhandledLowStock = lowStockCandidate && !isDialogueIneligible(capturedUserId, lowStockCandidate.dedupeKey)
           ? lowStockCandidate
           : null;
-        const unhandledExpiringSoon = expiringSoonCandidate && !hasHandledInSession(capturedUserId, expiringSoonCandidate.dedupeKey)
+        const unhandledExpiringSoon = expiringSoonCandidate && !isDialogueIneligible(capturedUserId, expiringSoonCandidate.dedupeKey)
           ? expiringSoonCandidate
           : null;
 
@@ -519,6 +519,10 @@ export function usePersonalizedPetDialogue({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, matchedUserId, profileStatus, refreshTick]);
 
+  // Show-time mark: same-tab/session ONLY (sessionStorage). Merely
+  // displaying a candidate must never suppress it in another tab — only an
+  // explicit Close or CTA does that (see runAction below, and
+  // CatMascot.tsx's closeDialog).
   const markShown = useCallback((candidate: DialogueCandidate) => {
     const uid = lockedUserIdRef.current;
     if (!uid) return;
@@ -528,14 +532,16 @@ export function usePersonalizedPetDialogue({
       candidate.priority === 'P1' ||
       candidate.priority === 'P2'
     ) {
-      markHandledInSession(uid, candidate.dedupeKey);
+      markDialogueSeenThisSession(uid, candidate.dedupeKey);
     }
   }, []);
 
   const runAction = useCallback(
     async (candidate: DialogueCandidate) => {
+      // CTA = explicit user action: write the cross-tab dismissal FIRST,
+      // synchronously, before any navigation below.
       const uid = lockedUserIdRef.current;
-      if (uid) markHandledInSession(uid, candidate.dedupeKey);
+      if (uid) markDialogueDismissed(uid, candidate.dedupeKey);
 
       if (candidate.dialogueId === DIALOGUE_ID.PROFILE_INCOMPLETE) {
         onNavigateInternal?.(getProfileSettingsRoute());
