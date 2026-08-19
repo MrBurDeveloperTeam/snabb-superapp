@@ -378,6 +378,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="country"
                     control={control}
+                    rules={{ required: 'Please select your country.' }}
                     render={({ field }) => (
                       <select
                         {...field}
@@ -642,6 +643,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   />
                   <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] pointer-events-none" />
                 </div>
+                {error.country && <p className="mt-1 text-xs text-red-500">{error.country.message}</p>}
               </div>
 
               {/* Password */}
