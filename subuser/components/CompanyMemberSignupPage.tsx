@@ -1,0 +1,77 @@
+import React, { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { authOdoo } from '@/services/authOdoo';
+import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
+import { acceptCompanyInvitation, getCompanyInvitation } from '../services/subuserService';
+import type { InvitationDetails } from '../types';
+
+type Props = { onComplete: () => void };
+
+export default function CompanyMemberSignupPage({ onComplete }: Props) {
+  const token = new URLSearchParams(window.location.search).get('token') || '';
+  const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ fullName: '', phone: '', dob: '', jobPosition: '', country: 'Malaysia', password: '', confirmPassword: '', referralCode: '', agreed: false });
+
+  useEffect(() => {
+    getCompanyInvitation(token)
+      .then((result) => setInvitation(result.invitation))
+      .catch((error) => toast.error(error?.message || 'This invitation is invalid or expired.'))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm((current) => ({ ...current, [key]: event.target.type === 'checkbox' ? (event.target as HTMLInputElement).checked : event.target.value }));
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!invitation) return;
+    if (form.password !== form.confirmPassword) return toast.error('Passwords do not match.');
+    setSubmitting(true);
+    try {
+      const response = await authOdoo({
+        account_type: 'company_member', login: invitation.email, fullName: form.fullName,
+        phone: form.phone, dob: form.dob, jobPosition: form.jobPosition, position: form.jobPosition,
+        country: form.country, password: form.password, confirmPassword: form.confirmPassword,
+        agreedToTerms: form.agreed, referralCode: form.referralCode,
+      });
+      if (!response?.data?.result?.created) throw new Error('An account already exists for this email. Please contact the company owner.');
+      await acceptCompanyInvitation(token);
+      toast.success('Account created. Check your email to verify and activate your account.');
+      setTimeout(onComplete, 2000);
+    } catch (error: any) {
+      toast.error(error?.message || 'Unable to create your company member account.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <div className="min-h-screen grid place-items-center bg-slate-100 text-slate-500">Opening invitation...</div>;
+  if (!invitation) return <div className="min-h-screen grid place-items-center bg-slate-100 px-6"><div className="rounded-3xl bg-white p-10 text-center shadow-xl"><h1 className="text-2xl font-black">Invitation unavailable</h1><p className="mt-3 text-slate-500">This link is invalid, expired, or has already been used.</p></div></div>;
+
+  const fieldClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/10';
+  const labelClass = 'mb-2 block text-xs font-black uppercase tracking-widest text-slate-400';
+  return (
+    <div className="min-h-screen bg-slate-100 px-5 py-10">
+      <form onSubmit={submit} className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl sm:p-12">
+        <div className="text-2xl font-black text-slate-950">App.<span className="text-tiffany-500">Snabbb.</span></div>
+        <h1 className="mt-9 text-3xl font-black text-slate-950">Welcome to join <span className="text-tiffany-600">{invitation.companyName}</span></h1>
+        <p className="mt-2 text-slate-400">Complete your profile to activate your team membership as <span className="font-bold capitalize">{invitation.role}</span>.</p>
+        <div className="mt-10"><label className={labelClass}>Referred by (optional)</label><input value={form.referralCode} onChange={update('referralCode')} placeholder="Referral code, email, or referral link" className={fieldClass} /></div>
+        <div className="mt-7 grid gap-6 md:grid-cols-2">
+          <div><label className={labelClass}>Your name</label><input required value={form.fullName} onChange={update('fullName')} placeholder="e.g. Alex Wong" className={fieldClass} /></div>
+          <div><label className={labelClass}>Your email</label><input readOnly value={invitation.email} className={`${fieldClass} bg-slate-50 text-slate-500`} /></div>
+          <div><label className={labelClass}>Phone (WhatsApp)</label><input required type="tel" value={form.phone} onChange={update('phone')} placeholder="e.g. +60123456789" className={fieldClass} /></div>
+          <div><label className={labelClass}>Date of birth</label><input required type="date" value={form.dob} onChange={update('dob')} className={fieldClass} /></div>
+          <div><label className={labelClass}>Job position</label><select required value={form.jobPosition} onChange={update('jobPosition')} className={fieldClass}><option value="">-- Select Position --</option>{DENTAL_POSITIONS.map((position) => <option key={position}>{position}</option>)}</select></div>
+          <div><label className={labelClass}>Country</label><select required value={form.country} onChange={update('country')} className={fieldClass}>{['Malaysia', 'Singapore', 'Indonesia', 'Thailand', 'Philippines', 'Vietnam', 'United Kingdom', 'United States'].map((country) => <option key={country}>{country}</option>)}</select></div>
+          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={fieldClass} /></div>
+          <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={fieldClass} /></div>
+        </div>
+        <label className="mt-7 flex items-start gap-3 text-sm text-slate-600"><input required type="checkbox" checked={form.agreed} onChange={update('agreed')} className="mt-1" />I agree to the Terms of Service, Privacy Policy and Disclaimer.</label>
+        <button disabled={submitting} className="mt-8 w-full rounded-2xl bg-slate-900 py-4 font-black text-white disabled:opacity-50">{submitting ? 'Creating account...' : 'Sign Up as Company Member'}</button>
+      </form>
+    </div>
+  );
+}

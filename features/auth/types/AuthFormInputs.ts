@@ -1,5 +1,5 @@
 export interface AuthFormInputs {
-  account_type: 'individual' | 'company';
+  account_type: 'individual' | 'company' | 'company_member';
 
   login: string;
   fullName: string;
