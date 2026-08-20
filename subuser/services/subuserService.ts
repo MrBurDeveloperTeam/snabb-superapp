@@ -1,5 +1,6 @@
 import { supabase } from '@/services/supabaseClient';
 import type { CompanyRole, InvitationDetails, InvitationRow, MemberRow } from '../types';
+import api from '@/services/api';
 
 // const invoke = async <T>(body: Record<string, unknown>): Promise<T> => {
 //   const { data, error } = await supabase.functions.invoke('company-invitations', { body });
@@ -12,13 +13,10 @@ import type { CompanyRole, InvitationDetails, InvitationRow, MemberRow } from '.
 //   invoke<{ ok: true; members: MemberRow[]; invitations: InvitationRow[] }>({ action: 'list' });
 
 export const sendCompanyInvitations = async <T>(action: string, params: Record<string, unknown> = {}): Promise<T> => {
-  const res = await fetch('https://app.snabbb.com/api/company-invitations', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+  const res = await api.post('https://app.snabbb.com/api/company-invitations', {
     body: JSON.stringify({ action, ...params }),
   });
-  const data = await res.json();
+  const data = await res.data;
   if (!data?.ok) throw new Error(data?.message || 'The request could not be completed.');
   return data as T;
 };
