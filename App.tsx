@@ -37,6 +37,8 @@ import { useProfileImage } from './hooks/useProfileImage';
 import ThemeToggle from './components/ThemeToggle';
 import { useThemeStore } from './store/themeStore';
 import LoadingOverlay from './components/LoadingOverlay';
+import UserManagementPage from './subuser/components/UserManagementPage';
+import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -175,8 +177,56 @@ const App: React.FC = () => {
   const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [accountType, setAccountType] = useState<string | null>(null);
+  const [isCheckingAccountType, setIsCheckingAccountType] = useState(false);
   // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const { profileImageUrl } = useProfileImage(isLoggedIn);
+  const isCompanyAccount = accountType === 'company';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAccountType = async () => {
+      if (!isLoggedIn) {
+        setAccountType(null);
+        setIsCheckingAccountType(false);
+        return;
+      }
+
+      setIsCheckingAccountType(true);
+
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+
+        const userId = authData.user?.id;
+        if (!userId) {
+          if (!cancelled) setAccountType(null);
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('account_type')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (profileError) throw profileError;
+        if (!cancelled) setAccountType(profile?.account_type ?? null);
+      } catch (error) {
+        console.warn('[User Management] Failed to load account type:', error);
+        if (!cancelled) setAccountType(null);
+      } finally {
+        if (!cancelled) setIsCheckingAccountType(false);
+      }
+    };
+
+    loadAccountType();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
@@ -275,6 +325,8 @@ useEffect(() => {
       isShortInviteRoute ||
       Boolean(pendingSignupInvite)
     );
+  const isCompanyMemberSignup = path === '/company-member-signup';
+  const isStandaloneSignup = isInviteSignup || isCompanyMemberSignup;
 
   useEffect(() => {
     let cancelled = false;
@@ -997,7 +1049,7 @@ useEffect(() => {
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
-      {!isInviteSignup && (
+      {!isStandaloneSignup && (
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <button
@@ -1168,7 +1220,26 @@ useEffect(() => {
                         </div>
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
-                        
+
+                      {isCompanyAccount && (
+                        <button
+                          onClick={() => {
+                            navigate('/user-management');
+                            setIsProfileMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                        >
+                          <div className="w-7 h-7 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                            <i className="fa-solid fa-users text-[11px] text-emerald-500"></i>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-800 leading-tight">User Management</p>
+                            <p className="text-[11px] font-semibold text-slate-400 truncate">Manage company members</p>
+                          </div>
+                          <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                        </button>
+                      )}
+
                       {/* Settings */}
                       <button
                         onClick={() => navigate('/profile-settings')}
@@ -1260,13 +1331,13 @@ useEffect(() => {
             </div>
           </div>
         )}
-        <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
           {/* key remounts CatMascot when auth changes → entry walk plays after login */}
           <CatMascot
             key={isLoggedIn ? 'logged-in' : 'guest'}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
-            isHidden={isAuthRoute || isVirtualPetOpen}
+            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen}
           />
         </div>
         
@@ -1286,7 +1357,7 @@ useEffect(() => {
         <VirtualPetContainer isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
 
         {!isChatOpen && (
-          <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
+          <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
             <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
                <div className="relative flex items-center justify-center">
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
@@ -1331,6 +1402,19 @@ useEffect(() => {
             <motion.div key="profile-settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <ProfileSettingsPage />
             </motion.div>
+          )}
+
+          {path === '/user-management' && (
+            <motion.div key="user-management" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <UserManagementPage
+                isCompanyAccount={isCompanyAccount}
+                isCheckingAccountType={isCheckingAccountType}
+              />
+            </motion.div>
+          )}
+
+          {isCompanyMemberSignup && (
+            <CompanyMemberSignupPage onComplete={() => navigate('/login')} />
           )}
 
           {path === '/privacy' && (
@@ -1478,7 +1562,7 @@ useEffect(() => {
           )}
         {/* </AnimatePresence> */}
 
-        {!isAuthRoute && (
+        {!isAuthRoute && !isCompanyMemberSignup && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
             <div className="py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-slate-400 text-sm font-bold">© 2026 Snabbb Apps Gallery.</p>
