@@ -8,23 +8,24 @@ import type { CompanyRole, InvitationDetails, InvitationRow, MemberRow } from '.
 //   return data as T;
 // };
 
-export const getCompanyPeople = () =>
-  invoke<{ ok: true; members: MemberRow[]; invitations: InvitationRow[] }>({ action: 'list' });
+// export const getCompanyPeople = () =>
+//   invoke<{ ok: true; members: MemberRow[]; invitations: InvitationRow[] }>({ action: 'list' });
 
-const invoke = async <T>(body: Record<string, unknown>): Promise<T> => {
+export const sendCompanyInvitations = async <T>(action: string, params: Record<string, unknown> = {}): Promise<T> => {
   const res = await fetch('https://app.snabbb.com/api/company-invitations', {
     method: 'POST',
-    credentials: 'include', // sends the mrbur_sso cookie, same as your inventory/dental calls
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ action, ...params }),
   });
   const data = await res.json();
   if (!data?.ok) throw new Error(data?.message || 'The request could not be completed.');
   return data as T;
 };
 
-export const getCompanyInvitation = (token: string) =>
-  invoke<{ ok: true; invitation: InvitationDetails }>({ action: 'get', token });
 
-export const acceptCompanyInvitation = (token: string) =>
-  invoke<{ ok: true }>({ action: 'accept', token });
+// export const getCompanyInvitation = (token: string) =>
+//   invoke<{ ok: true; invitation: InvitationDetails }>({ action: 'get', token });
+
+// export const acceptCompanyInvitation = (token: string) =>
+//   invoke<{ ok: true }>({ action: 'accept', token });
