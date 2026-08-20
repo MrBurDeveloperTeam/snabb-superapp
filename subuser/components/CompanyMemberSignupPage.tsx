@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { authOdoo } from '@/services/authOdoo';
 import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
-import { acceptCompanyInvitation, getCompanyInvitation } from '../services/subuserService';
+  // import { acceptCompanyInvitation, getCompanyInvitation } from '../services/subuserService';
 import type { InvitationDetails } from '../types';
 
 type Props = { onComplete: () => void };
@@ -15,10 +15,10 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
   const [form, setForm] = useState({ fullName: '', phone: '', dob: '', jobPosition: '', country: 'Malaysia', password: '', confirmPassword: '', referralCode: '', agreed: false });
 
   useEffect(() => {
-    getCompanyInvitation(token)
-      .then((result) => setInvitation(result.invitation))
-      .catch((error) => toast.error(error?.message || 'This invitation is invalid or expired.'))
-      .finally(() => setLoading(false));
+    // getCompanyInvitation(token)
+    //   .then((result) => setInvitation(result.invitation))
+    //   .catch((error) => toast.error(error?.message || 'This invitation is invalid or expired.'))
+    //   .finally(() => setLoading(false));
   }, [token]);
 
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -37,7 +37,7 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
         agreedToTerms: form.agreed, referralCode: form.referralCode,
       });
       if (!response?.data?.result?.created) throw new Error('An account already exists for this email. Please contact the company owner.');
-      await acceptCompanyInvitation(token);
+      // await acceptCompanyInvitation(token);
       toast.success('Account created. Check your email to verify and activate your account.');
       setTimeout(onComplete, 2000);
     } catch (error: any) {
