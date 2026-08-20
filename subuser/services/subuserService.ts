@@ -13,7 +13,7 @@ import api from '@/services/api';
 //   invoke<{ ok: true; members: MemberRow[]; invitations: InvitationRow[] }>({ action: 'list' });
 
 export const sendCompanyInvitations = async <T>(action: string, params: Record<string, unknown> = {}): Promise<T> => {
-  const res = await api.post('https://app.snabbb.com/api/company-invitations', { action, ...params });
+  const res = await api.post('/company-invitations', { action, ...params });
   const data = await res.data;
   if (!data?.ok) throw new Error(data?.message || 'The request could not be completed.');
   return data as T;
