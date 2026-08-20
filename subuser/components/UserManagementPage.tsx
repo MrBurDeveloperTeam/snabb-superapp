@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { COMPANY_MEMBER_ROLES } from '../config';
-import { getCompanyPeople, sendCompanyInvitation } from '../services/subuserService';
 import type { CompanyRole, InvitationRow, MemberRow } from '../types';
+import { sendCompanyInvitations } from '../services/subuserService';
 
 type Props = { isCompanyAccount: boolean; isCheckingAccountType: boolean };
 
@@ -18,9 +18,9 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
   const loadPeople = async () => {
     setLoading(true);
     try {
-      const result = await getCompanyPeople();
-      setMembers(result.members || []);
-      setInvitations(result.invitations || []);
+      // const result = await getCompanyPeople();
+      // setMembers(result.members || []);
+      // setInvitations(result.invitations || []);
     } catch (error: any) {
       toast.error(error?.message || 'Unable to load company members.');
     } finally {
@@ -43,7 +43,8 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
     setSending(true);
     try {
       const recipientEmail = email.trim();
-      const result = await sendCompanyInvitation(recipientEmail, role);
+      
+      const result = await sendCompanyInvitations<{ ok: true; inviteUrl: string; companyName: string }>('create', { email, role });
       const subject = `Invitation to join ${result.companyName} on Snabbb`;
       const body = [
         `You have been invited to join ${result.companyName} on Snabbb as ${role}.`,
