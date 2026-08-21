@@ -38,6 +38,12 @@ export interface TodoSnapshot {
 export interface TodoDialogueEvaluation {
   overdueCandidate: DialogueCandidate | null;
   taskTodayCandidate: DialogueCandidate | null;
+  /** Ordered candidate pools, additive alongside the single-winner fields
+   *  above — `overdueCandidates[0] === overdueCandidate`, etc. See
+   *  overdueTaskProvider.ts / taskTodayProvider.ts for the ordering each
+   *  preserves. */
+  overdueCandidates: DialogueCandidate[];
+  taskTodayCandidates: DialogueCandidate[];
 }
 
 const TASK_PAGE_SIZE = 200;
@@ -189,8 +195,11 @@ export async function fetchTodoDialogueEvaluation(
 
   const snapshot = snapshotResult.candidate ?? { tasks: [] };
 
-  const { candidate: overdueCandidate } = evaluateOverdueHighTask(snapshot, localToday);
-  const { candidate: taskTodayCandidate } = evaluateHighTaskToday(snapshot, localToday);
+  const { candidate: overdueCandidate, candidates: overdueCandidates } = evaluateOverdueHighTask(snapshot, localToday);
+  const { candidate: taskTodayCandidate, candidates: taskTodayCandidates } = evaluateHighTaskToday(snapshot, localToday);
 
-  return { status: 'success', candidate: { overdueCandidate, taskTodayCandidate } };
+  return {
+    status: 'success',
+    candidate: { overdueCandidate, taskTodayCandidate, overdueCandidates, taskTodayCandidates },
+  };
 }

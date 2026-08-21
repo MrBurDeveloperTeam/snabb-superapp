@@ -197,6 +197,11 @@ function buildCandidateFromSource(source: ExpiringSoonSource, todayKey: string):
 
 export interface ExpiringSoonInventoryEvaluation {
   candidate: DialogueCandidate | null;
+  /** Every independently eligible Expiring Soon candidate, in the same
+   *  business order compareSourcesForSelection already produces —
+   *  `candidates[0]` is always identical to `candidate` above. Additive
+   *  only. */
+  candidates: DialogueCandidate[];
   /** Every item id with at least one qualifying expiring-soon (P1) source —
    *  batch or legacy item-level, not just the globally-selected winner. The
    *  Low Stock evaluator excludes all of these: an item already flagged as
@@ -228,12 +233,14 @@ export function evaluateExpiringSoonInventory(
   }
 
   if (sources.length === 0) {
-    return { candidate: null, expiringSoonItemIds: new Set() };
+    return { candidate: null, candidates: [], expiringSoonItemIds: new Set() };
   }
 
-  const winner = [...sources].sort(compareSourcesForSelection)[0];
+  const ordered = [...sources].sort(compareSourcesForSelection);
+  const candidates = ordered.map((source) => buildCandidateFromSource(source, todayKey));
   return {
-    candidate: buildCandidateFromSource(winner, todayKey),
+    candidate: candidates[0] ?? null,
+    candidates,
     expiringSoonItemIds: new Set(sources.map((s) => s.itemId)),
   };
 }

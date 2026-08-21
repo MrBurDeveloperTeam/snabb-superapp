@@ -30,6 +30,10 @@ export interface AppointmentSnapshot {
 
 export interface AppointmentDialogueEvaluation {
   appointmentSoonCandidate: DialogueCandidate | null;
+  /** Ordered candidate pool, additive alongside the single-winner field
+   *  above — `appointmentSoonCandidates[0] === appointmentSoonCandidate`.
+   *  See appointmentSoonProvider.ts for the ordering it preserves. */
+  appointmentSoonCandidates: DialogueCandidate[];
 }
 
 const APPOINTMENT_PAGE_SIZE = 200;
@@ -202,7 +206,10 @@ export async function fetchAppointmentDialogueEvaluation(
   if (snapshotResult.status !== 'success') return snapshotResult;
 
   const snapshot = snapshotResult.candidate ?? { appointments: [] };
-  const { candidate: appointmentSoonCandidate } = evaluateAppointmentSoon(snapshot, evaluationNow);
+  const { candidate: appointmentSoonCandidate, candidates: appointmentSoonCandidates } = evaluateAppointmentSoon(
+    snapshot,
+    evaluationNow
+  );
 
-  return { status: 'success', candidate: { appointmentSoonCandidate } };
+  return { status: 'success', candidate: { appointmentSoonCandidate, appointmentSoonCandidates } };
 }

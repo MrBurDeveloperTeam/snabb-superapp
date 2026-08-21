@@ -51,6 +51,13 @@ export interface InventoryDialogueEvaluation {
   expiredCandidate: DialogueCandidate | null;
   expiringSoonCandidate: DialogueCandidate | null;
   lowStockCandidate: DialogueCandidate | null;
+  /** Ordered candidate pools, additive alongside the single-winner fields
+   *  above — `expiredCandidates[0] === expiredCandidate`, etc. See
+   *  expiredInventoryProvider.ts / lowStockInventoryProvider.ts /
+   *  expiringSoonInventoryProvider.ts for the ordering each preserves. */
+  expiredCandidates: DialogueCandidate[];
+  expiringSoonCandidates: DialogueCandidate[];
+  lowStockCandidates: DialogueCandidate[];
 }
 
 const ITEM_PAGE_SIZE = 200;
@@ -318,10 +325,27 @@ export async function fetchInventoryDialogueEvaluation(
 
   const snapshot = snapshotResult.candidate ?? { items: [], batchesByItem: new Map() };
 
-  const { candidate: expiredCandidate, expiredItemIds } = evaluateExpiredInventory(snapshot);
-  const { candidate: lowStockCandidate, lowStockItemIds } = evaluateLowStockInventory(snapshot, expiredItemIds);
+  const { candidate: expiredCandidate, candidates: expiredCandidates, expiredItemIds } = evaluateExpiredInventory(snapshot);
+  const {
+    candidate: lowStockCandidate,
+    candidates: lowStockCandidates,
+    lowStockItemIds,
+  } = evaluateLowStockInventory(snapshot, expiredItemIds);
   const expiringSoonExcludedItemIds = new Set([...expiredItemIds, ...lowStockItemIds]);
-  const { candidate: expiringSoonCandidate } = evaluateExpiringSoonInventory(snapshot, expiringSoonExcludedItemIds);
+  const { candidate: expiringSoonCandidate, candidates: expiringSoonCandidates } = evaluateExpiringSoonInventory(
+    snapshot,
+    expiringSoonExcludedItemIds
+  );
 
-  return { status: 'success', candidate: { expiredCandidate, expiringSoonCandidate, lowStockCandidate } };
+  return {
+    status: 'success',
+    candidate: {
+      expiredCandidate,
+      expiringSoonCandidate,
+      lowStockCandidate,
+      expiredCandidates,
+      expiringSoonCandidates,
+      lowStockCandidates,
+    },
+  };
 }

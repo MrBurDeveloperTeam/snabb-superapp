@@ -83,6 +83,12 @@ function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): Insi
 
 export interface TaskTodayEvaluation {
   candidate: DialogueCandidate | null;
+  /** Every independently eligible High Task Today candidate, in the same
+   *  business order compareSourcesForSelection already produces —
+   *  `candidates[0]` is always identical to `candidate` above. Multiple
+   *  HIGH-urgency tasks can share the same due date, so this family is
+   *  MULTI_RECORD_FAMILY, not a singleton — additive only. */
+  candidates: DialogueCandidate[];
   qualifyingTaskIds: Set<string>;
 }
 
@@ -96,12 +102,14 @@ export function evaluateHighTaskToday(snapshot: TodoSnapshot, localToday: string
   }
 
   if (sources.length === 0) {
-    return { candidate: null, qualifyingTaskIds: new Set() };
+    return { candidate: null, candidates: [], qualifyingTaskIds: new Set() };
   }
 
-  const winner = [...sources].sort(compareSourcesForSelection)[0];
+  const ordered = [...sources].sort(compareSourcesForSelection);
+  const candidates = ordered.map(buildCandidateFromSource);
   return {
-    candidate: buildCandidateFromSource(winner),
+    candidate: candidates[0] ?? null,
+    candidates,
     qualifyingTaskIds: new Set(sources.map((s) => s.taskId)),
   };
 }

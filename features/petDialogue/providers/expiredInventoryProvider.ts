@@ -43,6 +43,14 @@ export interface ExpiredInventoryFacts {
 
 export interface ExpiredInventoryEvaluation {
   candidate: DialogueCandidate | null;
+  /** Every independently eligible Expired candidate, in the same business
+   *  order compareSourcesForSelection already produces — `candidates[0]` is
+   *  always identical to `candidate` above. Additive: existing consumers
+   *  that only read `candidate` are unaffected. See
+   *  selectFirstEligibleDialogueCandidate in the dialogue layer for how this
+   *  is used to skip session-seen/dismissed candidates without changing
+   *  business selection order. */
+  candidates: DialogueCandidate[];
   /** Every item id with at least one qualifying expired (P0) source — batch
    *  or legacy item-level, not just the globally-selected winner. The P1
    *  evaluator excludes all of these: an already-expired item must never
@@ -187,12 +195,14 @@ export function evaluateExpiredInventory(snapshot: InventorySnapshot): ExpiredIn
   }
 
   if (sources.length === 0) {
-    return { candidate: null, expiredItemIds: new Set() };
+    return { candidate: null, candidates: [], expiredItemIds: new Set() };
   }
 
-  const winner = [...sources].sort(compareSourcesForSelection)[0];
+  const ordered = [...sources].sort(compareSourcesForSelection);
+  const candidates = ordered.map(buildCandidateFromSource);
   return {
-    candidate: buildCandidateFromSource(winner),
+    candidate: candidates[0] ?? null,
+    candidates,
     expiredItemIds: new Set(sources.map((s) => s.itemId)),
   };
 }

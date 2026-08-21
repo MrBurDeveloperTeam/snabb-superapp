@@ -10,6 +10,7 @@ import { buildProfileCandidate } from './providers/profileProvider';
 import { fetchLegacyIntroCandidate } from './providers/legacyIntroProvider';
 import { resolveSafeFirstName } from './nameResolution';
 import { isDialogueIneligible, markDialogueDismissed, markDialogueSeenThisSession } from './sessionDedupe';
+import { selectFirstEligibleDialogueCandidate } from './selectDialogueCandidate';
 import { getInventoryAppRoute, getTodoAppRoute, getAppointmentAppRoute, getProfileSettingsRoute } from './knownRoutes';
 import { toCalendarDateKey } from './dateUtils';
 import {
@@ -393,21 +394,28 @@ export function usePersonalizedPetDialogue({
           return;
         }
 
-        const { expiredCandidate, expiringSoonCandidate, lowStockCandidate } = inventoryResult.candidate;
-        const { overdueCandidate, taskTodayCandidate } = todoResult.candidate;
-        const { appointmentSoonCandidate } = appointmentResult.candidate;
+        const { expiredCandidates, expiringSoonCandidates, lowStockCandidates } = inventoryResult.candidate;
+        const { overdueCandidates, taskTodayCandidates } = todoResult.candidate;
+        const { appointmentSoonCandidates } = appointmentResult.candidate;
 
         // Explicit P0 subtype rank: expired inventory always outranks an
         // overdue High task. Resolved here, before either reaches the
         // shared resolver, so resolveDialogue.ts never has to compare an
         // inventory expiry date against a Todo task date — at most one P0
         // candidate is ever passed into it.
-        const unhandledExpired = expiredCandidate && !isDialogueIneligible(capturedUserId, expiredCandidate.dedupeKey)
-          ? expiredCandidate
-          : null;
-        const unhandledOverdueTask = overdueCandidate && !isDialogueIneligible(capturedUserId, overdueCandidate.dedupeKey)
-          ? overdueCandidate
-          : null;
+        //
+        // Dismissal-aware pool scan (starvation fix): each family may have
+        // several simultaneously business-eligible records (e.g. two
+        // independently expired items). The provider already returns them
+        // in business order (see expiredInventoryProvider.ts /
+        // overdueTaskProvider.ts); selectFirstEligibleDialogueCandidate just
+        // skips session-seen/dismissed entries and returns the first
+        // remaining one, so dismissing the winner reveals the next
+        // same-family candidate instead of incorrectly falling through to a
+        // lower-priority family. No queueing: this is re-evaluated once per
+        // activation cycle, same as the single-candidate check it replaces.
+        const unhandledExpired = selectFirstEligibleDialogueCandidate(capturedUserId, expiredCandidates);
+        const unhandledOverdueTask = selectFirstEligibleDialogueCandidate(capturedUserId, overdueCandidates);
         const p0 = unhandledExpired ?? unhandledOverdueTask;
 
         if (p0) {
@@ -424,12 +432,8 @@ export function usePersonalizedPetDialogue({
         // reaches the shared resolver, exactly like the P0 subtypes above —
         // an appointment start instant is never compared against a Todo
         // due-date to decide this.
-        const unhandledAppointmentSoon = appointmentSoonCandidate && !isDialogueIneligible(capturedUserId, appointmentSoonCandidate.dedupeKey)
-          ? appointmentSoonCandidate
-          : null;
-        const unhandledHighTaskToday = taskTodayCandidate && !isDialogueIneligible(capturedUserId, taskTodayCandidate.dedupeKey)
-          ? taskTodayCandidate
-          : null;
+        const unhandledAppointmentSoon = selectFirstEligibleDialogueCandidate(capturedUserId, appointmentSoonCandidates);
+        const unhandledHighTaskToday = selectFirstEligibleDialogueCandidate(capturedUserId, taskTodayCandidates);
         const p1 = unhandledAppointmentSoon ?? unhandledHighTaskToday;
 
         if (p1) {
@@ -459,12 +463,8 @@ export function usePersonalizedPetDialogue({
         // choosing between them — a handled Low Stock must not block an
         // otherwise-eligible Expiring Soon candidate on a different item,
         // and vice versa.
-        const unhandledLowStock = lowStockCandidate && !isDialogueIneligible(capturedUserId, lowStockCandidate.dedupeKey)
-          ? lowStockCandidate
-          : null;
-        const unhandledExpiringSoon = expiringSoonCandidate && !isDialogueIneligible(capturedUserId, expiringSoonCandidate.dedupeKey)
-          ? expiringSoonCandidate
-          : null;
+        const unhandledLowStock = selectFirstEligibleDialogueCandidate(capturedUserId, lowStockCandidates);
+        const unhandledExpiringSoon = selectFirstEligibleDialogueCandidate(capturedUserId, expiringSoonCandidates);
 
         // Explicit P2 subtype rank (approved reversal): Low Stock now
         // outranks Expiring Soon. Resolved here, before either ever reaches

@@ -149,6 +149,11 @@ function buildCandidateFromSource(source: QualifyingAppointmentSource): InsightC
 
 export interface AppointmentSoonEvaluation {
   candidate: DialogueCandidate | null;
+  /** Every independently eligible Appointment Soon candidate, in the same
+   *  business order compareSourcesForSelection already produces —
+   *  `candidates[0]` is always identical to `candidate` above. Additive
+   *  only. */
+  candidates: DialogueCandidate[];
   qualifyingAppointmentIds: Set<string>;
 }
 
@@ -161,12 +166,14 @@ export function evaluateAppointmentSoon(snapshot: AppointmentSnapshot, evaluatio
   }
 
   if (sources.length === 0) {
-    return { candidate: null, qualifyingAppointmentIds: new Set() };
+    return { candidate: null, candidates: [], qualifyingAppointmentIds: new Set() };
   }
 
-  const winner = [...sources].sort(compareSourcesForSelection)[0];
+  const ordered = [...sources].sort(compareSourcesForSelection);
+  const candidates = ordered.map(buildCandidateFromSource);
   return {
-    candidate: buildCandidateFromSource(winner),
+    candidate: candidates[0] ?? null,
+    candidates,
     qualifyingAppointmentIds: new Set(sources.map((s) => s.appointmentId)),
   };
 }

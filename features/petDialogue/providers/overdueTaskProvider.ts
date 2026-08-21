@@ -83,6 +83,11 @@ function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): Insi
 
 export interface OverdueTaskEvaluation {
   candidate: DialogueCandidate | null;
+  /** Every independently eligible Overdue High Task candidate, in the same
+   *  business order compareSourcesForSelection already produces —
+   *  `candidates[0]` is always identical to `candidate` above. Additive
+   *  only. */
+  candidates: DialogueCandidate[];
   /** Every task id that qualifies as overdue-High, not just the selected
    *  winner — exposed for parity with the inventory evaluators' exclusion
    *  pattern, even though nothing currently needs to exclude by it (P0/P2
@@ -100,12 +105,14 @@ export function evaluateOverdueHighTask(snapshot: TodoSnapshot, localToday: stri
   }
 
   if (sources.length === 0) {
-    return { candidate: null, qualifyingTaskIds: new Set() };
+    return { candidate: null, candidates: [], qualifyingTaskIds: new Set() };
   }
 
-  const winner = [...sources].sort(compareSourcesForSelection)[0];
+  const ordered = [...sources].sort(compareSourcesForSelection);
+  const candidates = ordered.map(buildCandidateFromSource);
   return {
-    candidate: buildCandidateFromSource(winner),
+    candidate: candidates[0] ?? null,
+    candidates,
     qualifyingTaskIds: new Set(sources.map((s) => s.taskId)),
   };
 }

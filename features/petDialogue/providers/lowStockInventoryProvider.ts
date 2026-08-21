@@ -128,6 +128,10 @@ function buildCandidateFromSource(source: LowStockSource): InsightCandidate<LowS
 
 export interface LowStockInventoryEvaluation {
   candidate: DialogueCandidate | null;
+  /** Every independently eligible Low Stock candidate, in the same business
+   *  order compareSourcesForSelection already produces — `candidates[0]` is
+   *  always identical to `candidate` above. Additive only. */
+  candidates: DialogueCandidate[];
   /** Every item id with at least one qualifying low-stock source, not just
    *  the globally-selected winner — the expiring-soon evaluator excludes
    *  all of these, since low stock now outranks expiring soon for the same
@@ -152,12 +156,14 @@ export function evaluateLowStockInventory(
   }
 
   if (sources.length === 0) {
-    return { candidate: null, lowStockItemIds: new Set() };
+    return { candidate: null, candidates: [], lowStockItemIds: new Set() };
   }
 
-  const winner = [...sources].sort(compareSourcesForSelection)[0];
+  const ordered = [...sources].sort(compareSourcesForSelection);
+  const candidates = ordered.map(buildCandidateFromSource);
   return {
-    candidate: buildCandidateFromSource(winner),
+    candidate: candidates[0] ?? null,
+    candidates,
     lowStockItemIds: new Set(sources.map((s) => s.itemId)),
   };
 }
