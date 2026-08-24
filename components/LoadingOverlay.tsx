@@ -6,7 +6,7 @@ const LoadingOverlay: React.FC<{ isLoading: boolean, message?: string }> = ({ is
   if (!isLoading) return null;  // Don't render if not loading
 
   return (
-    <div className="overlay">
+    <div className="overlay" data-mascot-ignore="true">
       <div className="spinner"></div>
       {message && <p className="message">{message}</p>}
     </div>

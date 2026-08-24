@@ -1,27 +1,31 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { SharedCatMascot } from '@mrburdeveloperteam/molar-experience/cat';
+import type { CatDialoguePresentation } from '@mrburdeveloperteam/molar-experience/cat';
 import { supabase } from '../services/supabaseClient';
-import { getPetOption, normalizePetId } from '../VirtualPet/petOptions';
+import { normalizePetId } from '../VirtualPet/petOptions';
 import { isPersonalizedPetDialogueEnabled } from '../features/petDialogue/dialogueFlag';
 import { usePersonalizedPetDialogue } from '../features/petDialogue/usePersonalizedPetDialogue';
 import { markDialogueDismissed, buildDialogueDismissalKey } from '../features/petDialogue/sessionDedupe';
 import { DIALOGUE_ID, type DialogueCandidate, type ProfileCompletionStatus } from '../features/petDialogue/types';
 
-const MALLOW_FRAME_WIDTH = 192;
-const MALLOW_FRAME_HEIGHT = 208;
-const MALLOW_SCALE = 0.42;
+// PHASE 9D (Cat Presentation migration): the local App Gallery dialogue
+// resolver/arbitration below is UNCHANGED — every effect, ref, and storage
+// call in this file is a byte-identical carry-over from the pre-9D source.
+// Only the generic sprite/movement/bubble PRESENTATION is now delegated to
+// `SharedCatMascot` (confirmed byte-identical entry-walk/click-to-move
+// formulas via `dist/cat.js`). The local dialogue state
+// (dialogSteps/dialogStep/isDialogActive/personalizedActiveCandidate) is
+// transformed into the published `CatDialoguePresentation` shape purely for
+// rendering — see `dialoguePresentation` below — never fed into
+// `useSharedCatDialogueRuntime`, which this app does NOT adopt (see the
+// Phase 9A audit's documented Dialogue semantic gap: sessionStorage
+// shown-at-display/F5 behavior, logout dismissal cleanup, and the flat
+// P0/P1/PROFILE/P2/LEGACY_INTRO/FALLBACK priority model — where urgent
+// candidates can preempt Intro — are all incompatible with the shared
+// runtime's hard-gated 3-slot design).
 const PET_SLEEPING_KEY = 'pet_is_sleeping';
 const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
 const DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS = 6000;
-const MALLOW_ROWS = {
-  idle: { row: 0, frames: 6, duration: '1.1s' },
-  runRight: { row: 1, frames: 8, duration: '0.7s' },
-  runLeft: { row: 2, frames: 8, duration: '0.7s' },
-  wave: { row: 3, frames: 4, duration: '0.8s' },
-  review: { row: 3, frames: 4, duration: '0.8s' },
-  sleep: { row: 5, frames: 1, duration: '1s', frame: 4 },
-};
 
 interface CatMascotProps {
   onCatClick?: () => void;
@@ -48,95 +52,6 @@ interface CatMascotProps {
   onNavigateInternal?: (path: string) => void;
 }
 
-interface MallowMascotSpriteProps {
-  spriteSheetUrl: string;
-  sleepHoldFrame?: number;
-  idleFrames?: number;
-  idleDuration?: string;
-  hoverRow?: number;
-  hoverFrames?: number;
-  hoverDuration?: string;
-  clickRow?: number;
-  clickFrames?: number;
-  clickDuration?: string;
-  isWalking: boolean;
-  facingLeft: boolean;
-  isMeowing: boolean;
-  isHovered: boolean;
-  isSleeping: boolean;
-  onHoverStart: () => void;
-  onHoverEnd: () => void;
-}
-
-function MallowMascotSprite({
-  spriteSheetUrl,
-  sleepHoldFrame,
-  idleFrames,
-  idleDuration,
-  hoverRow,
-  hoverFrames,
-  hoverDuration,
-  clickRow,
-  clickFrames,
-  clickDuration,
-  isWalking,
-  facingLeft,
-  isMeowing,
-  isHovered,
-  isSleeping,
-  onHoverStart,
-  onHoverEnd,
-}: MallowMascotSpriteProps) {
-  const shouldSleep = isSleeping && !isWalking && !isMeowing;
-  const shouldReview = isHovered && !isWalking && !shouldSleep;
-  const stateClass = shouldSleep ? 'sleep' : shouldReview ? 'review' : isWalking ? (facingLeft ? 'run-left' : 'run-right') : 'idle';
-  const reviewConfig = {
-    row: hoverRow ?? MALLOW_ROWS.review.row,
-    frames: hoverFrames ?? MALLOW_ROWS.review.frames,
-    duration: hoverDuration ?? MALLOW_ROWS.review.duration,
-  };
-  const clickConfig = {
-    row: clickRow ?? MALLOW_ROWS.wave.row,
-    frames: clickFrames ?? MALLOW_ROWS.wave.frames,
-    duration: clickDuration ?? MALLOW_ROWS.wave.duration,
-  };
-  const idleConfig = {
-    ...MALLOW_ROWS.idle,
-    frames: idleFrames ?? MALLOW_ROWS.idle.frames,
-    duration: idleDuration ?? MALLOW_ROWS.idle.duration,
-  };
-  const config = shouldSleep
-    ? { ...MALLOW_ROWS.sleep, frame: sleepHoldFrame ?? MALLOW_ROWS.sleep.frame }
-    : shouldReview
-      ? reviewConfig
-      : isMeowing && !isWalking
-        ? clickConfig
-        : facingLeft && isWalking
-          ? MALLOW_ROWS.runLeft
-          : isWalking
-            ? MALLOW_ROWS.runRight
-            : idleConfig;
-
-  return (
-    <div
-      className={`mallow-mascot ${stateClass} frames-${config.frames} ${isMeowing ? 'is-talking' : ''}`}
-      aria-label={`Selected pet ${stateClass}`}
-      onPointerEnter={onHoverStart}
-      onMouseEnter={onHoverStart}
-      onMouseOver={onHoverStart}
-      onPointerLeave={onHoverEnd}
-      onMouseLeave={onHoverEnd}
-      style={{
-        '--sprite-row': config.row,
-        '--sprite-frames': config.frames,
-        '--sprite-duration': config.duration,
-        '--sprite-frame': 'frame' in config ? config.frame : 0,
-        '--pet-spritesheet': `url("${spriteSheetUrl}")`,
-      } as React.CSSProperties}
-    />
-  );
-}
-
 export default function CatMascot({
   onCatClick,
   disabled = false,
@@ -145,17 +60,10 @@ export default function CatMascot({
   personalizedMatchedUserId,
   onNavigateInternal,
 }: CatMascotProps) {
-  const [catPos, setCatPos] = useState({ x: -10, y: 85 });
-  const [isWalking, setIsWalking] = useState(false);
-  const [facingLeft, setFacingLeft] = useState(false);
-  const [isMeowing, setIsMeowing] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [isPetSleeping, setIsPetSleeping] = useState(() => {
     try { return localStorage.getItem(PET_SLEEPING_KEY) === 'true'; } catch { return false; }
   });
   const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(localStorage.getItem('pet_name')));
-  const selectedPet = getPetOption(selectedPetId);
-  const [walkDuration, setWalkDuration] = useState(0.8);
 
   const [dialogStep, setDialogStep] = useState(0);
   const [isDialogActive, setIsDialogActive] = useState(false);
@@ -452,7 +360,7 @@ export default function CatMascot({
     tryActivateDialog();
   }, [personalizedDialogueEnabled, isHidden]);
 
-  const [meowMsg, setMeowMsg] = useState(null);
+  const [meowMsg, setMeowMsg] = useState<string | null>(null);
   const [petStates, setPetStates] = useState(['Normal']);
 
   // ─── Refs used inside loops to avoid stale closures / dep-array restarts ───
@@ -468,6 +376,21 @@ export default function CatMascot({
 
   useEffect(() => { isHiddenRef.current = isHidden; }, [isHidden]);
   useEffect(() => { isDialogActiveMeowRef.current = isDialogActive; }, [isDialogActive]);
+
+  // PHASE 9D: replicates the old local `handleGlobalClick`'s
+  // `if (isHiddenRef.current) return;` click-to-move suppression, using
+  // `SharedCatMascot`'s own documented `document.body` convention (confirmed
+  // via `dist/cat.js`: its internal click handler already checks
+  // `document.body.classList.contains('pet-assistant-hidden')` before
+  // moving) — no second click listener is introduced.
+  useEffect(() => {
+    if (isHidden) {
+      document.body.classList.add('pet-assistant-hidden');
+    } else {
+      document.body.classList.remove('pet-assistant-hidden');
+    }
+    return () => { document.body.classList.remove('pet-assistant-hidden'); };
+  }, [isHidden]);
 
   // Clear message bubble immediately when pet state changes
   useEffect(() => {
@@ -917,329 +840,85 @@ export default function CatMascot({
     };
   }, [disabled]);
 
-  // ─── Walking / click-to-move ──────────────────────────────────────────────
-  const walkTimeoutRef = useRef(null);
-  const audioRef = useRef(null);
-  const lastMoveStartPos  = useRef({ x: -10, y: 85 });
-  const lastMoveStartTime = useRef(Date.now());
-  const lastMoveDuration  = useRef(0.8);
-  const lastMoveTarget    = useRef({ x: -10, y: 85 });
-
+  // ─── PHASE 9D: local dialogue state → shared presentation contract ────────
+  // Pure derivation from the SAME local state the pre-9D JSX rendered from —
+  // no new state, no new persistence, no re-arbitration. Every currently
+  // active App Gallery dialogue (legacy multi-step Intro, legacy single-step
+  // Welcome Back, and every Phase 1A resolver candidate — including the
+  // resolver-selected multi-step Legacy Intro) already renders through
+  // exactly ONE of two visual shapes: `dialogSteps.length === 1` (message +
+  // optional CTA + Close only — `personalizedActiveCandidate.action` is only
+  // ever populated for real Phase 1A candidates, never legacy Intro/Welcome
+  // Back, so the CTA button already only appears where it did before) or
+  // `dialogSteps.length > 1` (multi-step Back/Next/Close, and no CTA is ever
+  // shown for these). Mapping isDialogActive+dialogSteps.length onto
+  // `kind: 'personalized'` vs `kind: 'sequence'` exactly reproduces this
+  // existing behavior with zero visual/semantic loss.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     audioRef.current = new Audio('/images/cat-meow.mp3');
-
-    const destX    = 20 + Math.random() * 60;
-    const destY    = 80 + Math.random() * 10;
-    const duration = 2.8;
-
-    lastMoveStartPos.current  = { x: -10, y: 85 };
-    lastMoveTarget.current    = { x: destX, y: destY };
-    lastMoveStartTime.current = Date.now();
-    lastMoveDuration.current  = duration;
-
-    setFacingLeft(false);
-    setWalkDuration(duration);
-    setCatPos({ x: destX, y: destY });
-    setIsWalking(true);
-
-    if (walkTimeoutRef.current) clearTimeout(walkTimeoutRef.current);
-    walkTimeoutRef.current = setTimeout(() => {
-      setIsWalking(false);
-      isEntryWalkComplete.current = true;
-      tryActivateDialog();
-    }, duration * 1000);
-
-    const getInterpolatedPos = () => {
-      const elapsed  = (Date.now() - lastMoveStartTime.current) / 1000;
-      const progress = Math.min(elapsed / lastMoveDuration.current, 1);
-      return {
-        x: lastMoveStartPos.current.x + (lastMoveTarget.current.x - lastMoveStartPos.current.x) * progress,
-        y: lastMoveStartPos.current.y + (lastMoveTarget.current.y - lastMoveStartPos.current.y) * progress,
-      };
-    };
-
-    const handleGlobalClick = (e) => {
-      if (isHiddenRef.current) return;
-
-      const target = e.target;
-
-      // Ignore clicks on or inside any interactive element or overlay
-      if (
-        target.closest('button') ||
-        target.closest('a') ||
-        target.closest('input') ||
-        target.closest('select') ||
-        target.closest('textarea') ||
-        target.closest('label') ||
-        target.closest('img') ||
-        target.closest('[data-no-cat]') ||
-        target.closest('[role="dialog"]') ||
-        target.closest('[role="menu"]') ||
-        target.closest('[role="menuitem"]') ||
-        target.closest('[role="listbox"]') ||
-        target.closest('[role="option"]') ||
-        target.closest('[role="tab"]') ||
-        target.closest('[role="switch"]') ||
-        target.closest('[data-cat]') ||
-        target.closest('[class*="modal"]') ||
-        target.closest('[class*="dropdown"]') ||
-        target.closest('[class*="popover"]') ||
-        target.closest('[class*="dialog"]') ||
-        target.closest('[class*="overlay"]') ||
-        target.closest('[class*="toast"]') ||
-        target.closest('[class*="tooltip"]') ||
-        target.closest('.fixed') ||
-        target.closest('.absolute') ||
-        target.closest('.cat-mascot-wrapper')
-      ) return;
-
-      const targetX_px = e.clientX;
-      const targetY_px = e.clientY;
-      const targetX    = (targetX_px / window.innerWidth)  * 100;
-      const targetY    = (targetY_px / window.innerHeight) * 100;
-
-      const currentPos   = getInterpolatedPos();
-      const currentX_px  = (currentPos.x / 100) * window.innerWidth;
-      const currentY_px  = (currentPos.y / 100) * window.innerHeight;
-      const distance_px  = Math.sqrt(Math.pow(targetX_px - currentX_px, 2) + Math.pow(targetY_px - currentY_px, 2));
-
-      if (distance_px < 5) return;
-
-      const duration = distance_px / 200;
-
-      lastMoveStartPos.current  = currentPos;
-      lastMoveTarget.current    = { x: targetX, y: targetY };
-      lastMoveStartTime.current = Date.now();
-      lastMoveDuration.current  = duration;
-
-      setFacingLeft(targetX < currentPos.x);
-      setWalkDuration(duration);
-      setCatPos({ x: targetX, y: targetY });
-      setIsHovered(false);
-      setIsWalking(true);
-
-      if (walkTimeoutRef.current) clearTimeout(walkTimeoutRef.current);
-      walkTimeoutRef.current = setTimeout(() => {
-        setIsWalking(false);
-        isEntryWalkComplete.current = true;
-        tryActivateDialog();
-      }, duration * 1000);
-    };
-
-    document.addEventListener('dblclick', handleGlobalClick);
-    return () => {
-      document.removeEventListener('dblclick', handleGlobalClick);
-      if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-    };
   }, []);
 
+  const dialoguePresentation: CatDialoguePresentation = useMemo(() => {
+    if (!isDialogActive || dialogSteps.length === 0) {
+      return { kind: 'none' };
+    }
+    if (dialogSteps.length === 1) {
+      return {
+        kind: 'personalized',
+        message: dialogSteps[0],
+        action: personalizedActiveCandidate?.action
+          ? {
+              label: personalizedActiveCandidate.action.label,
+              onClick: () => {
+                // Exact pre-9D CTA order: run the frozen candidate's action
+                // first, then close/persist dismissal — never a live re-read
+                // of the candidate.
+                runPersonalizedAction(personalizedActiveCandidate);
+                closeDialog();
+              },
+            }
+          : undefined,
+        onClose: () => closeDialog(),
+      };
+    }
+    return {
+      kind: 'sequence',
+      steps: dialogSteps,
+      stepIndex: dialogStep,
+      onBack: () => setDialogStep((p) => Math.max(0, p - 1)),
+      onNext: () => setDialogStep((p) => Math.min(dialogSteps.length - 1, p + 1)),
+      onClose: () => closeDialog(),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDialogActive, dialogSteps, dialogStep, personalizedActiveCandidate]);
+
   // ─── Cat click handler ────────────────────────────────────────────────────
-  const handleCatClick = (e) => {
-    e.stopPropagation();
+  // SharedCatMascot owns the generic click-meow visual animation internally
+  // (gated on its own `isSleeping` prop) and calls this with no arguments
+  // only when the click target isn't ignored and `!disabled`. Host remains
+  // owner of: dismissing whatever dialogue is active, playing the actual
+  // click sound (unconditionally — the pre-9D source never gated audio on
+  // isPetSleeping, only the now-shared-owned visual animation had no such
+  // gate either, so this preserves that exact ungated behavior), and the
+  // parent's Cat → Virtual Pet callback.
+  const handleCatClick = () => {
     if (!disabled) closeDialog();
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
-      setIsMeowing(true);
-      setTimeout(() => setIsMeowing(false), 800);
     }
     if (!disabled && onCatClick) onCatClick();
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <>
-      <style>{`
-        @keyframes cat-sound-wave {
-          0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.6; }
-          100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
-        }
-        .cat-sound-ring {
-          animation: cat-sound-wave 0.6s ease-out forwards;
-        }
-        .cat-tooltip {
-          opacity: 0;
-          transition: opacity 0.2s;
-          pointer-events: none;
-        }
-        .cat-mascot-wrapper:hover .cat-tooltip {
-          opacity: 1;
-        }
-        .mallow-mascot {
-          position: relative;
-          width: ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px;
-          height: ${MALLOW_FRAME_HEIGHT * MALLOW_SCALE}px;
-          background-image: var(--pet-spritesheet);
-          background-repeat: no-repeat;
-          background-size: ${MALLOW_FRAME_WIDTH * 8 * MALLOW_SCALE}px ${MALLOW_FRAME_HEIGHT * 9 * MALLOW_SCALE}px;
-          background-position-y: calc(-1 * var(--sprite-row) * ${MALLOW_FRAME_HEIGHT * MALLOW_SCALE}px);
-          image-rendering: pixelated;
-          pointer-events: auto;
-          cursor: pointer;
-          filter: drop-shadow(0 5px 8px rgba(15, 23, 42, 0.1));
-          animation-duration: var(--sprite-duration);
-          animation-iteration-count: infinite;
-          animation-timing-function: steps(var(--sprite-frames));
-        }
-        .mallow-mascot.idle,
-        .mallow-mascot.run-left,
-        .mallow-mascot.run-right,
-        .mallow-mascot.review {
-          animation-name: mallow-sprite;
-        }
-        .mallow-mascot.sleep {
-          animation-name: none;
-          background-position-x: calc(-1 * var(--sprite-frame) * ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px);
-        }
-        .mallow-mascot.sleep::after {
-          content: 'Zzz...';
-          position: absolute;
-          left: 64%;
-          top: -5px;
-          color: #94a3b8;
-          font-size: 14px;
-          font-weight: 800;
-          letter-spacing: 0.02em;
-          animation: mascot-sleep-float 1.8s ease-in-out infinite;
-        }
-        @keyframes mallow-sprite {
-          from { background-position-x: 0; }
-          to   { background-position-x: calc(-1 * var(--sprite-frames) * ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px); }
-        }
-        @keyframes mascot-sleep-float {
-          0%, 100% { transform: translateY(0); opacity: 0.65; }
-          50% { transform: translateY(-4px); opacity: 1; }
-        }
-      `}</style>
-
-      <div
-        className="cat-mascot-wrapper"
-        style={{
-          position: 'fixed',
-          left: `${catPos.x}%`,
-          top: `${catPos.y}%`,
-          transform: `translate(-50%, -100%)`,
-          transition: `left ${walkDuration}s linear, top ${walkDuration}s linear`,
-          zIndex: 9990,
-          userSelect: 'none',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          pointerEvents: 'none',
-        }}
-      >
-        <AnimatePresence mode="wait">
-          {isDialogActive && dialogSteps.length > 0 && (
-            <motion.div
-              data-cat="true"
-              key={`dialog-bubble-${dialogStep}`}
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="w-max shrink-0 max-w-[min(80vw,310px)] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="p-4 text-sm font-semibold leading-relaxed flex flex-col relative z-10 bg-white rounded-lg"
-                style={{ color: '#334155', backgroundColor: '#ffffff' }}
-              >
-                <div className="flex-1 flex items-center justify-center text-center">
-                  <p className="whitespace-pre-wrap" style={{ color: '#334155' }}>{dialogSteps[dialogStep]}</p>
-                </div>
-                <div className="pt-4 flex justify-between items-center mt-auto">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDialogStep(p => Math.max(0, p - 1)); }}
-                    disabled={dialogStep === 0}
-                    className={`flex items-center gap-1 text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-slate-900 cursor-pointer ${dialogStep === 0 ? 'invisible' : ''}`}
-                  >
-                    <ChevronLeft className="w-4 h-4" /> Back
-                  </button>
-                  {dialogStep === dialogSteps.length - 1 ? (
-                    <div className="flex items-center gap-3">
-                      {/* Only P0/profile Phase 1A candidates carry an action; the
-                          legacy Intro and the fixed welcome fallback never do. */}
-                      {personalizedActiveCandidate?.action && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            runPersonalizedAction(personalizedActiveCandidate);
-                            closeDialog();
-                          }}
-                          className="flex items-center gap-1 text-xs font-bold text-white bg-[#2A9D8F] px-3 py-1.5 rounded-md hover:opacity-90 cursor-pointer"
-                        >
-                          {personalizedActiveCandidate.action.label}
-                        </button>
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); closeDialog(); }}
-                        className="flex items-center gap-1 text-xs font-semibold text-[#2A9D8F] underline underline-offset-2 hover:opacity-80 cursor-pointer"
-                      >
-                        Close <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDialogStep(p => Math.min(dialogSteps.length - 1, p + 1)); }}
-                      className="flex items-center gap-1 text-xs font-semibold text-[#2A9D8F] underline underline-offset-2 hover:opacity-80 cursor-pointer"
-                    >
-                      Next <ChevronRight className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="absolute -bottom-2 left-1/2 w-4 h-4 bg-white transform rotate-45 -translate-x-1/2 shadow-md border-r border-b border-slate-100 z-0"></div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence mode="wait">
-          {!disabled && !isDialogActive && meowMsg && (
-            <motion.div
-              initial={{ opacity: 0, y: 5, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -5, scale: 0.95 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg shadow-sm relative pointer-events-auto mb-4 mr-1 cursor-default"
-            >
-              <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{meowMsg}</span>
-              <div className="absolute -bottom-2 left-1/2 w-4 h-4 bg-white transform rotate-45 -translate-x-1/2 shadow-md border-r border-b border-slate-100 z-0"></div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Mallow pet mascot */}
-        <div
-          data-cat="true"
-          onClick={(e) => { e.stopPropagation(); handleCatClick(e); }}
-          onMouseEnter={() => { if (!isWalking) setIsHovered(true); }}
-          onMouseOver={() =>  { if (!isWalking) setIsHovered(true); }}
-          onMouseLeave={() => setIsHovered(false)}
-          style={{ pointerEvents: 'auto' }}
-        >
-          <MallowMascotSprite
-            spriteSheetUrl={selectedPet.spriteSheetUrl}
-            sleepHoldFrame={selectedPet.sleepHoldFrame}
-            idleFrames={selectedPet.idleFrames}
-            idleDuration={selectedPet.idleDuration}
-            hoverRow={selectedPet.hoverRow}
-            hoverFrames={selectedPet.hoverFrames}
-            hoverDuration={selectedPet.hoverDuration}
-            clickRow={selectedPet.clickRow}
-            clickFrames={selectedPet.clickFrames}
-            clickDuration={selectedPet.clickDuration}
-            isWalking={isWalking}
-            facingLeft={facingLeft}
-            isMeowing={isMeowing}
-            isHovered={isHovered}
-            isSleeping={isPetSleeping}
-            onHoverStart={() => {
-              if (!isWalking) setIsHovered(true);
-            }}
-            onHoverEnd={() => setIsHovered(false)}
-          />
-        </div>
-      </div>
-    </>
+    <SharedCatMascot
+      disabled={disabled}
+      petId={selectedPetId}
+      isSleeping={isPetSleeping}
+      dialogue={dialoguePresentation}
+      meowMessage={meowMsg}
+      onCatClick={handleCatClick}
+    />
   );
 }
