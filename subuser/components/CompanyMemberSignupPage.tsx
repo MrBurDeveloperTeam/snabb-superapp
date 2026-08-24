@@ -2,23 +2,56 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { authOdoo } from '@/services/authOdoo';
 import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
-  // import { acceptCompanyInvitation, getCompanyInvitation } from '../services/subuserService';
+import { acceptCompanyInvitation, getCompanyInvitation } from '../services/subuserService';
 import type { InvitationDetails } from '../types';
 
 type Props = { onComplete: () => void };
 
 export default function CompanyMemberSignupPage({ onComplete }: Props) {
-  const token = new URLSearchParams(window.location.search).get('token') || '';
+  const queryToken =
+    new URLSearchParams(window.location.search).get('token') || '';
+
+  const pathToken =
+    window.location.pathname.match(/^\/invite\/([^/]+)\/?$/)?.[1] || '';
+
+  const token = decodeURIComponent(queryToken || pathToken).trim();
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ fullName: '', phone: '', dob: '', jobPosition: '', country: 'Malaysia', password: '', confirmPassword: '', referralCode: '', agreed: false });
 
   useEffect(() => {
-    // getCompanyInvitation(token)
-    //   .then((result) => setInvitation(result.invitation))
-    //   .catch((error) => toast.error(error?.message || 'This invitation is invalid or expired.'))
-    //   .finally(() => setLoading(false));
+    let cancelled = false;
+
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    getCompanyInvitation(token)
+      .then((result) => {
+        if (!cancelled) {
+          setInvitation(result.invitation);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setInvitation(null);
+          toast.error(
+            error?.message ||
+              'This invitation is invalid or expired.'
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -36,9 +69,17 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
         country: form.country, password: form.password, confirmPassword: form.confirmPassword,
         agreedToTerms: form.agreed, referralCode: form.referralCode,
       });
-      if (!response?.data?.result?.created) throw new Error('An account already exists for this email. Please contact the company owner.');
-      // await acceptCompanyInvitation(token);
-      toast.success('Account created. Check your email to verify and activate your account.');
+      if (!response?.data?.result?.created) {
+        throw new Error(
+          'An account already exists for this email. Please contact the company owner.'
+        );
+      }
+
+      await acceptCompanyInvitation(token);
+
+      toast.success(
+        'Account created. Check your email to verify and activate your account.'
+      );
       setTimeout(onComplete, 2000);
     } catch (error: any) {
       toast.error(error?.message || 'Unable to create your company member account.');

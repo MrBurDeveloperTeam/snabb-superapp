@@ -325,8 +325,9 @@ useEffect(() => {
       isShortInviteRoute ||
       Boolean(pendingSignupInvite)
     );
-  const isCompanyMemberSignup = path === '/company-member-signup';
-  const isStandaloneSignup = isInviteSignup || isCompanyMemberSignup;
+  const isCompanyMemberSignup =
+    path === '/company-member-signup' ||
+    /^\/invite\/[^/]+\/?$/.test(path);  const isStandaloneSignup = isInviteSignup || isCompanyMemberSignup;
 
   useEffect(() => {
     let cancelled = false;
