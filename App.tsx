@@ -13,10 +13,10 @@ import { debounce } from 'lodash';
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
 import CatMascot from './components/CatMascot';
-import { MolarChat } from './components/MolarChat';
-import type { ChatHistory } from './components/MolarChat';
+import { SharedMolarAI } from '@mrburdeveloperteam/molar-experience/ai';
+import type { MolarChatEmptyState } from '@mrburdeveloperteam/molar-experience/ai';
+import { createAppGalleryMolarAdapter } from './aiExperience/appGalleryMolarAdapter';
 import AppGalleryVirtualPet from './petExperience/AppGalleryVirtualPet';
-import { chatWithGemini } from './services/geminiService';
 import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
 import { SnabbbIcon } from './public/icons/SnabbbIcon';
@@ -72,13 +72,26 @@ const App: React.FC = () => {
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<AuthFormData | null>(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
   const [userChatContext, setUserChatContext] = useState<string>('');
+  // PHASE 9C: empty-state content (title/subtitle/prompts) for
+  // <SharedMolarAI>'s zero-message welcome state — KNOWN, ACCEPTED TIMING
+  // SEAM (same pattern established across every prior app's Molar AI
+  // migration in this series): the pre-9C `MolarChat.tsx` fetched this only
+  // when the panel opened (`if (isOpen) fetchSimConfig()`); this fetches
+  // once on mount instead, since `SharedMolarAI` has no panel-open lifecycle
+  // hook exposed to the host. One extra harmless read query per mount,
+  // never changes what's displayed.
+  const [molarEmptyState, setMolarEmptyState] = useState<MolarChatEmptyState>({
+    title: 'App.Snabbb Assistant',
+    subtitle: 'Ready to assist with questions about App.Snabbb and its supported applications.',
+    prompts: [
+      { label: 'What is App.Snabbb?', iconName: 'Zap' },
+      { label: 'What apps are available?', iconName: 'ShieldCheck' },
+      { label: 'Tell me about the Inventory app', iconName: 'AlertCircle' },
+      { label: 'Tell me about the Appointment app', iconName: 'BarChart3' },
+    ],
+  });
   const setConfig = useAnnouncementBarStore((s) => s.setConfig);
   const [isToastBackdropOpen, setIsToastBackdropOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -94,8 +107,6 @@ const App: React.FC = () => {
   // otherwise a newer call (or an intervening logout) has already
   // superseded it, and it must be a no-op. See verifySession below.
   const verifySessionGenerationRef = useRef(0);
-  const handleClearChat = () => setChatHistory([]);
-  const [badgeText, setBadgeText] = useState("Ask Me");
   const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -134,20 +145,9 @@ useEffect(() => {
     .catch(() => setCreditBalance(null))
 }, [authFormData?.partner_id])
 
-  useEffect(() => {
-    const texts = !isLoggedIn 
-      ? ['Log In', 'Get Started']
-      : ['Ask Me', 'Try Me!', 'SNAI'];
-      
-    let i = 0;
-    setBadgeText(texts[0]);
-
-    const interval = setInterval(() => {
-      i = (i + 1) % texts.length;
-      setBadgeText(texts[i]);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [isLoggedIn]);
+  // PHASE 9C: badge-text cycling is now owned internally by
+  // <SharedMolarAI> — confirmed byte-identical texts/2000ms interval to
+  // the pre-9C effect this replaces (see dist/ai.js).
 
   const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
@@ -170,69 +170,48 @@ useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!chatInput.trim() || isChatLoading) return;
+  // PHASE 9C: General Chat orchestration (AIBoard keyword lookup + Gemini
+  // fallback) relocated verbatim into aiExperience/appGalleryMolarAdapter.ts
+  // — <SharedMolarAI> now owns message history/loading/submit mechanics.
+  const molarAdapter = useMemo(
+    () => createAppGalleryMolarAdapter({ userChatContext }),
+    [userChatContext]
+  );
 
-    const userMsg = chatInput.trim();
-    setChatInput("");
-    setChatHistory((prev) => [...prev, { role: "user", parts: [{ text: userMsg }] }]);
-    setIsChatLoading(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: configs } = await supabase
+          .from('aiboard_simulator_configs')
+          .select('id, title, subtitle')
+          .eq('module_name', 'App.Snabbb')
+          .limit(1);
 
-    try {
-      let response = null;
+        if (!configs || configs.length === 0) return;
 
-      // 1. Check custom responses first
-      const { data: apps } = await supabase
-        .from('aiboard_response_target_apps')
-        .select('response_id')
-        .in('app_name', ['App.Snabbb', 'All']);
+        const { data: promptData } = await supabase
+          .from('aiboard_simulator_prompts')
+          .select('text, icon_name, sort_order')
+          .eq('config_id', configs[0].id)
+          .order('sort_order', { ascending: true });
 
-      if (apps && apps.length > 0) {
-        const responseIds = apps.map(a => a.response_id);
-        const { data: keywords } = await supabase
-          .from('aiboard_response_keywords')
-          .select('keyword, response_id')
-          .in('response_id', responseIds);
+        if (cancelled) return;
 
-        if (keywords && keywords.length > 0) {
-          const matchedKeyword = keywords.find(k => userMsg.toLowerCase().includes(k.keyword.toLowerCase()));
-
-          if (matchedKeyword) {
-            const { data: respData } = await supabase
-              .from('aiboard_responses')
-              .select('response')
-              .eq('id', matchedKeyword.response_id)
-              .single();
-
-            if (respData) {
-              response = respData.response;
-            }
-          }
-        }
+        setMolarEmptyState((prev) => ({
+          title: configs[0].title || 'App.Snabbb Assistant',
+          subtitle: configs[0].subtitle || 'Ready to assist with questions about App.Snabbb and its supported applications.',
+          prompts:
+            promptData && promptData.length > 0
+              ? promptData.map((p: { text: string; icon_name: string }) => ({ label: p.text, iconName: p.icon_name }))
+              : prev.prompts,
+        }));
+      } catch (err) {
+        console.error('Error fetching sim configs:', err);
       }
-
-      // 2. Fallback to Gemini
-      if (!response) {
-        response = await chatWithGemini(
-          chatHistory,
-          userMsg,
-          "SuperApp Gallery context.",
-          "",
-          "",
-          userChatContext || undefined,
-        );
-      }
-      
-      setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: response as string }] }]);
-    } catch (error) {
-      console.error(error);
-      setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "SNAI Error: Unable to process request." }] }]);
-    } finally {
-      setIsChatLoading(false);
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }
-  };
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const getAvatarColor = (name: string) => {
     const colors = [
@@ -1135,49 +1114,26 @@ useEffect(() => {
           />
         </div>
         
-        <MolarChat
-          isOpen={isChatOpen && !isVirtualPetOpen}
-          onClose={() => setIsChatOpen(false)}
-          chatHistory={chatHistory}
-          isChatLoading={isChatLoading}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          onSendMessage={handleSendMessage}
-          onClearChat={handleClearChat}
-          chatEndRef={chatEndRef}
-          onPetToggle={() => setIsVirtualPetOpen(true)}
-        />
-        
-        <AppGalleryVirtualPet isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
+        {/* PHASE 9C: <SharedMolarAI> owns the floating trigger button, chat
+            panel, history, loading, submit mechanics, and badge-text cycling
+            internally — kept mounted (CSS-hidden, not unmounted) while Pet is
+            open or on an auth route, exactly mirroring CatMascot's own
+            wrapper above, so its internal chat history/open state survive a
+            Pet open/close cycle instead of resetting. Known, accepted nuance
+            (matches manual-parity acceptance): unlike the old externally-
+            controlled `isOpen`, SharedMolarAI has no host-controlled close —
+            opening Pet no longer force-closes an already-open Molar panel,
+            it only becomes invisible until Pet closes again. */}
+        <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
+          <SharedMolarAI
+            adapter={molarAdapter}
+            disabled={!isLoggedIn}
+            onPetToggle={() => setIsVirtualPetOpen(true)}
+            emptyState={molarEmptyState}
+          />
+        </div>
 
-        {!isChatOpen && (
-          <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
-            <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
-               <div className="relative flex items-center justify-center">
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
-                     <AnimatePresence mode="wait">
-                        <motion.div
-                          key={badgeText}
-                          initial={{ opacity: 0, y: 5, scale: 0.9 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -5, scale: 0.9 }}
-                          className="bg-white text-emerald-500 text-[12px] font-bold tracking-wider px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 whitespace-nowrap"
-                        >
-                          {badgeText}
-                        </motion.div>
-                     </AnimatePresence>
-                  </div>
-                  <button
-                    onClick={() => setIsChatOpen(true)}
-                    disabled={!isLoggedIn}
-                    className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg transition-all relative overflow-hidden ${!isLoggedIn ? 'bg-slate-300 grayscale cursor-not-allowed opacity-70 shadow-none' : 'bg-[#1F7A6F] hover:scale-105 hover:shadow-xl shadow-[#1F7A6F]/30'}`}
-                  >
-                    <img src="/icons/ai_logo.png" alt="Molar AI" className={`w-10 h-10 object-contain drop-shadow-sm transition-transform ${!isLoggedIn ? 'brightness-80' : ''}`} />
-                  </button>
-               </div>
-            </div>
-          </div>
-        )}
+        <AppGalleryVirtualPet isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
 
         {/* <AnimatePresence mode="wait" initial={false}> */}
           {isAuthRoute && (
