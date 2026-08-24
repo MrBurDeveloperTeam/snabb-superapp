@@ -15,7 +15,7 @@ import type { AuthFormData } from './types/AuthFormData';
 import CatMascot from './components/CatMascot';
 import { MolarChat } from './components/MolarChat';
 import type { ChatHistory } from './components/MolarChat';
-import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
+import AppGalleryVirtualPet from './petExperience/AppGalleryVirtualPet';
 import { chatWithGemini } from './services/geminiService';
 import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
@@ -1148,7 +1148,7 @@ useEffect(() => {
           onPetToggle={() => setIsVirtualPetOpen(true)}
         />
         
-        <VirtualPetContainer isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
+        <AppGalleryVirtualPet isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
 
         {!isChatOpen && (
           <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
