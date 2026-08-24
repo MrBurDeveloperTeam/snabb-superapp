@@ -62,27 +62,56 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
     if (!invitation) return;
     if (form.password !== form.confirmPassword) return toast.error('Passwords do not match.');
     setSubmitting(true);
+    let accountWasCreated = false;
+
     try {
       const response = await authOdoo({
-        account_type: 'company_member', login: invitation.email, fullName: form.fullName,
-        phone: form.phone, dob: form.dob, jobPosition: form.jobPosition, position: form.jobPosition,
-        country: form.country, password: form.password, confirmPassword: form.confirmPassword,
-        agreedToTerms: form.agreed, referralCode: form.referralCode,
+        account_type: 'company_member',
+        login: invitation.email,
+        fullName: form.fullName,
+        phone: form.phone,
+        dob: form.dob,
+        jobPosition: form.jobPosition,
+        position: form.jobPosition,
+        country: form.country,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        agreedToTerms: form.agreed,
+        referralCode: form.referralCode,
       });
+
       if (!response?.data?.result?.created) {
         throw new Error(
-          'An account already exists for this email. Please contact the company owner.'
+          'The account could not be created.'
         );
       }
+
+      accountWasCreated = true;
 
       await acceptCompanyInvitation(token);
 
       toast.success(
-        'Account created. Check your email to verify and activate your account.'
+        'Your company member account has been created successfully.'
       );
+
       setTimeout(onComplete, 2000);
     } catch (error: any) {
-      toast.error(error?.message || 'Unable to create your company member account.');
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message;
+
+      if (accountWasCreated) {
+        toast.error(
+          message ||
+            'Your account was created, but it could not be connected to the company.'
+        );
+      } else {
+        toast.error(
+          message ||
+            'Unable to create your account.'
+        );
+      }
     } finally {
       setSubmitting(false);
     }

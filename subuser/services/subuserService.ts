@@ -38,20 +38,34 @@ export const sendCompanyInvitations = async <T>(
   action: string,
   params: Record<string, unknown> = {}
 ): Promise<T> => {
-  const res = await api.post('/company-invitations', {
-    action,
-    ...params,
-  });
-
-  const data = res.data;
-
-  if (!data?.ok) {
-    throw new Error(
-      data?.message || 'The request could not be completed.'
+  try {
+    const response = await api.post(
+      '/company-invitations',
+      {
+        action,
+        ...params,
+      }
     );
-  }
 
-  return data as T;
+    const data = response.data;
+
+    if (!data?.ok) {
+      throw new Error(
+        data?.message ||
+          'The invitation request could not be completed.'
+      );
+    }
+
+    return data as T;
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      'The invitation request could not be completed.';
+
+    throw new Error(message);
+  }
 };
 
 export const getCompanyInvitation = (token: string) =>
