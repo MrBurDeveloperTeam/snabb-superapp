@@ -156,6 +156,7 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false);
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [, setLoggedInUser] = useState<AuthFormData | null>(null);
@@ -574,6 +575,31 @@ useEffect(() => {
   };
 
   const avatarBgColor = useMemo(() => getAvatarColor(userName), [userName]);
+
+  const openSupportTickets = useCallback(async () => {
+    if (isOpeningSupportTickets) return;
+
+    setIsProfileMenuOpen(false);
+    setIsOpeningSupportTickets(true);
+
+    try {
+      const response = await fetch('/ticketing/sso', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || 'Unable to open the support portal.');
+      }
+
+      window.location.assign(data.url);
+    } catch (error) {
+      console.error('Ticketing SSO failed:', error);
+      setIsOpeningSupportTickets(false);
+    }
+  }, [isOpeningSupportTickets]);
 
   const clearAuthState = useCallback(() => {
     setIsLoggedIn(false);
@@ -1220,6 +1246,22 @@ useEffect(() => {
                           <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your channel</p>
                         </div>
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isOpeningSupportTickets}
+                        onClick={openSupportTickets}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <span className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
+                          <i className="fa-solid fa-life-ring text-xs" aria-hidden="true"></i>
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm font-bold text-slate-900 leading-tight">Support Tickets</span>
+                          <span className="block text-[11px] font-semibold text-slate-500 truncate">Create and track your support tickets</span>
+                        </span>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-500 transition-colors" aria-hidden="true"></i>
                       </button>
 
                       {isCompanyAccount && (
