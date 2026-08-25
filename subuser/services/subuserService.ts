@@ -85,3 +85,15 @@ export const getCompanyPeople = () =>
     members: MemberRow[];
     invitations: InvitationRow[];
   }>('list');
+
+export const updateCompanyMemberRole = (
+  memberUserId: string,
+  role: string
+  ) =>
+  sendCompanyInvitations<{
+    ok: true;
+    member: MemberRow;
+  }>('update-role', {
+    memberUserId,
+    role,
+});
