@@ -122,7 +122,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
   if (!isCompanyAccount) return <div className="min-h-[60vh] grid place-items-center px-6"><div className="rounded-3xl bg-white p-8 text-center shadow-xl"><h1 className="text-2xl font-black text-slate-900">Company access required</h1><p className="mt-3 text-sm text-slate-500">User Management is available only to company accounts.</p></div></div>;
 
   return (
-    <div className="min-h-full bg-slate-100/80 py-10">
+    <div className="user-management-page min-h-full bg-slate-100/80 py-10 dark:bg-[#0b1120]">
       <div className="mx-auto w-full max-w-7xl px-6">
         <h1 className="text-3xl font-black text-slate-900">User Management</h1>
         <p className="mt-2 text-slate-500">Manage your team members and control their access to mini apps</p>
@@ -144,16 +144,16 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
 
         <section className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-4 p-7 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-black">Members</h2><p className="text-sm text-slate-400">{members.length + invitations.length} total · {invitations.length} pending</p></div><div className="relative"><input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search members..." aria-label="Search members" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-10 outline-none focus:border-tiffany-500 sm:w-72" />{search && <button type="button" onClick={() => setSearch('')} aria-label="Clear member search" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-1.5 py-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500">×</button>}</div></div>
-          <div className="border-y bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Active</div>
+          <div className="border-y border-slate-200 bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Active</div>
           {filteredMembers.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">{search.trim() ? 'No members match your search.' : 'No active members yet.'}</p>}
           {filteredMembers.map((member) => (
-            <div key={member.id} className="group flex items-center justify-between border-b px-7 py-5 transition-colors hover:bg-slate-50/80 focus-within:bg-slate-50/80">
+            <div key={member.id} className="group flex items-center justify-between border-b border-slate-200 px-7 py-5 transition-colors hover:bg-[#f3f9fb] focus-within:bg-[#f3f9fb] dark:hover:bg-slate-800 dark:focus-within:bg-slate-800">
               <div className="min-w-0">
                 <p className="truncate font-bold text-slate-900">{member.name || 'Company member'}</p>
                 <p className="truncate text-sm text-slate-400">{member.email}</p>
               </div>
               <div className="ml-4 flex shrink-0 items-center gap-3">
-                <span className="rounded-full bg-violet-50 px-4 py-1 text-sm font-semibold text-violet-700">{getRoleLabel(member.role)}</span>
+                <span className="rounded-full bg-violet-50 px-4 py-1 text-sm font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">{getRoleLabel(member.role)}</span>
                 <button
                   type="button"
                   onClick={(event) => openMemberMenu(event, member)}
@@ -175,6 +175,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             slotProps={{
               paper: {
+                className: 'member-actions-menu',
                 sx: {
                   mt: 0.75,
                   minWidth: 230,
@@ -205,9 +206,9 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
               Remove member
             </MenuItem>
           </Menu>
-          <div className="border-y bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Pending invites</div>
+          <div className="border-y border-slate-200 bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Pending invites</div>
           {invitations.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">No pending invitations.</p>}
-          {invitations.map((invite) => <div key={invite.id} className="flex items-center justify-between border-b px-7 py-5"><div><p className="font-bold text-slate-900">{invite.email} <span className="ml-2 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-600">Pending</span></p><p className="text-sm text-slate-400">Expires {new Date(invite.expires_at).toLocaleDateString()}</p></div><span className="rounded-full bg-emerald-50 px-4 py-1 text-sm font-semibold capitalize text-emerald-700">{invite.role}</span></div>)}
+          {invitations.map((invite) => <div key={invite.id} className="flex items-center justify-between border-b border-slate-200 px-7 py-5"><div><p className="font-bold text-slate-900">{invite.email} <span className="ml-2 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">Pending</span></p><p className="text-sm text-slate-400">Expires {new Date(invite.expires_at).toLocaleDateString()}</p></div><span className="rounded-full bg-emerald-50 px-4 py-1 text-sm font-semibold capitalize text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{getRoleLabel(invite.role)}</span></div>)}
         </section>
       </div>
     </div>

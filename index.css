@@ -125,6 +125,25 @@
   /* no-op hook; kept for clarity */
 }
 
+/* User Management role popover is portaled to <body>, so it needs an
+   explicit dark surface instead of relying on the page card hierarchy. */
+.dark .member-actions-menu {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  border-color: #1e293b;
+}
+.dark .member-actions-menu .MuiMenuItem-root:hover,
+.dark .member-actions-menu .MuiMenuItem-root.Mui-selected,
+.dark .member-actions-menu .MuiMenuItem-root.Mui-selected:hover {
+  background-color: #1e293b;
+}
+.dark .member-actions-menu .border-slate-200 {
+  border-color: #1e293b;
+}
+.dark .user-management-page {
+  background-color: #0b1120;
+}
+
 /* ------------------------------------------------------------------ *
  * Subtle theme transition (excludes framer-motion transforms)
  * ------------------------------------------------------------------ */
