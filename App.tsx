@@ -583,18 +583,14 @@ useEffect(() => {
     setIsOpeningSupportTickets(true);
 
     try {
-      const response = await fetch('/ticketing/sso', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      });
-      const data = await response.json().catch(() => null);
+      const { data } = await api.post('/ticketing/sso');
+      // const data = await data.json().catch(() => null);
 
-      if (!response.ok || !data?.url) {
+      if (!data?.result?.url) {
         throw new Error(data?.error || 'Unable to open the support portal.');
       }
 
-      window.location.assign(data.url);
+      window.location.assign(data.result.url);
     } catch (error) {
       console.error('Ticketing SSO failed:', error);
       setIsOpeningSupportTickets(false);
