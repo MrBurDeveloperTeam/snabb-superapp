@@ -586,11 +586,11 @@ useEffect(() => {
       const { data } = await api.post('/ticketing/sso');
       // const data = await data.json().catch(() => null);
 
-      if (!data?.result?.url) {
+      if (!data?.redirectUrl) {
         throw new Error(data?.error || 'Unable to open the support portal.');
       }
 
-      window.location.assign(data.result.url);
+      window.location.assign(data.redirectUrl);
     } catch (error) {
       console.error('Ticketing SSO failed:', error);
       setIsOpeningSupportTickets(false);
