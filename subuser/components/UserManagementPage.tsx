@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Menu, MenuItem } from '@mui/material';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { toast } from 'sonner';
 import { COMPANY_MEMBER_ROLES } from '../config';
 import type { CompanyRole, InvitationRow, MemberRow } from '../types';
-import { getCompanyPeople, sendCompanyInvitations } from '../services/subuserService';
+import { getCompanyPeople, sendCompanyInvitations, updateCompanyMemberRole } from '../services/subuserService';
 
 type Props = { isCompanyAccount: boolean; isCheckingAccountType: boolean };
 
@@ -14,6 +17,53 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
   const [invitations, setInvitations] = useState<InvitationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [memberMenuAnchor, setMemberMenuAnchor] = useState<HTMLElement | null>(null);
+  const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
+
+  const closeMemberMenu = () => {
+    setMemberMenuAnchor(null);
+    setSelectedMember(null);
+  };
+
+  const openMemberMenu = (event: React.MouseEvent<HTMLButtonElement>, member: MemberRow) => {
+    setMemberMenuAnchor(event.currentTarget);
+    setSelectedMember(member);
+  };
+
+  const getRoleLabel = (memberRole: string) =>
+    COMPANY_MEMBER_ROLES.find((item) => item.value === memberRole)?.label || memberRole;
+
+  const handleRoleChange = async (nextRole: CompanyRole) => {
+    if (!selectedMember) return;
+
+    const memberName =
+      selectedMember.name ||
+      selectedMember.email ||
+      'Member';
+
+    try {
+      await updateCompanyMemberRole(
+        selectedMember.member_user_id,
+        nextRole
+      );
+
+      closeMemberMenu();
+      await loadPeople();
+
+      toast.success(
+        `${memberName}'s role was changed to ${getRoleLabel(nextRole)}.`
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.message || 'Unable to change member role.'
+      );
+    }
+  };
+
+  const previewRemoveMember = () => {
+    closeMemberMenu();
+    toast.info('Remove member is shown for now and is not connected yet.');
+  };
 
   const loadPeople = async () => {
     setLoading(true);
@@ -46,14 +96,16 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
       
       const result = await sendCompanyInvitations<{ ok: true; inviteUrl: string; companyName: string }>('create', { email, role });
       const subject = `Invitation to join ${result.companyName} on Snabbb`;
+      const inviteUrl = result.inviteUrl.trim();
       const body = [
         `You have been invited to join ${result.companyName} on Snabbb as ${role}.`,
         '',
-        'Accept the invitation and create your company member account:',
-        result.inviteUrl,
+        'Accept the invitation and create your company member account using this link:',
+        '',
+        inviteUrl,
         '',
         'This invitation expires in 7 days.',
-      ].join('\n');
+      ].join('\r\n');
 
       window.location.href = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       setEmail('');
@@ -94,7 +146,65 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
           <div className="flex flex-col gap-4 p-7 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-black">Members</h2><p className="text-sm text-slate-400">{members.length + invitations.length} total · {invitations.length} pending</p></div><div className="relative"><input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search members..." aria-label="Search members" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-10 outline-none focus:border-tiffany-500 sm:w-72" />{search && <button type="button" onClick={() => setSearch('')} aria-label="Clear member search" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-1.5 py-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500">×</button>}</div></div>
           <div className="border-y bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Active</div>
           {filteredMembers.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">{search.trim() ? 'No members match your search.' : 'No active members yet.'}</p>}
-          {filteredMembers.map((member) => <div key={member.id} className="flex items-center justify-between border-b px-7 py-5"><div><p className="font-bold text-slate-900">{member.name || 'Company member'}</p><p className="text-sm text-slate-400">{member.email}</p></div><span className="rounded-full bg-violet-50 px-4 py-1 text-sm font-semibold capitalize text-violet-700">{member.role}</span></div>)}
+          {filteredMembers.map((member) => (
+            <div key={member.id} className="group flex items-center justify-between border-b px-7 py-5 transition-colors hover:bg-slate-50/80 focus-within:bg-slate-50/80">
+              <div className="min-w-0">
+                <p className="truncate font-bold text-slate-900">{member.name || 'Company member'}</p>
+                <p className="truncate text-sm text-slate-400">{member.email}</p>
+              </div>
+              <div className="ml-4 flex shrink-0 items-center gap-3">
+                <span className="rounded-full bg-violet-50 px-4 py-1 text-sm font-semibold text-violet-700">{getRoleLabel(member.role)}</span>
+                <button
+                  type="button"
+                  onClick={(event) => openMemberMenu(event, member)}
+                  aria-label={`Actions for ${member.name || member.email || 'company member'}`}
+                  aria-haspopup="menu"
+                  aria-expanded={selectedMember?.id === member.id && Boolean(memberMenuAnchor)}
+                  className={`grid h-10 w-10 place-items-center rounded-full text-slate-500 transition hover:bg-slate-200 hover:text-slate-800 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500 ${selectedMember?.id === member.id && memberMenuAnchor ? 'bg-slate-200 opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
+                >
+                  <MoreHorizIcon fontSize="small" />
+                </button>
+              </div>
+            </div>
+          ))}
+          <Menu
+            anchorEl={memberMenuAnchor}
+            open={Boolean(memberMenuAnchor)}
+            onClose={closeMemberMenu}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            slotProps={{
+              paper: {
+                sx: {
+                  mt: 0.75,
+                  minWidth: 230,
+                  overflow: 'hidden',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                  boxShadow: '0 18px 40px rgba(15, 23, 42, 0.14)',
+                },
+              },
+              list: { 'aria-label': `Actions for ${selectedMember?.name || 'member'}`, sx: { py: 0.75 } },
+            }}
+          >
+            <li className="px-4 pb-2 pt-1 text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Change role</li>
+            {COMPANY_MEMBER_ROLES.map((item) => (
+              <MenuItem
+                key={item.value}
+                selected={selectedMember?.role === item.value}
+                onClick={() => handleRoleChange(item.value)}
+                sx={{ mx: 0.75, minHeight: 40, borderRadius: '10px', fontSize: 14, fontWeight: 650 }}
+              >
+                {item.label}
+                {selectedMember?.role === item.value && <span className="ml-auto text-xs font-bold text-tiffany-600">Current</span>}
+              </MenuItem>
+            ))}
+            <div className="my-1 border-t border-slate-200" />
+            <MenuItem onClick={previewRemoveMember} sx={{ mx: 0.75, minHeight: 42, borderRadius: '10px', color: '#dc2626', fontSize: 14, fontWeight: 700 }}>
+              <DeleteOutlineIcon sx={{ mr: 1.25, fontSize: 19 }} />
+              Remove member
+            </MenuItem>
+          </Menu>
           <div className="border-y bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Pending invites</div>
           {invitations.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">No pending invitations.</p>}
           {invitations.map((invite) => <div key={invite.id} className="flex items-center justify-between border-b px-7 py-5"><div><p className="font-bold text-slate-900">{invite.email} <span className="ml-2 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-600">Pending</span></p><p className="text-sm text-slate-400">Expires {new Date(invite.expires_at).toLocaleDateString()}</p></div><span className="rounded-full bg-emerald-50 px-4 py-1 text-sm font-semibold capitalize text-emerald-700">{invite.role}</span></div>)}
