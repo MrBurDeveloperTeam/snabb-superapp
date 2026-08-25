@@ -1247,7 +1247,7 @@ useEffect(() => {
                         </div>
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
-
+ 
                       <button
                         type="button"
                         disabled={isOpeningSupportTickets}
