@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { COMPANY_MEMBER_ROLES } from '../config';
 import type { CompanyRole, InvitationRow, MemberRow } from '../types';
-import { sendCompanyInvitations } from '../services/subuserService';
+import { getCompanyPeople, sendCompanyInvitations } from '../services/subuserService';
 
 type Props = { isCompanyAccount: boolean; isCheckingAccountType: boolean };
 
@@ -18,9 +18,9 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
   const loadPeople = async () => {
     setLoading(true);
     try {
-      // const result = await getCompanyPeople();
-      // setMembers(result.members || []);
-      // setInvitations(result.invitations || []);
+      const result = await getCompanyPeople();
+      setMembers(result.members || []);
+      setInvitations(result.invitations || []);
     } catch (error: any) {
       toast.error(error?.message || 'Unable to load company members.');
     } finally {
@@ -76,11 +76,11 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
         <p className="mt-2 text-slate-500">Manage your team members and control their access to mini apps</p>
 
         <div className="mt-8 inline-flex rounded-2xl bg-white p-1.5 shadow-sm">
-          <button className="rounded-xl bg-tiffany-600 px-7 py-3 font-bold text-white"><i className="fa-solid fa-users mr-2" />Team Members</button>
-          <button disabled className="px-7 py-3 font-semibold text-slate-500"><i className="fa-solid fa-shield-halved mr-2" />Access Control</button>
+          <button type="button" className="rounded-xl bg-tiffany-600 px-7 py-3 font-bold text-white"><i className="fa-solid fa-users mr-2" />Team Members</button>
+          <button type="button" disabled className="px-7 py-3 font-semibold text-slate-500"><i className="fa-solid fa-shield-halved mr-2" />Access Control</button>
         </div>
 
-        <form onSubmit={handleInvite} className="mt-8 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+        <form noValidate onSubmit={handleInvite} className="mt-8 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
           <h2 className="text-lg font-black text-slate-900"><i className="fa-solid fa-user-plus mr-3 text-tiffany-600" />Invite a Team Member</h2>
           <p className="ml-8 mt-1 text-sm text-slate-400">An email invitation will be sent to join your company workspace.</p>
           <div className="mt-7 grid gap-4 md:grid-cols-[1fr_210px_190px]">
@@ -91,9 +91,9 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
         </form>
 
         <section className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 p-7 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-black">Members</h2><p className="text-sm text-slate-400">{members.length + invitations.length} total · {invitations.length} pending</p></div><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search members..." className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none" /></div>
+          <div className="flex flex-col gap-4 p-7 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-black">Members</h2><p className="text-sm text-slate-400">{members.length + invitations.length} total · {invitations.length} pending</p></div><div className="relative"><input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search members..." aria-label="Search members" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-10 outline-none focus:border-tiffany-500 sm:w-72" />{search && <button type="button" onClick={() => setSearch('')} aria-label="Clear member search" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-1.5 py-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500">×</button>}</div></div>
           <div className="border-y bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Active</div>
-          {filteredMembers.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">No active members yet.</p>}
+          {filteredMembers.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">{search.trim() ? 'No members match your search.' : 'No active members yet.'}</p>}
           {filteredMembers.map((member) => <div key={member.id} className="flex items-center justify-between border-b px-7 py-5"><div><p className="font-bold text-slate-900">{member.name || 'Company member'}</p><p className="text-sm text-slate-400">{member.email}</p></div><span className="rounded-full bg-violet-50 px-4 py-1 text-sm font-semibold capitalize text-violet-700">{member.role}</span></div>)}
           <div className="border-y bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Pending invites</div>
           {invitations.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">No pending invitations.</p>}
