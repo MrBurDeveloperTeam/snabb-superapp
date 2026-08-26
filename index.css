@@ -144,6 +144,55 @@
   background-color: #0b1120;
 }
 
+/* SNAI support shortcut owns both theme states explicitly so it never
+   depends on broad slate utility remapping for contrast. */
+.snai-support-link {
+  border-color: rgba(203, 213, 225, 0.9);
+  color: #334155;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+.snai-support-link:hover {
+  border-color: rgba(52, 211, 153, 0.8);
+  background: rgba(236, 253, 245, 0.96);
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.13);
+}
+.snai-support-link:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+.snai-support-icon {
+  border-color: #a7f3d0;
+  color: #059669;
+  background: #d1fae5;
+}
+.snai-support-title { color: #334155; }
+.snai-support-meta { color: #64748b; }
+.snai-support-link:hover .snai-support-title { color: #065f46; }
+
+.dark .snai-support-link {
+  border-color: #334155;
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.92);
+  box-shadow: 0 5px 16px rgba(2, 6, 23, 0.34);
+}
+.dark .snai-support-link:hover {
+  border-color: rgba(52, 211, 153, 0.72);
+  background: rgba(15, 55, 55, 0.94);
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.46);
+}
+.dark .snai-support-link:focus-visible {
+  outline-color: #34d399;
+}
+.dark .snai-support-icon {
+  border-color: rgba(52, 211, 153, 0.34);
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.16);
+}
+.dark .snai-support-title { color: #e2e8f0; }
+.dark .snai-support-meta { color: #94a3b8; }
+.dark .snai-support-link:hover .snai-support-title { color: #a7f3d0; }
+
 /* ------------------------------------------------------------------ *
  * Subtle theme transition (excludes framer-motion transforms)
  * ------------------------------------------------------------------ */
