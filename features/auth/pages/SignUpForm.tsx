@@ -54,8 +54,8 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           : data.login,
         companyName: data.companyName,
         companyEmail: data.companyEmail,
-        fullName: data.fullName,
-        preferredName: data.preferredName?.trim() || undefined,
+        firstName: data.firstName,
+        lastName: data.lastName,
         phone: data.phone,
         country: data.country,
         dob: data.dob,
@@ -251,20 +251,20 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 <p className="mt-1 text-xs text-slate-400 italic">Referred by a doctor already on Snabbb? Enter their code, email, or share their link to auto-fill this.</p>
               </div>
 
-              {/* Full Name */}
+              {/* First Name */}
               <div>
-                <label className={labelClasses}>Your Name</label>
+                <label className={labelClasses}>First Name</label>
                 <div className="relative group">
                   <i className="fa-regular fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
                   <Controller
-                    name="fullName"
+                    name="firstName"
                     control={control}
-                    rules={{ required: 'Your name is required.' }}
+                    rules={{ required: 'First name is required.' }}
                     render={({ field }) => (
                       <input
                         {...field}
                         type="text"
-                        placeholder={accountType === 'company' ? 'e.g. Ahmad Nizam' : 'e.g. Nur AYA CHE'}
+                        placeholder="e.g. Ahmad"
                         className={inputClasses}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
@@ -275,30 +275,31 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 {accountType === 'company' && (
                   <p className="mt-1 text-xs text-slate-400 italic">Your name as the company representative.</p>
                 )}
-                {error.fullName && <p className="mt-1 text-xs text-red-500">{error.fullName.message}</p>}
+                {error.firstName && <p className="mt-1 text-xs text-red-500">{error.firstName.message}</p>}
               </div>
 
-              {/* Preferred Name */}
+              {/* Last Name */}
               <div>
-                <label className={labelClasses}>Preferred Name <span className="normal-case text-slate-400 font-medium">(optional)</span></label>
+                <label className={labelClasses}>Last Name</label>
                 <div className="relative group">
-                  <i className="fa-regular fa-comment-dots absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <i className="fa-regular fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
                   <Controller
-                    name="preferredName"
-                    defaultValue=""
+                    name="lastName"
                     control={control}
+                    rules={{ required: 'Last name is required.' }}
                     render={({ field }) => (
                       <input
                         {...field}
                         type="text"
-                        placeholder="What should we call you?"
+                        placeholder="e.g. Nizam"
                         className={inputClasses}
+                        required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
                   />
                 </div>
-                <p className="mt-1 text-xs text-slate-400 italic">Shown instead of your full name once you're logged in.</p>
+                {error.lastName && <p className="mt-1 text-xs text-red-500">{error.lastName.message}</p>}
               </div>
 
               {/* Phone */}

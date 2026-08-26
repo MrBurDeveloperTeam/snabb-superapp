@@ -29,7 +29,8 @@ export const handleInputChangeSignup = (
   const { name } = e.target;
 
   switch (name) {
-    case "fullName":
+    case "firstName":
+    case "lastName":
     case "email":
     case "jobPosition":
     case "customJobPosition":

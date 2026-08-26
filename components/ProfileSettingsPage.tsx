@@ -278,8 +278,8 @@ const COUNTRY_OPTIONS = [
 type AccountType = "individual" | "company";
 
 type ProfileForm = {
-  name: string;
-  preferredName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   companyName: string;
   sstNumber: string;
@@ -303,8 +303,8 @@ export default function ProfileSettingsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [form, setForm] = useState<ProfileForm>({
-    name: "",
-    preferredName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     companyName: "",
     sstNumber: "",
@@ -343,8 +343,10 @@ export default function ProfileSettingsPage() {
   const [contactIdCopied, setContactIdCopied] = useState(false);
 
   const initials =
-    form.name
-      ?.split(" ")
+    `${form.firstName} ${form.lastName}`
+      .trim()
+      .split(" ")
+      .filter(Boolean)
       .map((w) => w[0])
       .join("")
       .toUpperCase()
@@ -384,10 +386,6 @@ export default function ProfileSettingsPage() {
         p.sst_change_used === true ||
         data.sst_change_used === true;
 
-      // Preferred name is a Gallery-only nicety (not part of the Odoo
-      // partner record), so it lives in Supabase alongside account_type.
-      let detectedPreferredName = "";
-
       try {
         const {
           data: authData,
@@ -406,7 +404,7 @@ export default function ProfileSettingsPage() {
             error: profileError,
           } = await supabase
             .from("profiles")
-            .select("account_type, sst_change_used, preferred_name")
+            .select("account_type, sst_change_used")
             .eq("user_id", userId)
             .maybeSingle();
 
@@ -426,11 +424,6 @@ export default function ProfileSettingsPage() {
 
             detectedSstChangeUsed =
               profileRow.sst_change_used === true;
-
-            detectedPreferredName =
-              typeof profileRow.preferred_name === "string"
-                ? profileRow.preferred_name
-                : "";
           }
         }
       } catch (accountTypeError) {
@@ -493,10 +486,17 @@ export default function ProfileSettingsPage() {
 
       setOriginalSstNumber(loadedSstNumber);
 
+      // Odoo's partner record only has a single "name" field — split it into
+      // First/Last Name for the form (first token = first name, everything
+      // else = last name). Recombined into one string again on save.
+      const nameParts = String(p.name || "").trim().split(/\s+/).filter(Boolean);
+      const loadedFirstName = nameParts[0] || "";
+      const loadedLastName = nameParts.slice(1).join(" ");
+
       setForm((prev) => ({
         ...prev,
-        name: p.name || "",
-        preferredName: detectedPreferredName,
+        firstName: loadedFirstName,
+        lastName: loadedLastName,
         email: p.email || "",
         companyName:
           detectedAccountType === "company"
@@ -621,6 +621,11 @@ export default function ProfileSettingsPage() {
   };
 
   const handleSave = async () => {
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      alert("First Name and Last Name are required.");
+      return;
+    }
+
     const nextSstNumber = form.sstNumber.trim();
 
     const sstHasChanged =
@@ -656,7 +661,11 @@ export default function ProfileSettingsPage() {
 
     const formData = new FormData();
 
-    formData.append("name", form.name);
+    // Odoo's partner record only has one "name" field, so First + Last
+    // Name are recombined into a single string before saving.
+    const combinedName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
+
+    formData.append("name", combinedName);
     formData.append("email", form.email);
     formData.append("phone", form.phone);
 
@@ -765,47 +774,6 @@ export default function ProfileSettingsPage() {
         setSstChangeUsed(true);
         setOriginalSstNumber(
           nextSstNumber
-        );
-      }
-
-      // Preferred name doesn't exist on the Odoo partner record, so it's
-      // saved separately to the Supabase profile row (upsert so a first-time
-      // save works even if the row hasn't been created yet).
-      try {
-        const {
-          data: authData,
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError || !authData.user?.id) {
-          console.error(
-            "Unable to save preferred name:",
-            authError
-          );
-        } else {
-          const trimmedPreferredName = form.preferredName.trim();
-
-          const { error: preferredNameError } = await supabase
-            .from("profiles")
-            .upsert(
-              {
-                user_id: authData.user.id,
-                preferred_name: trimmedPreferredName || null,
-              },
-              { onConflict: "user_id" }
-            );
-
-          if (preferredNameError) {
-            console.error(
-              "Failed to save preferred name:",
-              preferredNameError
-            );
-          }
-        }
-      } catch (preferredNameErr) {
-        console.error(
-          "Failed to save preferred name:",
-          preferredNameErr
         );
       }
 
@@ -1014,28 +982,27 @@ export default function ProfileSettingsPage() {
 
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
             <div>
-              <label className="field-label">Full Name</label>
+              <label className="field-label">First Name</label>
               <input
-                name="name"
-                value={form.name}
+                name="firstName"
+                value={form.firstName}
                 onChange={updateField}
+                required
                 className="inp"
-                placeholder="Your full name"
+                placeholder="e.g. Ahmad"
               />
             </div>
 
             <div>
-              <label className="field-label">Preferred Name (optional)</label>
+              <label className="field-label">Last Name</label>
               <input
-                name="preferredName"
-                value={form.preferredName}
+                name="lastName"
+                value={form.lastName}
                 onChange={updateField}
+                required
                 className="inp"
-                placeholder="What should we call you?"
+                placeholder="e.g. Nizam"
               />
-              <p className="field-hint">
-                Shown instead of your full name when you're logged in
-              </p>
             </div>
 
             <div>

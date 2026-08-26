@@ -457,8 +457,8 @@ export const authOdoo = async ({
   companyEmail,
   companyName,
   password,
-  fullName,
-  preferredName,
+  firstName,
+  lastName,
   jobPosition,
   customJobPosition,
   phone,
@@ -469,6 +469,10 @@ export const authOdoo = async ({
   tags,
   referralCode,
 }: AuthFormInputs) => {
+  // Odoo's partner record only has a single "name" field — First Name and
+  // Last Name are combined into one string before it's sent anywhere below.
+  const fullName = `${firstName} ${lastName}`.trim();
+
   // Pass selected country for accurate company resolution
   const companyId = await getSignupCompanyId(country);
   // Independent of companyId — resolves which of the per-country websites
@@ -526,10 +530,6 @@ export const authOdoo = async ({
       email: effectiveEmail,
       password,
       name: fullName,
-      // Optional nickname, not part of the Odoo partner record — persisted
-      // to the Gallery's own Supabase profile row (see ProfileSettingsPage,
-      // which reads/writes this same preferred_name column).
-      preferred_name: preferredName?.trim() || undefined,
       phone,
       dob,
       position: effectivePosition,

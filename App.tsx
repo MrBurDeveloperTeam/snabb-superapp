@@ -180,10 +180,6 @@ const App: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<string | null>(null);
   const [isCheckingAccountType, setIsCheckingAccountType] = useState(false);
-  // Optional nickname set on the Profile Settings page (Supabase-only,
-  // not part of the Odoo partner record) — shown instead of the full
-  // name once logged in, wherever we greet the user by name.
-  const [preferredName, setPreferredName] = useState<string | null>(null);
   // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const { profileImageUrl } = useProfileImage(isLoggedIn);
   const isCompanyAccount = accountType === 'company';
@@ -194,7 +190,6 @@ const App: React.FC = () => {
     const loadAccountType = async () => {
       if (!isLoggedIn) {
         setAccountType(null);
-        setPreferredName(null);
         setIsCheckingAccountType(false);
         return;
       }
@@ -207,30 +202,21 @@ const App: React.FC = () => {
 
         const userId = authData.user?.id;
         if (!userId) {
-          if (!cancelled) {
-            setAccountType(null);
-            setPreferredName(null);
-          }
+          if (!cancelled) setAccountType(null);
           return;
         }
 
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('account_type, preferred_name')
+          .select('account_type')
           .eq('user_id', userId)
           .maybeSingle();
 
         if (profileError) throw profileError;
-        if (!cancelled) {
-          setAccountType(profile?.account_type ?? null);
-          setPreferredName(profile?.preferred_name || null);
-        }
+        if (!cancelled) setAccountType(profile?.account_type ?? null);
       } catch (error) {
         console.warn('[User Management] Failed to load account type:', error);
-        if (!cancelled) {
-          setAccountType(null);
-          setPreferredName(null);
-        }
+        if (!cancelled) setAccountType(null);
       } finally {
         if (!cancelled) setIsCheckingAccountType(false);
       }
@@ -315,9 +301,7 @@ useEffect(() => {
 
   const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
-  // Prefer the optional nickname set on Profile Settings over the legal/full
-  // name from Odoo, wherever we greet the user by name.
-  const userName = preferredName?.trim() || authFormData?.fullName || 'Guest User';
+  const userName = authFormData?.fullName || 'Guest User';
   const userInitial = userName.charAt(0).toUpperCase();
 
   const shortInviteMatch =

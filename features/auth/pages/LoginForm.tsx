@@ -256,7 +256,7 @@ const LoginForm: React.FC<Props> = ({
 
                   <div style={{ display: "none" }}>
                     <Controller
-                      name="fullName"
+                      name="firstName"
                       control={control}
                       render={({ field }) => (
                         <input

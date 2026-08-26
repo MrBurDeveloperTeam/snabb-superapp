@@ -91,10 +91,11 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
   } = useForm<AuthFormInputs>({
     shouldUnregister: false,
     defaultValues: {
-      account_type: 'individual',  
-      fullName: "",
+      account_type: 'individual',
+      firstName: "",
+      lastName: "",
       login: "",
-      companyName: '',     
+      companyName: '',
       companyEmail: '',
       jobPosition: "",
       customJobPosition: "",
@@ -104,7 +105,7 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
       password: "",
       confirmPassword: "",
       agreedToTerms: false,
-      position: "",  
+      position: "",
     }
   });
 
@@ -112,7 +113,8 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
     shouldUnregister: false,
     defaultValues: {
       account_type: 'individual',
-      fullName: "",
+      firstName: "",
+      lastName: "",
       login: "",
       companyName: '',
       companyEmail: '',
