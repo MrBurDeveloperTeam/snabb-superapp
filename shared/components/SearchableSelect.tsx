@@ -126,7 +126,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             filtered.map((opt, idx) => (
               <li
                 key={opt}
-                className={`px-4 py-2 cursor-pointer text-slate-700 ${idx === highlightIndex ? 'bg-tiffany-50 text-tiffany-700' : ''}`}
+                className={`px-4 py-2 cursor-pointer ${idx === highlightIndex ? 'bg-tiffany-50 text-tiffany-700' : 'text-slate-700'}`}
                 onMouseDown={(e) => { e.preventDefault(); commitSelection(opt); }}
               >
                 {opt}
