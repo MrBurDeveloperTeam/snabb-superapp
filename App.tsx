@@ -180,6 +180,10 @@ const App: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<string | null>(null);
   const [isCheckingAccountType, setIsCheckingAccountType] = useState(false);
+  // Optional nickname set on the Profile Settings page (Supabase-only,
+  // not part of the Odoo partner record) — shown instead of the full
+  // name once logged in, wherever we greet the user by name.
+  const [preferredName, setPreferredName] = useState<string | null>(null);
   // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const { profileImageUrl } = useProfileImage(isLoggedIn);
   const isCompanyAccount = accountType === 'company';
@@ -190,6 +194,7 @@ const App: React.FC = () => {
     const loadAccountType = async () => {
       if (!isLoggedIn) {
         setAccountType(null);
+        setPreferredName(null);
         setIsCheckingAccountType(false);
         return;
       }
@@ -202,21 +207,30 @@ const App: React.FC = () => {
 
         const userId = authData.user?.id;
         if (!userId) {
-          if (!cancelled) setAccountType(null);
+          if (!cancelled) {
+            setAccountType(null);
+            setPreferredName(null);
+          }
           return;
         }
 
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('account_type')
+          .select('account_type, preferred_name')
           .eq('user_id', userId)
           .maybeSingle();
 
         if (profileError) throw profileError;
-        if (!cancelled) setAccountType(profile?.account_type ?? null);
+        if (!cancelled) {
+          setAccountType(profile?.account_type ?? null);
+          setPreferredName(profile?.preferred_name || null);
+        }
       } catch (error) {
         console.warn('[User Management] Failed to load account type:', error);
-        if (!cancelled) setAccountType(null);
+        if (!cancelled) {
+          setAccountType(null);
+          setPreferredName(null);
+        }
       } finally {
         if (!cancelled) setIsCheckingAccountType(false);
       }
@@ -301,7 +315,9 @@ useEffect(() => {
 
   const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
-  const userName = authFormData?.fullName || 'Guest User';
+  // Prefer the optional nickname set on Profile Settings over the legal/full
+  // name from Odoo, wherever we greet the user by name.
+  const userName = preferredName?.trim() || authFormData?.fullName || 'Guest User';
   const userInitial = userName.charAt(0).toUpperCase();
 
   const shortInviteMatch =
@@ -1134,7 +1150,7 @@ useEffect(() => {
                       <div className="flex flex-col gap-3">
                         <div>
                           <p className="text-base font-bold text-slate-900 truncate leading-tight">
-                            {authFormData?.fullName}
+                            {userName}
                           </p>
                 
                           {authFormData?.jobPosition && (
@@ -1489,7 +1505,7 @@ useEffect(() => {
 
                   <p className="text-slate-600 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed mb-12">
                     {isLoggedIn
-                      ? `Welcome back, ${user?.fullName.split(' ')[0]}! Discover our premium collection.`
+                      ? `Welcome back, ${userName.split(' ')[0]}! Discover our premium collection.`
                       : 'Explore a curated universe of mini-apps designed to streamline your daily tasks.'}
                   </p>
                 </motion.div>

@@ -279,6 +279,7 @@ type AccountType = "individual" | "company";
 
 type ProfileForm = {
   name: string;
+  preferredName: string;
   email: string;
   companyName: string;
   sstNumber: string;
@@ -303,6 +304,7 @@ export default function ProfileSettingsPage() {
 
   const [form, setForm] = useState<ProfileForm>({
     name: "",
+    preferredName: "",
     email: "",
     companyName: "",
     sstNumber: "",
@@ -382,6 +384,10 @@ export default function ProfileSettingsPage() {
         p.sst_change_used === true ||
         data.sst_change_used === true;
 
+      // Preferred name is a Gallery-only nicety (not part of the Odoo
+      // partner record), so it lives in Supabase alongside account_type.
+      let detectedPreferredName = "";
+
       try {
         const {
           data: authData,
@@ -400,7 +406,7 @@ export default function ProfileSettingsPage() {
             error: profileError,
           } = await supabase
             .from("profiles")
-            .select("account_type, sst_change_used")
+            .select("account_type, sst_change_used, preferred_name")
             .eq("user_id", userId)
             .maybeSingle();
 
@@ -420,6 +426,11 @@ export default function ProfileSettingsPage() {
 
             detectedSstChangeUsed =
               profileRow.sst_change_used === true;
+
+            detectedPreferredName =
+              typeof profileRow.preferred_name === "string"
+                ? profileRow.preferred_name
+                : "";
           }
         }
       } catch (accountTypeError) {
@@ -485,6 +496,7 @@ export default function ProfileSettingsPage() {
       setForm((prev) => ({
         ...prev,
         name: p.name || "",
+        preferredName: detectedPreferredName,
         email: p.email || "",
         companyName:
           detectedAccountType === "company"
@@ -756,6 +768,47 @@ export default function ProfileSettingsPage() {
         );
       }
 
+      // Preferred name doesn't exist on the Odoo partner record, so it's
+      // saved separately to the Supabase profile row (upsert so a first-time
+      // save works even if the row hasn't been created yet).
+      try {
+        const {
+          data: authData,
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError || !authData.user?.id) {
+          console.error(
+            "Unable to save preferred name:",
+            authError
+          );
+        } else {
+          const trimmedPreferredName = form.preferredName.trim();
+
+          const { error: preferredNameError } = await supabase
+            .from("profiles")
+            .upsert(
+              {
+                user_id: authData.user.id,
+                preferred_name: trimmedPreferredName || null,
+              },
+              { onConflict: "user_id" }
+            );
+
+          if (preferredNameError) {
+            console.error(
+              "Failed to save preferred name:",
+              preferredNameError
+            );
+          }
+        }
+      } catch (preferredNameErr) {
+        console.error(
+          "Failed to save preferred name:",
+          preferredNameErr
+        );
+      }
+
       setSaved(true);
       setAvatarPreview(null);
       setAvatarFile(null);
@@ -969,6 +1022,20 @@ export default function ProfileSettingsPage() {
                 className="inp"
                 placeholder="Your full name"
               />
+            </div>
+
+            <div>
+              <label className="field-label">Preferred Name (optional)</label>
+              <input
+                name="preferredName"
+                value={form.preferredName}
+                onChange={updateField}
+                className="inp"
+                placeholder="What should we call you?"
+              />
+              <p className="field-hint">
+                Shown instead of your full name when you're logged in
+              </p>
             </div>
 
             <div>
