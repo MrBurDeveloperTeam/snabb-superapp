@@ -458,6 +458,7 @@ export const authOdoo = async ({
   companyName,
   password,
   fullName,
+  preferredName,
   jobPosition,
   customJobPosition,
   phone,
@@ -525,6 +526,10 @@ export const authOdoo = async ({
       email: effectiveEmail,
       password,
       name: fullName,
+      // Optional nickname, not part of the Odoo partner record — persisted
+      // to the Gallery's own Supabase profile row (see ProfileSettingsPage,
+      // which reads/writes this same preferred_name column).
+      preferred_name: preferredName?.trim() || undefined,
       phone,
       dob,
       position: effectivePosition,

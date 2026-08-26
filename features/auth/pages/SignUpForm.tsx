@@ -55,6 +55,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
         companyName: data.companyName,
         companyEmail: data.companyEmail,
         fullName: data.fullName,
+        preferredName: data.preferredName?.trim() || undefined,
         phone: data.phone,
         country: data.country,
         dob: data.dob,
@@ -275,6 +276,29 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <p className="mt-1 text-xs text-slate-400 italic">Your name as the company representative.</p>
                 )}
                 {error.fullName && <p className="mt-1 text-xs text-red-500">{error.fullName.message}</p>}
+              </div>
+
+              {/* Preferred Name */}
+              <div>
+                <label className={labelClasses}>Preferred Name <span className="normal-case text-slate-400 font-medium">(optional)</span></label>
+                <div className="relative group">
+                  <i className="fa-regular fa-comment-dots absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <Controller
+                    name="preferredName"
+                    defaultValue=""
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="What should we call you?"
+                        className={inputClasses}
+                        onChange={(e) => { field.onChange(e); onChange(e); }}
+                      />
+                    )}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-400 italic">Shown instead of your full name once you're logged in.</p>
               </div>
 
               {/* Phone */}

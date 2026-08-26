@@ -4,6 +4,10 @@ export interface AuthFormInputs {
   login: string;
   fullName: string;
 
+  // Optional nickname shown instead of fullName once logged in (also
+  // editable later on the Profile Settings page).
+  preferredName?: string;
+
   companyName?: string;
   companyEmail?: string;
 
