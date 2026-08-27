@@ -198,10 +198,10 @@ const LoginForm: React.FC<Props> = ({
               <Box className="space-y-5">
                 <form onSubmit={handleSubmit(onSubmit)}>
                   <div>
-                    <label className={labelClasses}>Email Address</label>
+                    <label className={labelClasses}>Email or Username</label>
 
                     <div className="relative group">
-                      <i className="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-base transition-colors group-focus-within:text-blue-500" />
+                      <i className="fa-regular fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-base transition-colors group-focus-within:text-blue-500" />
 
                       <Controller
                         name="login"
@@ -209,9 +209,15 @@ const LoginForm: React.FC<Props> = ({
                         render={({ field }) => (
                           <input
                             {...field}
-                            type="email"
-                            autoComplete="email"
-                            placeholder="john@example.com"
+                            // Not every Odoo account's login is an email address —
+                            // some backend accounts are set up with a plain
+                            // username instead. type="email" would make the
+                            // browser refuse to submit those, so this is a plain
+                            // text field; Odoo's own login endpoint already
+                            // accepts either form.
+                            type="text"
+                            autoComplete="username"
+                            placeholder="you@example.com or username"
                             className={inputClasses}
                             required
                             onChange={(e) => {
@@ -351,7 +357,7 @@ const LoginForm: React.FC<Props> = ({
                   Reset Password
                 </h2>
                 <p className="text-slate-500 font-semibold text-sm max-w-sm leading-relaxed">
-                  Enter your email and we'll send you a link to reset your password.
+                  Enter your email or username and we'll send a reset link to the email on your account.
                 </p>
               </header>
 
@@ -371,7 +377,7 @@ const LoginForm: React.FC<Props> = ({
                     <div>
                       <p className="text-sm font-bold text-emerald-800 mb-0.5">Check your inbox</p>
                       <p className="text-xs text-emerald-700 leading-relaxed">
-                        If <span className="font-semibold">{forgotEmail}</span> is registered, you'll receive a password reset link shortly. Check your spam folder if you don't see it.
+                        If <span className="font-semibold">{forgotEmail}</span> matches a registered account, you'll receive a password reset link at the email on file shortly. Check your spam folder if you don't see it.
                       </p>
                       <button
                         type="button"
@@ -391,14 +397,17 @@ const LoginForm: React.FC<Props> = ({
                     exit={{ opacity: 0 }}
                   >
                     <div>
-                      <label className={labelClasses}>Email Address</label>
+                      <label className={labelClasses}>Email or Username</label>
                       <div className="relative group">
-                        <i className="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-base transition-colors group-focus-within:text-tiffany-500" />
+                        <i className="fa-regular fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-base transition-colors group-focus-within:text-tiffany-500" />
                         <input
                           ref={forgotInputRef}
-                          type="email"
-                          autoComplete="email"
-                          placeholder="john@example.com"
+                          // See the login field above — not every account's
+                          // Odoo login is an email, so this can't be
+                          // type="email" or the browser blocks submission.
+                          type="text"
+                          autoComplete="username"
+                          placeholder="you@example.com or username"
                           value={forgotEmail}
                           onChange={(e) => {
                             setForgotEmail(e.target.value);
