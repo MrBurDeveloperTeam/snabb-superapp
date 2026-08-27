@@ -4,6 +4,7 @@ import { authOdoo } from '@/services/authOdoo';
 import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
 import { acceptCompanyInvitation, getCompanyInvitation } from '../services/subuserService';
 import type { InvitationDetails } from '../types';
+import { SnabbbIcon } from '@/public/icons/SnabbbIcon';
 
 type Props = { onComplete: () => void };
 
@@ -18,7 +19,7 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ fullName: '', phone: '', dob: '', jobPosition: '', country: 'Malaysia', password: '', confirmPassword: '', referralCode: '', agreed: false });
+  const [form, setForm] = useState({firstName: '', lastName: '', phone: '', dob: '', jobPosition: '', country: 'Malaysia', password: '', confirmPassword: '', referralCode: '', agreed: false });
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +69,8 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
       const response = await authOdoo({
         account_type: 'company_member',
         login: invitation.email,
-        fullName: form.fullName,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
         phone: form.phone,
         dob: form.dob,
         jobPosition: form.jobPosition,
@@ -125,12 +127,42 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
   return (
     <div className="min-h-screen bg-slate-100 px-5 py-10">
       <form onSubmit={submit} className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl sm:p-12">
-        <div className="text-2xl font-black text-slate-950">App.<span className="text-tiffany-500">Snabbb.</span></div>
+      <div className="font-extrabold text-2xl tracking-tighter text-slate-900">
+        <span
+          style={{
+            transform: 'skewX(353deg)',
+            display: 'inline-block',
+          }}
+        >
+          App.
+        </span>
+        <SnabbbIcon />
+      </div>
         <h1 className="mt-9 text-3xl font-black text-slate-950">Welcome to join <span className="text-tiffany-600">{invitation.companyName}</span></h1>
         <p className="mt-2 text-slate-400">Complete your profile to activate your team membership as <span className="font-bold capitalize">{invitation.role}</span>.</p>
         <div className="mt-10"><label className={labelClass}>Referred by (optional)</label><input value={form.referralCode} onChange={update('referralCode')} placeholder="Referral code, email, or referral link" className={fieldClass} /></div>
         <div className="mt-7 grid gap-6 md:grid-cols-2">
-          <div><label className={labelClass}>Your name</label><input required value={form.fullName} onChange={update('fullName')} placeholder="e.g. Alex Wong" className={fieldClass} /></div>
+        <div>
+          <label className={labelClass}>First name</label>
+          <input
+            required
+            value={form.firstName}
+            onChange={update('firstName')}
+            placeholder="e.g. Alex"
+            className={fieldClass}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Last name</label>
+          <input
+            required
+            value={form.lastName}
+            onChange={update('lastName')}
+            placeholder="e.g. Wong"
+            className={fieldClass}
+          />
+        </div>
           <div><label className={labelClass}>Your email</label><input readOnly value={invitation.email} className={`${fieldClass} bg-slate-50 text-slate-500`} /></div>
           <div><label className={labelClass}>Phone (WhatsApp)</label><input required type="tel" value={form.phone} onChange={update('phone')} placeholder="e.g. +60123456789" className={fieldClass} /></div>
           <div><label className={labelClass}>Date of birth</label><input required type="date" value={form.dob} onChange={update('dob')} className={fieldClass} /></div>
