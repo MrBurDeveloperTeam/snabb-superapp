@@ -16,6 +16,7 @@ import CatMascot from './components/CatMascot';
 import { SharedMolarAI } from '@mrburdeveloperteam/molar-experience/ai';
 import type { MolarChatEmptyState } from '@mrburdeveloperteam/molar-experience/ai';
 import { createAppGalleryMolarAdapter } from './aiExperience/appGalleryMolarAdapter';
+import { MOLAR_LOGO_URL } from './aiExperience/molarExperienceAssets';
 import AppGalleryVirtualPet from './petExperience/AppGalleryVirtualPet';
 import { fetchUserChatContext, buildUserContextString, type UserChatContext } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
@@ -132,6 +133,33 @@ const App: React.FC = () => {
   // provider failure); a string = confirmed matched Supabase user id.
   const [personalizedMatchedUserId, setPersonalizedMatchedUserId] = useState<string | null | undefined>(undefined);
   const reconcileGenerationRef = useRef(0);
+  // PHASE APPGALLERY-HOST-1: the proven canonical Pet/Cat cache owner id —
+  // confirmed via live RLS policy inspection (`auth.uid() = user_id` on
+  // inventory_pet/pet_inventory/virtual_pet_visits) that the backend
+  // expects exactly the current Supabase session's own auth id, which is
+  // exactly what `personalizedMatchedUserId` resolves to once
+  // reconciliation confirms a match. Collapses the `undefined`
+  // ("reconciliation still in progress") state down to `null` so
+  // account-sensitive caching/persistence never keys off a guessed,
+  // unconfirmed identity — it simply stays ephemeral until reconciliation
+  // resolves one way or the other.
+  const petCatOwnerId = personalizedMatchedUserId === undefined ? null : personalizedMatchedUserId;
+  // True only while genuinely logged in (Odoo) but Supabase reconciliation
+  // hasn't resolved yet — used to withhold mounting an authenticated Pet
+  // instance under a null owner merely because that lookup is pending,
+  // per the audit's Case B requirement. Once resolved (to a confirmed id
+  // or a definitive null/guest fallback), Pet mounts.
+  //
+  // PHASE APPGALLERY-RUNTIME-UI-2: a bounded timeout fallback here was
+  // tried and reverted — it silently converted a still-authenticated,
+  // merely-slow-to-reconcile user into a guest-mode (`userId=null`) Pet
+  // mount, which is an unacceptable identity-safety regression, not an
+  // acceptable UX tradeoff. There is intentionally NO escape hatch from
+  // this gate for a logged-in user: if `personalizedMatchedUserId` is
+  // genuinely stuck at `undefined`, that is a reconciliation lifecycle
+  // bug to fix in `reconcileSupabaseIdentity` itself (see this phase's
+  // audit), not something the Pet mount gate should paper over.
+  const isPetOwnerReconciling = isLoggedIn && personalizedMatchedUserId === undefined;
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
@@ -1101,15 +1129,26 @@ useEffect(() => {
       )}
 
       <main className="flex-1 relative">
+        {/* PHASE APPGALLERY-HOST-1: `petCatOwnerId` collapses
+            `personalizedMatchedUserId`'s `undefined` ("still reconciling")
+            down to `null` for CatMascot's account-sensitive cache — never
+            cache/key under a guessed, unconfirmed identity. `key` is now
+            identity-bound (not just the guest/logged-in boolean this
+            previously used): `'guest'` while signed out, and the actual
+            reconciled owner id (or `'guest'` again while reconciliation is
+            still pending) once logged in — so a direct A -> B account
+            switch unmounts A's Cat and mounts a fresh B instance, instead
+            of the old `key={isLoggedIn ? 'logged-in' : 'guest'}` which
+            never changed across an in-session account swap. */}
         <div className={isAuthRoute || isVirtualPetOpen ? 'hidden' : 'contents'}>
-          {/* key remounts CatMascot when auth changes → entry walk plays after login */}
           <CatMascot
-            key={isLoggedIn ? 'logged-in' : 'guest'}
+            key={!isLoggedIn ? 'guest' : (petCatOwnerId ?? 'guest')}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
             isHidden={isAuthRoute || isVirtualPetOpen}
             profileCompletionStatus={profileCompletionStatus}
             personalizedMatchedUserId={personalizedMatchedUserId}
+            catCacheOwnerId={petCatOwnerId}
             onNavigateInternal={navigate}
           />
         </div>
@@ -1130,10 +1169,31 @@ useEffect(() => {
             disabled={!isLoggedIn}
             onPetToggle={() => setIsVirtualPetOpen(true)}
             emptyState={molarEmptyState}
+            logoUrl={MOLAR_LOGO_URL}
           />
         </div>
 
-        <AppGalleryVirtualPet isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
+        {/* PHASE APPGALLERY-HOST-1: withheld entirely while an already-Odoo
+            -logged-in user's Supabase reconciliation is still pending
+            (`isPetOwnerReconciling`) — never mount an authenticated Pet
+            instance under a guessed/null owner just because that lookup
+            hasn't resolved yet. `key` forces a full unmount/remount on any
+            real owner-identity change, including a direct A -> B switch
+            that never passes through a null/guest state (App.tsx's own
+            `reconcileSupabaseIdentity` re-runs on every `verifySession()`
+            success, including focus/visibility-triggered re-checks — see
+            that function's own comment). Guest (`petCatOwnerId === null`,
+            not reconciling) still mounts, preserving existing guest Pet
+            behavior; `userId={null}` there is intentional ephemeral mode,
+            never a persisted "anonymous" identity. */}
+        {!isPetOwnerReconciling && (
+          <AppGalleryVirtualPet
+            key={petCatOwnerId ?? 'guest'}
+            isOpen={isVirtualPetOpen}
+            onClose={() => setIsVirtualPetOpen(false)}
+            userId={petCatOwnerId}
+          />
+        )}
 
         {/* <AnimatePresence mode="wait" initial={false}> */}
           {isAuthRoute && (

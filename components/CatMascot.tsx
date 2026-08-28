@@ -7,6 +7,7 @@ import { isPersonalizedPetDialogueEnabled } from '../features/petDialogue/dialog
 import { usePersonalizedPetDialogue } from '../features/petDialogue/usePersonalizedPetDialogue';
 import { markDialogueDismissed, buildDialogueDismissalKey } from '../features/petDialogue/sessionDedupe';
 import { DIALOGUE_ID, type DialogueCandidate, type ProfileCompletionStatus } from '../features/petDialogue/types';
+import { CAT_SPRITE_SHEET_URLS } from '../aiExperience/molarExperienceAssets';
 
 // PHASE 9D (Cat Presentation migration): the local App Gallery dialogue
 // resolver/arbitration below is UNCHANGED — every effect, ref, and storage
@@ -26,6 +27,26 @@ import { DIALOGUE_ID, type DialogueCandidate, type ProfileCompletionStatus } fro
 const PET_SLEEPING_KEY = 'pet_is_sleeping';
 const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
 const DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS = 6000;
+
+// PHASE APPGALLERY-HOST-1: this Cat presentation cache (pet mood/sleep
+// stats used for the ambient meow bubble/sleep icon) is host-owned and
+// account-sensitive, so it must never bleed across accounts on a shared
+// browser profile. Own namespace — `snabbb_cat:<userId>:<key>` —
+// deliberately distinct from Shared's own `snabbb_pet:<userId>:<key>` (no
+// shared contract for reusing that one). `userId` absent -> no-op/null:
+// presentation optimization only, never a guest-mode persistent store.
+const CAT_CACHE_PREFIX = 'snabbb_cat';
+const getCatStorageKey = (userId: string | null, key: string) => (userId ? `${CAT_CACHE_PREFIX}:${userId}:${key}` : null);
+const readCatStorage = (userId: string | null, key: string): string | null => {
+  const storageKey = getCatStorageKey(userId, key);
+  if (!storageKey) return null;
+  try { return localStorage.getItem(storageKey); } catch { return null; }
+};
+const writeCatStorage = (userId: string | null, key: string, value: string) => {
+  const storageKey = getCatStorageKey(userId, key);
+  if (!storageKey) return;
+  try { localStorage.setItem(storageKey, value); } catch { /* ignore */ }
+};
 
 interface CatMascotProps {
   onCatClick?: () => void;
@@ -48,6 +69,15 @@ interface CatMascotProps {
   // (component-level default below narrows the "not passed at all" case to
   // `undefined`, i.e. treated the same as "still reconciling" — never
   // defaults to the stronger claim "confirmed guest".)
+  /**
+   * App Gallery's proven canonical Pet/Cat owner id — `personalizedMatchedUserId`
+   * with its `undefined` ("still reconciling") state already collapsed to
+   * `null` by the caller (see App.tsx's `petCatOwnerId`). Used ONLY for
+   * this component's own account-scoped presentation cache (mood/sleep
+   * stats); the personalized-dialogue system above continues to use the
+   * raw `personalizedMatchedUserId` tri-state directly, unchanged.
+   */
+  catCacheOwnerId?: string | null;
   /** Internal (pushState-based) navigation, used by the profile-reminder action button. Only used when the feature flag is enabled. */
   onNavigateInternal?: (path: string) => void;
 }
@@ -58,17 +88,21 @@ export default function CatMascot({
   isHidden = false,
   profileCompletionStatus = 'unknown',
   personalizedMatchedUserId,
+  catCacheOwnerId = null,
   onNavigateInternal,
 }: CatMascotProps) {
-  const [isPetSleeping, setIsPetSleeping] = useState(() => {
-    try { return localStorage.getItem(PET_SLEEPING_KEY) === 'true'; } catch { return false; }
-  });
-  const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(localStorage.getItem('pet_name')));
+  const [isPetSleeping, setIsPetSleeping] = useState(() => readCatStorage(catCacheOwnerId, PET_SLEEPING_KEY) === 'true');
+  const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(readCatStorage(catCacheOwnerId, 'pet_name')));
 
   const [dialogStep, setDialogStep] = useState(0);
   const [isDialogActive, setIsDialogActive] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const autoCloseTimerRef = useRef<any>(null);
+  // Driven exclusively by SharedCatMascot's `onEntryWalkComplete` callback
+  // (see the prop wired below) — the true signal that the Cat's entry walk
+  // has reached its final resting position, not a host-side approximation.
+  // Never set true anywhere else (see tryActivateDialog for the gate this
+  // guards).
   const isEntryWalkComplete = useRef(false);
   // Which dialog type is currently prepared to show ('intro' | 'welcomeBack' |
   // 'personalized' | null), and which dialog types have already been dismissed
@@ -168,15 +202,14 @@ export default function CatMascot({
   // of the fetch effect, click-to-move, etc.) are no-ops instead of re-arming the
   // Welcome Back timer from scratch every time.
   //
-  // No dialog type — including a P0 personalized candidate's bypassEntryWalk
-  // flag — skips this gate. bypassEntryWalk only ever meant "urgent enough to
-  // skip the cosmetic *legacy Intro/Welcome Back* dialog queue ahead of it",
-  // never "urgent enough to visually open while the mascot is still
-  // physically walking to its resting position" — showing the bubble mid-walk
-  // reads as visually broken (the bubble anchors to the sprite, which is
-  // still translating across the screen) regardless of priority. The
-  // candidate itself may still be selected/adopted (see the effect below)
-  // arbitrarily early; only its visual activation waits here.
+  // Entry-walk position/timing is owned entirely by SharedCatMascot (see the
+  // Phase 9D migration note at the top of this file); `isEntryWalkComplete`
+  // is driven exclusively by its `onEntryWalkComplete` callback (wired on the
+  // <SharedCatMascot> element below), which is the true completion signal —
+  // never a host-side timer/approximation. Calling this again once that
+  // callback fires (see the callback itself) is what lets a candidate that
+  // was already selected/adopted mid-walk still activate the instant the Cat
+  // arrives, without duplicating any of the logic below.
   const tryActivateDialog = () => {
     const dialogType = currentDialogType.current;
     if (!dialogType || dismissedDialogs.current.has(dialogType) || isDialogActiveRef.current) {
@@ -446,22 +479,22 @@ export default function CatMascot({
     };
 
     // Initial check from localStorage (5-min freshness)
-    const saved      = localStorage.getItem('pet_stats');
-    const lastSavedAt = localStorage.getItem('pet_last_saved_at');
+    const saved      = readCatStorage(catCacheOwnerId, 'pet_stats');
+    const lastSavedAt = readCatStorage(catCacheOwnerId, 'pet_last_saved_at');
     const isFresh    = lastSavedAt && (Date.now() - new Date(lastSavedAt).getTime() < 300000);
     if (saved && isFresh) {
       try { updateStateFromStats(JSON.parse(saved), lastSavedAt); } catch (e) { /* ignore */ }
     }
 
     const readLocalSleepState = () => {
-      const savedSleeping = localStorage.getItem(PET_SLEEPING_KEY);
+      const savedSleeping = readCatStorage(catCacheOwnerId, PET_SLEEPING_KEY);
       if (savedSleeping !== null) {
         setIsPetSleeping(savedSleeping === 'true');
       }
     };
 
     readLocalSleepState();
-    setSelectedPetId(normalizePetId(localStorage.getItem('pet_name')));
+    setSelectedPetId(normalizePetId(readCatStorage(catCacheOwnerId, 'pet_name')));
 
     const handlePetSleepChange = (event) => {
       setIsPetSleeping(!!event.detail);
@@ -472,10 +505,13 @@ export default function CatMascot({
     };
 
     const handleStorage = (event) => {
-      if (event.key === PET_SLEEPING_KEY) {
+      // Cross-tab sync for THIS owner only — compares against this owner's
+      // own scoped keys, not the bare legacy names, so a stray legacy
+      // write (or another account's tab) can never trigger it.
+      if (event.key === getCatStorageKey(catCacheOwnerId, PET_SLEEPING_KEY)) {
         setIsPetSleeping(event.newValue === 'true');
       }
-      if (event.key === 'pet_name') {
+      if (event.key === getCatStorageKey(catCacheOwnerId, 'pet_name')) {
         setSelectedPetId(normalizePetId(event.newValue));
       }
     };
@@ -484,24 +520,23 @@ export default function CatMascot({
     window.addEventListener('virtual-pet-selection-change', handlePetSelectionChange);
     window.addEventListener('storage', handleStorage);
 
-    // 2. Fetch from Supabase for latest data
+    // 2. Fetch from Supabase for latest data — uses the proven canonical
+    // owner id passed down from App.tsx, not an independent session lookup.
     const fetchStats = async () => {
       if (document.visibilityState !== 'visible') return;
+      if (!catCacheOwnerId) return;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('[CatMascot] Fetching pet stats for user:', session.user.id);
-        if (!session?.user) return;
         const { data, error } = await supabase
           .from('inventory_pet')
           .select('hunger, hygiene, energy, happiness, is_sleeping, pet_name, updated_at')
-          .eq('user_id', session.user.id)
+          .eq('user_id', catCacheOwnerId)
           .maybeSingle();
 
         if (data && !error) {
           const nextSleeping = !!data.is_sleeping;
           setIsPetSleeping(nextSleeping);
-          localStorage.setItem(PET_SLEEPING_KEY, String(nextSleeping));
-          localStorage.setItem(PET_SLEEPING_UPDATED_AT_KEY, data.updated_at || new Date().toISOString());
+          writeCatStorage(catCacheOwnerId, PET_SLEEPING_KEY, String(nextSleeping));
+          writeCatStorage(catCacheOwnerId, PET_SLEEPING_UPDATED_AT_KEY, data.updated_at || new Date().toISOString());
           setSelectedPetId(normalizePetId(data.pet_name));
           updateStateFromStats(data, data.updated_at);
         }
@@ -523,7 +558,7 @@ export default function CatMascot({
       window.removeEventListener('virtual-pet-selection-change', handlePetSelectionChange);
       window.removeEventListener('storage', handleStorage);
     };
-  }, [disabled]);
+  }, [disabled, catCacheOwnerId]);
 
   // ─── Dialog init (legacy Intro / Welcome Back) ──────────────────────────────
   // When the Phase 1A personalized-dialogue flag is enabled, the effect above
@@ -911,6 +946,20 @@ export default function CatMascot({
     if (!disabled && onCatClick) onCatClick();
   };
 
+  // SharedCatMascot's own internal entry-walk effect captures this prop
+  // once, at mount, and fires it exactly once when the Cat reaches its
+  // final resting position (see its `onEntryWalkComplete` doc). This is the
+  // sole setter for `isEntryWalkComplete` — flipping it here and
+  // immediately re-running tryActivateDialog() is what lets a candidate
+  // already selected/adopted mid-walk (see the adoption effects above,
+  // which call tryActivateDialog() as soon as they resolve) activate the
+  // instant arrival happens, rather than waiting on some unrelated future
+  // render/effect to notice the ref changed.
+  const handleEntryWalkComplete = () => {
+    isEntryWalkComplete.current = true;
+    tryActivateDialog();
+  };
+
   return (
     <SharedCatMascot
       disabled={disabled}
@@ -919,6 +968,8 @@ export default function CatMascot({
       dialogue={dialoguePresentation}
       meowMessage={meowMsg}
       onCatClick={handleCatClick}
+      spriteSheetUrls={CAT_SPRITE_SHEET_URLS}
+      onEntryWalkComplete={handleEntryWalkComplete}
     />
   );
 }

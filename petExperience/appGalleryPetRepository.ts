@@ -24,6 +24,8 @@ import type { FoodItem, PetInventoryItem, PetSaveSnapshot } from '@mrburdevelope
 import { supabase } from '../services/supabaseClient';
 
 type PricingItemRow = {
+  id: string;
+  user_id: string | null;
   item_id: string;
   name: string;
   emoji?: string | null;
@@ -36,6 +38,16 @@ type PricingItemRow = {
   image_src?: string | null;
   unlock_level?: number | null;
 };
+
+// UNKNOWN != ZERO: base_price_usd is nullable/free-text at the DB level, so
+// an explicit numeric 0 (a genuinely free item) must be told apart from
+// missing/malformed data. `Number()` (not `parseFloat`) is used because
+// `parseFloat` accepts partial matches like "12abc" -> 12, and
+// `Number('')` -> 0 is special-cased below since it would otherwise
+// silently pass as a valid zero.
+function parseCatalogPrice(raw: PricingItemRow['base_price_usd']): number {
+  return raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
+}
 
 type PetInventoryRow = {
   item_id: string;
@@ -66,8 +78,16 @@ export const appGalleryPetRepository: PetRepository = {
       .maybeSingle();
 
     if (error) {
+      // Verified against the installed 0.5.0 runtime (`pet.js`'s init
+      // sequence): a rejected `loadSnapshot` is caught by the shared
+      // runtime's own outer try/catch there and simply logged — it does
+      // NOT fall into the "no petData" starter/adoption-reset branch
+      // (that branch only triggers on a resolved `null`). Returning
+      // `null` here instead would be indistinguishable from a genuine
+      // no-row (never-adopted) result, which DOES trigger that reset —
+      // collapsing a transient query error into false adoption.
       console.error('[appGalleryPetRepository] Failed to load inventory_pet:', error);
-      return null;
+      throw error;
     }
     if (!data) return null;
 
@@ -122,8 +142,12 @@ export const appGalleryPetRepository: PetRepository = {
       .eq('user_id', userId);
 
     if (error) {
+      // Same rationale as loadSnapshot above: the 0.5.0 runtime's init
+      // sequence catches a rejected `loadInventoryRows` and leaves
+      // inventory state untouched, so throwing here does not force a
+      // genuine-empty-inventory misread the way returning `[]` would.
       console.error('[appGalleryPetRepository] Failed to load pet_inventory:', error);
-      return [];
+      throw error;
     }
 
     return (data as PetInventoryRow[]).map((row) => ({ itemId: row.item_id, quantity: row.quantity }));
@@ -149,32 +173,110 @@ export const appGalleryPetRepository: PetRepository = {
   },
 
   async loadCatalog(): Promise<FoodItem[]> {
-    const { data, error } = await supabase
-      .from('aiboard_pricing_items')
-      .select('item_id, name, emoji, category_id, base_price_usd, hunger, happiness, hygiene, energy_gain, image_src, unlock_level')
-      .order('unlock_level', { ascending: true });
+    // `loadCatalog()` takes no parameters per the Shared `PetRepository`
+    // contract, so the authenticated user isn't handed to us — resolve a
+    // fresh canonical Supabase auth lookup here rather than reusing any
+    // captured component state, which could be stale across an account
+    // switch/reconciliation.
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    const currentUserId = authUser?.id ?? null;
+
+    const columns = 'id, user_id, item_id, name, emoji, category_id, base_price_usd, hunger, happiness, hygiene, energy_gain, image_src, unlock_level';
+    // Narrow at the query itself to the two eligible scopes (global default
+    // + this user's own overrides) rather than fetching every user's rows
+    // and filtering client-side — another user's pricing override must
+    // never leave the DB for this request.
+    const { data, error } = currentUserId
+      ? await supabase
+          .from('aiboard_pricing_items')
+          .select(columns)
+          .or(`user_id.is.null,user_id.eq.${currentUserId}`)
+          .order('unlock_level', { ascending: true })
+      : await supabase
+          .from('aiboard_pricing_items')
+          .select(columns)
+          .is('user_id', null)
+          .order('unlock_level', { ascending: true });
 
     if (error || !data || data.length === 0) {
       if (error) console.error('[appGalleryPetRepository] Failed to load aiboard_pricing_items:', error);
       return [];
     }
 
-    return (data as PricingItemRow[]).map((row) => ({
-      id: row.item_id,
-      icon: row.emoji || '🍽️',
-      label: row.name,
-      hunger: row.hunger ?? 10,
-      happiness: row.happiness ?? 0,
-      hygiene: row.hygiene ?? 0,
-      energyGain: row.energy_gain ?? 0,
-      imageSrc: row.image_src || undefined,
-      xp: Math.max(1, Math.round(Math.max(row.hunger ?? 0, row.happiness ?? 0, row.hygiene ?? 0, row.energy_gain ?? 0, 2) / 2)),
-      price: parseFloat(String(row.base_price_usd ?? 0)) || 0,
-      category: row.category_id
-        ? row.category_id.charAt(0).toUpperCase() + row.category_id.slice(1)
-        : 'Other',
-      levelReq: row.unlock_level ?? 1,
-    }));
+    // Resolve exactly one effective row per canonical item_id: a
+    // user-specific override (user_id = current user) wins over the global
+    // default (user_id IS NULL), which is fallback-only. This is
+    // order-independent — it never assumes which scope the DB returns
+    // first — and defends against unexpected same-scope duplicates by
+    // keeping the first-seen row per scope and warning about the rest
+    // instead of silently picking one.
+    const globalRows = new Map<string, PricingItemRow>();
+    const userRows = new Map<string, PricingItemRow>();
+    for (const row of data as PricingItemRow[]) {
+      const isGlobal = row.user_id === null;
+      const bucket = isGlobal ? globalRows : userRows;
+      const existing = bucket.get(row.item_id);
+      if (existing) {
+        console.warn('[appGalleryPetRepository] Duplicate catalog row within same scope for item_id — data-integrity anomaly, ignoring extra row:', {
+          item_id: row.item_id,
+          scope: isGlobal ? 'global' : 'user',
+          row_ids: [existing.id, row.id],
+        });
+        continue;
+      }
+      bucket.set(row.item_id, row);
+    }
+
+    const itemIds = new Set<string>([...globalRows.keys(), ...userRows.keys()]);
+
+    const items: FoodItem[] = [];
+    for (const itemId of itemIds) {
+      const userRow = userRows.get(itemId);
+      const globalRow = globalRows.get(itemId);
+
+      let effectiveRow = userRow ?? globalRow!;
+      let parsed = parseCatalogPrice(effectiveRow.base_price_usd);
+
+      // An invalid user-specific override does not get to hide a valid
+      // global default — fall back to it instead of dropping the item.
+      if (!Number.isFinite(parsed) && userRow && globalRow) {
+        const globalParsed = parseCatalogPrice(globalRow.base_price_usd);
+        if (Number.isFinite(globalParsed)) {
+          effectiveRow = globalRow;
+          parsed = globalParsed;
+        }
+      }
+
+      if (!Number.isFinite(parsed)) {
+        console.warn('[appGalleryPetRepository] Skipping catalog row with invalid base_price_usd:', {
+          id: effectiveRow.id,
+          item_id: effectiveRow.item_id,
+          name: effectiveRow.name,
+        });
+        continue;
+      }
+
+      const row = effectiveRow;
+      items.push({
+        id: row.item_id,
+        icon: row.emoji || '🍽️',
+        label: row.name,
+        hunger: row.hunger ?? 10,
+        happiness: row.happiness ?? 0,
+        hygiene: row.hygiene ?? 0,
+        energyGain: row.energy_gain ?? 0,
+        imageSrc: row.image_src || undefined,
+        xp: Math.max(1, Math.round(Math.max(row.hunger ?? 0, row.happiness ?? 0, row.hygiene ?? 0, row.energy_gain ?? 0, 2) / 2)),
+        price: parsed,
+        category: row.category_id
+          ? row.category_id.charAt(0).toUpperCase() + row.category_id.slice(1)
+          : 'Other',
+        levelReq: row.unlock_level ?? 1,
+      });
+    }
+    return items;
   },
 
   async loadCurrencyRate(currencyCode: string): Promise<{ code: string; rate: number } | null> {

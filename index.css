@@ -218,3 +218,55 @@
 .dark .bg-\[\#eef0f5\] {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
+
+/* PHASE APPGALLERY-SHARED-GRADIENT-COMPAT (extended in
+   APPGALLERY-SHARED-SHOP-COLOR-COMPAT): scoped compatibility fix for a
+   proven collision between the Tailwind CDN runtime (index.html's
+   <script src="https://cdn.tailwindcss.com">, required by this host's own
+   UI) and Shared 0.6.6's precompiled Virtual Pet gradients. Shared's own
+   `.from-*`/`.to-*` gradient-stop rules — both the arbitrary-hex room
+   backgrounds AND the named-color Shop button/header/body gradients below
+   — live inside its `@layer utilities` block (verified in
+   node_modules/@mrburdeveloperteam/molar-experience/dist/styles.css); the
+   Tailwind CDN's live-generated CSS is unlayered, and per the CSS Cascade
+   Layers spec an unlayered rule always wins over a layered rule for a
+   colliding custom property, regardless of specificity or source order —
+   confirmed live: --tw-gradient-from/--tw-gradient-to compute as
+   transparent while --tw-gradient-via (never touched by Tailwind's base
+   reset) remains correct. This is one root cause affecting every Shared
+   gradient-stop pair, not a one-off room-background issue. This file has
+   no @layer anywhere, so these declarations are unlayered too and win the
+   same way. Colors are copied verbatim from installed Shared 0.6.6 source
+   — room colors from the `ROOM_THEMES` constant, Shop colors resolved
+   from Shared's own `--color-orange-*`/`--color-amber-400`/`--color-white`
+   theme values (dist/styles.css) — never invented. Only `from`/`to` are
+   restored since `via` was proven already correct. */
+.snabbb-molar-experience .from-\[\#FFFCEB\] { --tw-gradient-from: #FFFCEB !important; }
+.snabbb-molar-experience .to-\[\#FDE68A\] { --tw-gradient-to: #FDE68A !important; }
+
+.snabbb-molar-experience .from-\[\#FFF5E6\] { --tw-gradient-from: #FFF5E6 !important; }
+.snabbb-molar-experience .to-\[\#FFCC80\] { --tw-gradient-to: #FFCC80 !important; }
+
+.snabbb-molar-experience .from-\[\#E0F7FA\] { --tw-gradient-from: #E0F7FA !important; }
+.snabbb-molar-experience .to-\[\#80DEEA\] { --tw-gradient-to: #80DEEA !important; }
+
+.snabbb-molar-experience .from-\[\#FDF2F8\] { --tw-gradient-from: #FDF2F8 !important; }
+.snabbb-molar-experience .to-\[\#F9A8D4\] { --tw-gradient-to: #F9A8D4 !important; }
+
+.snabbb-molar-experience .from-\[\#F0FDF4\] { --tw-gradient-from: #F0FDF4 !important; }
+.snabbb-molar-experience .to-\[\#86EFAC\] { --tw-gradient-to: #86EFAC !important; }
+
+.snabbb-molar-experience .from-\[\#EEF2FF\] { --tw-gradient-from: #EEF2FF !important; }
+.snabbb-molar-experience .to-\[\#C7D2FE\] { --tw-gradient-to: #C7D2FE !important; }
+
+/* Shop sidebar button (bg-gradient-to-br from-orange-300 to-orange-500) */
+.snabbb-molar-experience .from-orange-300 { --tw-gradient-from: oklch(83.7% 0.128 66.29) !important; }
+.snabbb-molar-experience .to-orange-500 { --tw-gradient-to: oklch(70.5% 0.213 47.604) !important; }
+
+/* Shop modal header (bg-gradient-to-r from-orange-400 to-amber-400) */
+.snabbb-molar-experience .from-orange-400 { --tw-gradient-from: oklch(75% 0.183 55.934) !important; }
+.snabbb-molar-experience .to-amber-400 { --tw-gradient-to: oklch(82.8% 0.189 84.429) !important; }
+
+/* Shop modal body (bg-gradient-to-b from-orange-50 to-white) */
+.snabbb-molar-experience .from-orange-50 { --tw-gradient-from: oklch(98% 0.016 73.684) !important; }
+.snabbb-molar-experience .to-white { --tw-gradient-to: #fff !important; }

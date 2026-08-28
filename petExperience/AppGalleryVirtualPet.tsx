@@ -24,13 +24,24 @@
 // is exactly what's genuinely App-Gallery-specific and Supabase-coupled:
 //   - IP geolocation + currency detection (`detectAndLogVisit`,
 //     `virtual_pet_visits` writes) — byte-identical to the pre-migration
-//     source, ported mechanically.
-//   - Resolving the authenticated user id via `supabase.auth.getSession()`
-//     internally, exactly as the original `GameStateContext` /
-//     `VirtualPetContainer` already did — the old `App.tsx` never threaded
-//     a user id prop down to `VirtualPetContainer` (only `isOpen`/
-//     `onClose`), so this preserves the exact current effective identity
-//     boundary rather than introducing a new one.
+//     source, ported mechanically. Still resolves its own session
+//     independently — this is a one-off geo/currency log, not Pet
+//     ownership, and doesn't gate any persisted Pet state.
+//
+// PHASE APPGALLERY-HOST-1: `userId` is now supplied by `App.tsx` as a
+// prop, sourced from `personalizedMatchedUserId` — the app's own
+// generation-guarded reconciliation between its primary Odoo/SSO identity
+// and Supabase Auth (see App.tsx's `reconcileSupabaseIdentity`), NOT an
+// independent `supabase.auth.getSession()` call made here. That
+// independent resolution used to guarantee a `userId = null` render on
+// every fresh mount before its own fetch settled, and never re-ran on a
+// direct account switch (its effect had an empty dependency array) —
+// leaving `SharedVirtualPet` operating under a stale previous user's id.
+// Live RLS policies on `inventory_pet`/`pet_inventory`/`virtual_pet_visits`
+// (`auth.uid() = user_id`) confirm the backend expects exactly the raw
+// current Supabase session's own id, which is exactly what
+// `personalizedMatchedUserId` resolves to once reconciliation confirms a
+// match — never email, never an Odoo-only identifier.
 //
 // GLOBAL PET BACKEND FREEZE: `userId` below is App Gallery's own
 // Supabase-auth-session id — the same opaque value the pre-migration Pet
@@ -50,6 +61,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SharedVirtualPet } from '@mrburdeveloperteam/molar-experience/pet';
 import { supabase } from '../services/supabaseClient';
 import { appGalleryPetRepository } from './appGalleryPetRepository';
+import { PET_ASSET_URLS } from '../aiExperience/molarExperienceAssets';
 
 interface GeoInfo {
   ip: string;
@@ -161,25 +173,16 @@ async function detectAndLogVisit(): Promise<string> {
 interface AppGalleryVirtualPetProps {
   isOpen: boolean;
   onClose: () => void;
+  /** App Gallery's own reconciled Supabase auth id
+   *  (`personalizedMatchedUserId`) — `null` for true guest/unreconciled.
+   *  See this file's header for why no additional auth lookup happens
+   *  here. */
+  userId: string | null;
 }
 
-export default function AppGalleryVirtualPet({ isOpen, onClose }: AppGalleryVirtualPetProps) {
+export default function AppGalleryVirtualPet({ isOpen, onClose, userId }: AppGalleryVirtualPetProps) {
   const hasLoggedRef = useRef(false);
   const [detectedCurrency, setDetectedCurrency] = useState(DEFAULT_CURRENCY_CODE);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!cancelled) setUserId(session?.user?.id || null);
-      } catch (err) {
-        console.error('Error fetching session in AppGalleryVirtualPet:', err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -202,6 +205,7 @@ export default function AppGalleryVirtualPet({ isOpen, onClose }: AppGalleryVirt
       repository={appGalleryPetRepository}
       userId={userId}
       currencyCode={detectedCurrency}
+      assetUrls={PET_ASSET_URLS}
     />
   );
 }
