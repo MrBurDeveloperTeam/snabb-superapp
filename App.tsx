@@ -997,7 +997,7 @@ useEffect(() => {
       const toastOptions = {
         toastId: 'center-toast',
         onClose: () => setIsToastBackdropOpen(false),
-        icon: options.hideIcon ? false : undefined,
+        icon: options.hideIcon ? (false as const) : undefined,
       };
 
       if (options.type === 'success') {
