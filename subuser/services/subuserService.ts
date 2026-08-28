@@ -97,3 +97,13 @@ export const updateCompanyMemberRole = (
     memberUserId,
     role,
 });
+
+export const removeCompanyMember = (
+  memberUserId: string
+) =>
+  sendCompanyInvitations<{
+    ok: true;
+    member: MemberRow;
+  }>('remove-member', {
+    memberUserId,
+  });

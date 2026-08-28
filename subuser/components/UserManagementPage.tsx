@@ -5,7 +5,7 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { toast } from 'sonner';
 import { COMPANY_MEMBER_ROLES } from '../config';
 import type { CompanyRole, InvitationRow, MemberRow } from '../types';
-import { getCompanyPeople, sendCompanyInvitations, updateCompanyMemberRole } from '../services/subuserService';
+import { getCompanyPeople, sendCompanyInvitations, updateCompanyMemberRole, removeCompanyMember } from '../services/subuserService';
 
 type Props = { isCompanyAccount: boolean; isCheckingAccountType: boolean };
 
@@ -60,9 +60,33 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
     }
   };
 
-  const previewRemoveMember = () => {
-    closeMemberMenu();
-    toast.info('Remove member is shown for now and is not connected yet.');
+  const handleRemoveMember = async () => {
+    if (!selectedMember) return;
+
+    const member = selectedMember;
+    const memberName =
+      member.name ||
+      member.email ||
+      'this member';
+
+    const confirmed = window.confirm(
+      `Remove ${memberName} from the company?\n\nThey will lose access to the company's appointments and dental charts.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await removeCompanyMember(member.member_user_id);
+
+      closeMemberMenu();
+      await loadPeople();
+
+      toast.success(`${memberName} was removed from the company.`);
+    } catch (error: any) {
+      toast.error(
+        error?.message || 'Unable to remove company member.'
+      );
+    }
   };
 
   const loadPeople = async () => {
@@ -147,7 +171,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
           <div className="border-y border-slate-200 bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Active</div>
           {filteredMembers.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">{search.trim() ? 'No members match your search.' : 'No active members yet.'}</p>}
           {filteredMembers.map((member) => (
-            <div key={member.id} className="group flex items-center justify-between border-b border-slate-200 px-7 py-5 transition-colors hover:bg-[#f3f9fb] focus-within:bg-[#f3f9fb] dark:hover:bg-slate-800 dark:focus-within:bg-slate-800">
+            <div key={member.id} className="group flex items-center justify-between border-b border-slate-200 px-7 py-5 transition-colors hover:bg-[#f3f9fb] focus-within:bg-[#f3f9fb] dark:hover:bg-[#1e2a3c] dark:focus-within:bg-[#1e2a3c]">
               <div className="min-w-0">
                 <p className="truncate font-bold text-slate-900">{member.name || 'Company member'}</p>
                 <p className="truncate text-sm text-slate-400">{member.email}</p>
@@ -201,7 +225,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
               </MenuItem>
             ))}
             <div className="my-1 border-t border-slate-200" />
-            <MenuItem onClick={previewRemoveMember} sx={{ mx: 0.75, minHeight: 42, borderRadius: '10px', color: '#dc2626', fontSize: 14, fontWeight: 700 }}>
+            <MenuItem onClick={handleRemoveMember} sx={{ mx: 0.75, minHeight: 42, borderRadius: '10px', color: '#dc2626', fontSize: 14, fontWeight: 700 }}>
               <DeleteOutlineIcon sx={{ mr: 1.25, fontSize: 19 }} />
               Remove member
             </MenuItem>
