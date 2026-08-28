@@ -14,7 +14,7 @@ import { AppIcon } from '@/shared/components/AppIcon';
 import { DOBPicker } from '@/components/DOBPicker';
 import { COUNTRIES } from '@/constants/countries';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
-import { getEmailInboxUrl, resolveEmailInboxUrl } from '../utils/emailInbox';
+import { EmailVerificationToast } from '../components/EmailVerificationToast';
 
 interface Props {
   control: Control<AuthFormInputs, any, AuthFormInputs>;
@@ -79,43 +79,9 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
         );
 
         const registeredEmail = payload.login.trim();
-        const inboxUrl = getEmailInboxUrl(registeredEmail);
 
         setToastMsg?.(
-          <div className="flex max-w-md flex-col items-center gap-4 px-2 text-center">
-            <p className="m-0 max-w-full break-words leading-relaxed">
-              Registration successful! Verification email sent to:{' '}
-              <span className="font-semibold">{registeredEmail}</span>
-            </p>
-            <a
-              href={inboxUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={async (event) => {
-                event.preventDefault();
-
-                // Open immediately while the click still has browser permission,
-                // then resolve custom-domain MX records in the background.
-                const inboxWindow = window.open('', '_blank');
-                if (inboxWindow) {
-                  inboxWindow.opener = null;
-                  inboxWindow.document.title = 'Opening email inbox...';
-                  inboxWindow.document.body.textContent = 'Opening your email inbox...';
-                }
-
-                const resolvedInboxUrl = await resolveEmailInboxUrl(registeredEmail);
-
-                if (inboxWindow) {
-                  inboxWindow.location.replace(resolvedInboxUrl);
-                } else {
-                  window.location.assign(resolvedInboxUrl);
-                }
-              }}
-              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-tiffany-600 px-5 py-2.5 text-sm font-semibold text-white no-underline shadow-sm transition-colors hover:bg-tiffany-700 focus:outline-none focus:ring-2 focus:ring-tiffany-500 focus:ring-offset-2"
-            >
-              Open your email inbox
-            </a>
-          </div>,
+          <EmailVerificationToast email={registeredEmail} />,
           { type: 'success', hideIcon: true }
         );
 

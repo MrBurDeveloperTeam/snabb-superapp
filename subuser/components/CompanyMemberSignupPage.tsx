@@ -5,10 +5,17 @@ import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
 import { acceptCompanyInvitation, getCompanyInvitation } from '../services/subuserService';
 import type { InvitationDetails } from '../types';
 import { SnabbbIcon } from '@/public/icons/SnabbbIcon';
+import { EmailVerificationToast } from '@/features/auth/components/EmailVerificationToast';
 
-type Props = { onComplete: () => void };
+type Props = {
+  onComplete: () => void;
+  setToastMsg?: (
+    msg: React.ReactNode,
+    options: { type: 'success' | 'error'; hideIcon?: boolean }
+  ) => void;
+};
 
-export default function CompanyMemberSignupPage({ onComplete }: Props) {
+export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Props) {
   const queryToken =
     new URLSearchParams(window.location.search).get('token') || '';
 
@@ -92,9 +99,16 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
 
       await acceptCompanyInvitation(token);
 
-      toast.success(
-        'Your company member account has been created successfully.'
-      );
+      if (setToastMsg) {
+        setToastMsg(
+          <EmailVerificationToast email={invitation.email} />,
+          { type: 'success', hideIcon: true }
+        );
+      } else {
+        toast.success(
+          'Your company member account has been created successfully.'
+        );
+      }
 
       setTimeout(onComplete, 2000);
     } catch (error: any) {
