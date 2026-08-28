@@ -41,7 +41,7 @@ export function EmailVerificationToast({ email }: Props) {
         target="_blank"
         rel="noopener noreferrer"
         onClick={openInbox}
-        className="inline-flex min-h-10 items-center justify-center rounded-lg bg-tiffany-600 px-5 py-2.5 text-sm font-semibold text-white no-underline shadow-sm transition-colors hover:bg-tiffany-700 focus:outline-none focus:ring-2 focus:ring-tiffany-500 focus:ring-offset-2"
+        className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[oklch(0.57_0.205_29)] px-5 py-2.5 text-sm font-semibold text-white no-underline shadow-[0_10px_24px_oklch(0.72_0.14_29/0.28)] transition-all hover:bg-[oklch(0.52_0.205_29)] hover:shadow-[0_12px_28px_oklch(0.68_0.16_29/0.34)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.7_0.16_29)] focus:ring-offset-2"
       >
         Open your email inbox
       </a>
