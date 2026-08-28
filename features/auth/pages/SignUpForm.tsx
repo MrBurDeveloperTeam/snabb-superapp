@@ -82,8 +82,11 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
         const inboxUrl = getEmailInboxUrl(registeredEmail);
 
         setToastMsg?.(
-          <div className="flex flex-col gap-2 pr-2">
-            <span>Registration successful! Email for verification sent.</span>
+          <div className="flex max-w-md flex-col items-center gap-4 px-2 text-center">
+            <p className="m-0 max-w-full break-words leading-relaxed">
+              Registration successful! Verification email sent to:{' '}
+              <span className="font-semibold">{registeredEmail}</span>
+            </p>
             <a
               href={inboxUrl}
               target="_blank"
@@ -108,7 +111,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   window.location.assign(resolvedInboxUrl);
                 }
               }}
-              className="w-fit font-semibold text-tiffany-600 underline underline-offset-2 hover:text-tiffany-700"
+              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-tiffany-600 px-5 py-2.5 text-sm font-semibold text-white no-underline shadow-sm transition-colors hover:bg-tiffany-700 focus:outline-none focus:ring-2 focus:ring-tiffany-500 focus:ring-offset-2"
             >
               Open your email inbox
             </a>
