@@ -14,6 +14,7 @@ import { AppIcon } from '@/shared/components/AppIcon';
 import { DOBPicker } from '@/components/DOBPicker';
 import { COUNTRIES } from '@/constants/countries';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
+import { getEmailInboxUrl } from '../utils/emailInbox';
 
 interface Props {
   control: Control<AuthFormInputs, any, AuthFormInputs>;
@@ -21,7 +22,7 @@ interface Props {
   error: FieldErrors<AuthFormInputs>;
   handleSubmit: UseFormHandleSubmit<AuthFormInputs, AuthFormInputs>;
   onNavigate?: (view: View) => void;
-  setToastMsg?: (msg: string, options: { type: 'success' | 'error' }) => void;
+  setToastMsg?: (msg: React.ReactNode, options: { type: 'success' | 'error'; hideIcon?: boolean }) => void;
 }
 
 export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNavigate, handleSubmit, setToastMsg }) => {
@@ -77,9 +78,22 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           'snabbb_pending_signup_invite'
         );
 
+        const registeredEmail = payload.login.trim();
+        const inboxUrl = getEmailInboxUrl(registeredEmail);
+
         setToastMsg?.(
-          'Registration successful! Email for verification sent.',
-          { type: 'success' }
+          <div className="flex flex-col gap-2 pr-2">
+            <span>Registration successful! Email for verification sent.</span>
+            <a
+              href={inboxUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-fit font-semibold text-tiffany-600 underline underline-offset-2 hover:text-tiffany-700"
+            >
+              Open your email inbox
+            </a>
+          </div>,
+          { type: 'success', hideIcon: true }
         );
 
         setTimeout(

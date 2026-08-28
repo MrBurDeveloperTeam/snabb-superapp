@@ -17,7 +17,7 @@ interface Props {
   onAuthSuccess: () => void;
   setLoggedInUser: React.Dispatch<React.SetStateAction<AuthFormData | null>>;
   setFormData: React.Dispatch<React.SetStateAction<AuthFormData>>;
-  setToastMsg: (msg: string, options: { type: 'success' | 'error' }) => void;
+  setToastMsg: (msg: React.ReactNode, options: { type: 'success' | 'error'; hideIcon?: boolean }) => void;
 }
 
 export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, setLoggedInUser, setFormData, setToastMsg}: Props) {

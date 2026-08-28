@@ -990,13 +990,14 @@ useEffect(() => {
   };
 
   const toastMessage = useCallback(
-    (msg: string, options: { type: 'success' | 'error' }) => {
+    (msg: React.ReactNode, options: { type: 'success' | 'error'; hideIcon?: boolean }) => {
       toast.dismiss();
       setIsToastBackdropOpen(true);
 
       const toastOptions = {
         toastId: 'center-toast',
         onClose: () => setIsToastBackdropOpen(false),
+        icon: options.hideIcon ? false : undefined,
       };
 
       if (options.type === 'success') {
