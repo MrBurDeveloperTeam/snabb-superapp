@@ -1448,7 +1448,10 @@ useEffect(() => {
           )}
 
           {isCompanyMemberSignup && (
-            <CompanyMemberSignupPage onComplete={() => navigate('/login')} />
+            <CompanyMemberSignupPage
+              onComplete={() => navigate('/login')}
+              setToastMsg={toastMessage}
+            />
           )}
 
           {path === '/privacy' && (
