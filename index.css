@@ -140,6 +140,10 @@
 .dark .member-actions-menu .border-slate-200 {
   border-color: #1e293b;
 }
+.dark .existing-user-dialog {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
 .dark .user-management-page {
   background-color: #0b1120;
 }
