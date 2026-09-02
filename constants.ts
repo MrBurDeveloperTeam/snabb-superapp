@@ -132,14 +132,14 @@ export const MINI_APPS: MiniApp[] = [
     route: `https://reward.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
-  {
-    id: 'app-12',
-    title: 'Kaneiko',
-    category: 'Shops',
-    icon: '/icons/kaneiko_black.png',
-    route: 'https://kaneiko.com/',
-    colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
-  },
+  // {
+  //   id: 'app-12',
+  //   title: 'Kaneiko',
+  //   category: 'Shops',
+  //   icon: '/icons/kaneiko_black.png',
+  //   route: 'https://kaneiko.com/',
+  //   colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
+  // },
   // {
   //   id: 'app-13',
   //   title: 'Lunaflow',
