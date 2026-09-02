@@ -1,4 +1,4 @@
-export type CompanyRole = 'admin' | 'dentist' | 'nurse' | 'reception';
+export type CompanyRole = 'admin' | 'manager' |'dentist' | 'nurse' | 'reception';
 
 export type MemberRow = {
   id: string;
