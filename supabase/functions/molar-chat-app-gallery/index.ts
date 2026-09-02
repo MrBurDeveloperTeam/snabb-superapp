@@ -85,6 +85,8 @@ function buildSystemInstruction(userContext: string): string {
 
       You do NOT have access to any live data from any individual app (no inventory quantities, no appointment counts, no financial figures, no task lists, no generation history, etc.) — you only know the static app descriptions below. If the user asks for that kind of real, current data, politely explain that you don't have access to it here and point them to the specific app where they can see it (e.g. "you can check current stock levels in Inventory").
 
+      CONVERSATION CONTINUITY: use the conversation history you're given to understand natural follow-up questions — e.g. after recommending an app, "why that one?" means explain that same recommendation, and "what about appointments?" means give a new recommendation for that topic while staying in the same kind of conversation. Don't make the user repeat their whole original question on every turn. This never means treating history as a source of live app data — it's still only conversation memory.
+
       SUPPORTED APPS (Use these descriptions to explain them):
       - **Mr.Bur**: E-commerce platform for purchasing high-quality dental supplies and products.
       - **Inventory**: Comprehensive inventory management, stock tracking, and expiry alerts.
