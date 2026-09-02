@@ -7,10 +7,12 @@ import { COMPANY_MEMBER_ROLES } from '../config';
 import type { CompanyRole, InvitationRow, MemberRow } from '../types';
 import { getCompanyPeople, sendCompanyInvitations, updateCompanyMemberRole, removeCompanyMember } from '../services/subuserService';
 import ExistingUserInviteModal from './ExistingUserInviteModal';
+import AccessControlPanel from './AccessControlPanel';
 
 type Props = { isCompanyAccount: boolean; isCheckingAccountType: boolean };
 
 export default function UserManagementPage({ isCompanyAccount, isCheckingAccountType }: Props) {
+  const [activeTab, setActiveTab] = useState<'members' | 'access'>('members');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<CompanyRole>('admin');
   const [search, setSearch] = useState('');
@@ -153,11 +155,12 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
         <h1 className="text-3xl font-black text-slate-900">User Management</h1>
         <p className="mt-2 text-slate-500">Manage your team members and control their access to mini apps</p>
 
-        <div className="mt-8 inline-flex rounded-2xl bg-white p-1.5 shadow-sm">
-          <button type="button" className="rounded-xl bg-tiffany-600 px-7 py-3 font-bold text-white"><i className="fa-solid fa-users mr-2" />Team Members</button>
-          <button type="button" disabled className="px-7 py-3 font-semibold text-slate-500"><i className="fa-solid fa-shield-halved mr-2" />Access Control</button>
+        <div className="mt-8 inline-flex rounded-2xl bg-white p-1.5 shadow-sm dark:bg-slate-900" role="tablist" aria-label="User management sections">
+          <button type="button" role="tab" aria-selected={activeTab === 'members'} onClick={() => setActiveTab('members')} className={`cursor-pointer rounded-xl px-7 py-3 font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500 ${activeTab === 'members' ? 'bg-tiffany-600 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><i className="fa-solid fa-users mr-2" />Team Members</button>
+          <button type="button" role="tab" aria-selected={activeTab === 'access'} onClick={() => setActiveTab('access')} className={`cursor-pointer rounded-xl px-7 py-3 font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500 ${activeTab === 'access' ? 'bg-tiffany-600 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><i className="fa-solid fa-shield-halved mr-2" />Access Control <span className="ml-2 text-xs opacity-75">(Preview)</span></button>
         </div>
 
+        {activeTab === 'access' ? <AccessControlPanel /> : <>
         <form noValidate onSubmit={handleInvite} className="mt-8 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
           <h2 className="text-lg font-black text-slate-900"><i className="fa-solid fa-user-plus mr-3 text-tiffany-600" />Invite a Team Member</h2>
           <p className="ml-8 mt-1 text-sm text-slate-400">An email invitation will be sent to join your company workspace.</p>
@@ -246,6 +249,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
             await loadPeople();
           }}
         />
+        </>}
       </div>
     </div>
   );
