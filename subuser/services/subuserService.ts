@@ -31,6 +31,7 @@ import type {
   InvitationDetails,
   InvitationRow,
   MemberRow,
+  IndividualProfileSearchResult,
 } from '../types';
 import api from '@/services/api';
 
@@ -107,3 +108,15 @@ export const removeCompanyMember = (
   }>('remove-member', {
     memberUserId,
   });
+
+export const searchIndividualProfiles = (query: string) =>
+  sendCompanyInvitations<{
+    ok: true;
+    profiles: IndividualProfileSearchResult[];
+  }>('search-individuals', { query });
+
+export const addExistingCompanyMember = (memberUserId: string, role: string) =>
+  sendCompanyInvitations<{ ok: true; member: MemberRow }>(
+    'add-existing-member',
+    { memberUserId, role }
+  );

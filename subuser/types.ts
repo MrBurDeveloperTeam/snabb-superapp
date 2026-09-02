@@ -25,3 +25,10 @@ export type InvitationDetails = {
   companyName: string;
   expiresAt: string;
 };
+
+export type IndividualProfileSearchResult = {
+  user_id: string;
+  email: string;
+  name: string | null;
+  full_name: string | null;
+};

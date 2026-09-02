@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { COMPANY_MEMBER_ROLES } from '../config';
 import type { CompanyRole, InvitationRow, MemberRow } from '../types';
 import { getCompanyPeople, sendCompanyInvitations, updateCompanyMemberRole, removeCompanyMember } from '../services/subuserService';
+import ExistingUserInviteModal from './ExistingUserInviteModal';
 
 type Props = { isCompanyAccount: boolean; isCheckingAccountType: boolean };
 
@@ -19,6 +20,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
   const [sending, setSending] = useState(false);
   const [memberMenuAnchor, setMemberMenuAnchor] = useState<HTMLElement | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
+  const [existingUserModalOpen, setExistingUserModalOpen] = useState(false);
 
   const closeMemberMenu = () => {
     setMemberMenuAnchor(null);
@@ -164,6 +166,8 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
             <select value={role} onChange={(e) => setRole(e.target.value as CompanyRole)} className="rounded-2xl border border-slate-200 bg-slate-50 px-5 font-bold outline-none">{COMPANY_MEMBER_ROLES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
             <button disabled={sending} className="rounded-2xl bg-tiffany-600 px-6 py-4 font-bold text-white disabled:opacity-50"><i className="fa-regular fa-paper-plane mr-2" />{sending ? 'Sending...' : 'Send Invite'}</button>
           </div>
+          <div className="my-6 flex items-center gap-4 text-sm text-slate-400"><span className="h-px flex-1 bg-slate-200" /><span>or</span><span className="h-px flex-1 bg-slate-200" /></div>
+          <button type="button" onClick={() => setExistingUserModalOpen(true)} className="w-full rounded-2xl border border-dashed border-tiffany-500 px-5 py-4 font-bold text-tiffany-700 transition hover:bg-tiffany-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500"><i className="fa-solid fa-user-plus mr-2" />Invite an existing Snabbb user</button>
         </form>
 
         <section className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -234,6 +238,14 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
           {invitations.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">No pending invitations.</p>}
           {invitations.map((invite) => <div key={invite.id} className="flex items-center justify-between border-b border-slate-200 px-7 py-5"><div><p className="font-bold text-slate-900">{invite.email} <span className="ml-2 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">Pending</span></p><p className="text-sm text-slate-400">Expires {new Date(invite.expires_at).toLocaleDateString()}</p></div><span className="rounded-full bg-emerald-50 px-4 py-1 text-sm font-semibold capitalize text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{getRoleLabel(invite.role)}</span></div>)}
         </section>
+        <ExistingUserInviteModal
+          open={existingUserModalOpen}
+          onClose={() => setExistingUserModalOpen(false)}
+          onAdded={async (profile) => {
+            toast.success(`${profile.full_name || profile.name || profile.email} was added to your company.`);
+            await loadPeople();
+          }}
+        />
       </div>
     </div>
   );
