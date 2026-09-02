@@ -27,6 +27,27 @@ function toGeminiHistory(history: AIMessage[]): ChatHistory[] {
   return history.map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
 }
 
+// ROOT CAUSE (APP-GALLERY-AUTH-REFRESH-LOOP-AND-MOLAR-AI-RUNTIME-FIX):
+// the AIBoard keyword lookup below previously matched via plain
+// `message.includes(keyword)` — a raw substring check, not a whole-word
+// match. The `aiboard_response_keywords` table has "hi" mapped to the
+// canned response "Hello! How can I assist you today?" (a legitimate
+// short greeting synonym on its own), but `.includes("hi")` also matches
+// ANY message merely containing that substring inside an unrelated
+// word — including "which" (w-HI-ch). Every one of "Which app should I
+// use for stock?" / "Which app is for profit calculation?" therefore hit
+// this canned greeting and never reached Gemini at all; the greeting was
+// never Gemini-generated. Word-boundary matching (`\b...\b`) preserves
+// exact/short-greeting matches ("hi", "hey") while no longer matching a
+// keyword that merely happens to appear as a substring inside a longer,
+// unrelated word.
+function matchesKeyword(message: string, keyword: string): boolean {
+  const trimmed = keyword.trim();
+  if (!trimmed) return false;
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escaped}\\b`, 'i').test(message);
+}
+
 interface AppGalleryMolarAdapterDeps {
   userChatContext: string;
 }
@@ -53,7 +74,7 @@ export function createAppGalleryMolarAdapter({ userChatContext }: AppGalleryMola
             .in('response_id', responseIds);
 
           if (keywords && keywords.length > 0) {
-            const matchedKeyword = keywords.find((k) => userMsg.toLowerCase().includes(k.keyword.toLowerCase()));
+            const matchedKeyword = keywords.find((k) => matchesKeyword(userMsg, k.keyword));
 
             if (matchedKeyword) {
               const { data: respData } = await supabase

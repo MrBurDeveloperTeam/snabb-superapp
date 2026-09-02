@@ -1,11 +1,22 @@
 // src/hooks/useProfileImage.ts
 import { useState, useEffect } from "react";
+import { isLocalDevelopmentOrigin } from "../utils/localDevOrigin";
 
 export function useProfileImage(isLoggedIn: boolean | null) {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) return; // ← only fetch when logged in
+
+    // account.snabbb.com is a different origin from the local dev server —
+    // `credentials: "include"` cannot carry that origin's auth cookies
+    // cross-site, so this request can never succeed in local dev; it only
+    // ever produces a benign-but-noisy 401 in the console (see
+    // APP-GALLERY-AUTH-REFRESH-LOOP-AND-MOLAR-AI-RUNTIME-FIX). It never
+    // affects auth state either way (silently falls back to no profile
+    // image below), so skipping it locally changes no behavior other than
+    // removing that console noise.
+    if (isLocalDevelopmentOrigin()) return;
 
     fetch("https://account.snabbb.com/api/account/profile", {
       method: "GET",

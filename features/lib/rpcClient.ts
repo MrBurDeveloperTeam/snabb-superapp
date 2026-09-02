@@ -49,10 +49,22 @@ export const proxyApi = axios.create({
 /**
  * OPTION B (Quick testing only): call Odoo directly from browser
  * - exposes X-SSO-API-KEY in devtools (NOT safe for production)
+ *
+ * `odooApi` (built below) is only ever actually dispatched to when
+ * `VITE_USE_DIRECT_ODOO === "true"` (see features/lib/auth.ts /
+ * features/auth/hooks/useAppLink.ts's own `client` selection) — the
+ * default, recommended local-dev configuration uses `proxyApi` instead,
+ * which needs no SSO key at all. This warning previously fired
+ * unconditionally on every module load regardless of which client would
+ * actually be used, producing a false-alarm "[SSO] Missing
+ * VITE_SSO_API_KEY" in the console of any local dev setup that (correctly)
+ * never set it — see APP-GALLERY-AUTH-REFRESH-LOOP-AND-MOLAR-AI-RUNTIME-FIX.
+ * Only warn when the direct-Odoo path is actually selected and would
+ * therefore silently send an unauthenticated request.
  */
-if (!SSO_API_KEY) {
+if (import.meta.env.VITE_USE_DIRECT_ODOO === "true" && !SSO_API_KEY) {
   console.error(
-    "[SSO] Missing VITE_SSO_API_KEY. Check your .env file and restart `npm run dev`."
+    "[SSO] VITE_USE_DIRECT_ODOO is enabled but VITE_SSO_API_KEY is missing. Check your .env file and restart `npm run dev`."
   );
 }
 

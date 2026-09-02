@@ -563,13 +563,25 @@ useEffect(() => {
       return;
     }
 
-    // Actively reconciling — never leave a possibly-stale/mismatched
-    // previous value (matched or not) visible while this is in flight; the
-    // hook treats `undefined` as "wait, don't guess" rather than falling
-    // through to the guest/failure fallback.
-    setPersonalizedMatchedUserId(undefined);
-
     try {
+      // Check whether the current Supabase session ALREADY matches the
+      // expected account BEFORE ever flipping `personalizedMatchedUserId`
+      // to `undefined`. This function is called on every successful
+      // verifySession() — including routine re-verification on mount
+      // (doubled by StrictMode in dev), every window focus/visibility
+      // change, and every SSO_LOGIN broadcast — so it runs far more often
+      // than the identity actually changes. Previously the `undefined`
+      // flip happened unconditionally first, and since `petCatOwnerId`
+      // collapses `undefined` to a 'guest' sentinel that CatMascot/
+      // AppGalleryVirtualPet key off of, EVERY routine re-verification
+      // forced a full unmount+remount of both — the "repeatedly
+      // refresh/reinitialize" symptom this fix addresses (see
+      // APP-GALLERY-AUTH-REFRESH-LOOP-AND-MOLAR-AI-RUNTIME-FIX). Only
+      // entering the transient "reconciling" (`undefined`) state when a
+      // real exchange is actually about to happen — never for the common
+      // "already correct" case — preserves every existing identity-safety
+      // guarantee (still never guesses, still gated by isStaleReconcile())
+      // while eliminating the needless flicker.
       const {
         data: { session: existingSession },
       } = await supabase.auth.getSession();
@@ -578,10 +590,17 @@ useEffect(() => {
       const existingEmail = existingSession?.user?.email?.trim().toLowerCase() ?? null;
 
       if (existingSession && existingEmail === normalizedExpected) {
-        // Already the right account — reuse it, no re-exchange needed.
+        // Already the right account — reuse it, no re-exchange needed, and
+        // no transient "reconciling" flicker for callers already showing
+        // this exact id.
         setPersonalizedMatchedUserId(existingSession.user.id);
         return;
       }
+
+      // The identity may actually be changing (or isn't confirmed yet) —
+      // only now is it correct to withhold a possibly-stale/mismatched
+      // value from downstream consumers while the real exchange runs.
+      setPersonalizedMatchedUserId(undefined);
 
       if (existingSession) {
         // A stale cross-account session must be cleared before exchanging,
