@@ -72,6 +72,11 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!invitation) return;
+    if (!invitation.country) {
+      return toast.error(
+        "The company owner's country could not be loaded. Please ask the company owner to check their Odoo profile."
+      );
+    }
     if (form.password !== form.confirmPassword) return toast.error('Passwords do not match.');
     setSubmitting(true);
     let accountWasCreated = false;
