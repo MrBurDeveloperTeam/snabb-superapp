@@ -23,6 +23,7 @@ export type InvitationDetails = {
   email: string;
   role: string;
   companyName: string;
+  country: string;
   expiresAt: string;
 };
 

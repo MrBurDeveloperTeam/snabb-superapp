@@ -534,7 +534,11 @@ export const authOdoo = async ({
       dob,
       position: effectivePosition,
       account_type,
-      company_name: isCompany ? companyName : undefined,
+      company_name:
+        isCompany || account_type === "company_member"
+          ? companyName
+          : undefined,
+      country,
     });
 
     return response;
