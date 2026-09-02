@@ -19,7 +19,7 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({firstName: '', lastName: '', phone: '', dob: '', jobPosition: '', country: 'Malaysia', password: '', confirmPassword: '', referralCode: '', agreed: false });
+  const [form, setForm] = useState({firstName: '', lastName: '', phone: '', dob: '', jobPosition: '', country: '', password: '', confirmPassword: '', referralCode: '', agreed: false });
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +33,10 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
       .then((result) => {
         if (!cancelled) {
           setInvitation(result.invitation);
+          setForm((current) => ({
+            ...current,
+            country: result.invitation.country,
+          }));
         }
       })
       .catch((error) => {
@@ -68,6 +72,7 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
     try {
       const response = await authOdoo({
         account_type: 'company_member',
+        companyName: invitation.companyName,
         login: invitation.email,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -167,7 +172,7 @@ export default function CompanyMemberSignupPage({ onComplete }: Props) {
           <div><label className={labelClass}>Phone (WhatsApp)</label><input required type="tel" value={form.phone} onChange={update('phone')} placeholder="e.g. +60123456789" className={fieldClass} /></div>
           <div><label className={labelClass}>Date of birth</label><input required type="date" value={form.dob} onChange={update('dob')} className={fieldClass} /></div>
           <div><label className={labelClass}>Job position</label><select required value={form.jobPosition} onChange={update('jobPosition')} className={fieldClass}><option value="">-- Select Position --</option>{DENTAL_POSITIONS.map((position) => <option key={position}>{position}</option>)}</select></div>
-          <div><label className={labelClass}>Country</label><select required value={form.country} onChange={update('country')} className={fieldClass}>{['Malaysia', 'Singapore', 'Indonesia', 'Thailand', 'Philippines', 'Vietnam', 'United Kingdom', 'United States'].map((country) => <option key={country}>{country}</option>)}</select></div>
+          <div><label className={labelClass}>Country</label><input readOnly required value={form.country} className={`${fieldClass} bg-slate-50 text-slate-500`} /></div>
           <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={fieldClass} /></div>
           <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={fieldClass} /></div>
         </div>

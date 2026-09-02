@@ -275,7 +275,7 @@ const COUNTRY_OPTIONS = [
   { id: "15", name: "Åland Islands" },
 ];
 
-type AccountType = "individual" | "company";
+type AccountType = "individual" | "company" | "company_member";
 
 type ProfileForm = {
   firstName: string;
@@ -385,6 +385,7 @@ export default function ProfileSettingsPage() {
       let detectedSstChangeUsed =
         p.sst_change_used === true ||
         data.sst_change_used === true;
+      let profileCompanyName = "";
 
       try {
         const {
@@ -404,7 +405,7 @@ export default function ProfileSettingsPage() {
             error: profileError,
           } = await supabase
             .from("profiles")
-            .select("account_type, sst_change_used")
+            .select("account_type, company_name, sst_change_used")
             .eq("user_id", userId)
             .maybeSingle();
 
@@ -416,6 +417,7 @@ export default function ProfileSettingsPage() {
           } else if (profileRow) {
             if (
               profileRow.account_type === "company" ||
+              profileRow.account_type === "company_member" ||
               profileRow.account_type === "individual"
             ) {
               detectedAccountType =
@@ -424,6 +426,7 @@ export default function ProfileSettingsPage() {
 
             detectedSstChangeUsed =
               profileRow.sst_change_used === true;
+            profileCompanyName = profileRow.company_name || "";
           }
         }
       } catch (accountTypeError) {
@@ -500,8 +503,10 @@ export default function ProfileSettingsPage() {
         email: p.email || "",
         companyName:
           detectedAccountType === "company"
-            ? p.company_name || p.name || ""
-            : "",
+            ? p.company_name || profileCompanyName || p.name || ""
+            : detectedAccountType === "company_member"
+              ? profileCompanyName || p.company_name || ""
+              : "",
         sstNumber: loadedSstNumber,
         phone: p.phone || "",
         dateOfBirth: p.x_date_of_birth || "",
@@ -1081,7 +1086,7 @@ export default function ProfileSettingsPage() {
           </div>
         </div>
 
-        {accountType === "company" && (
+        {(accountType === "company" || accountType === "company_member") && (
           <div className="section-card">
             <div className="section-title">
               Business Details
@@ -1097,12 +1102,13 @@ export default function ProfileSettingsPage() {
                   name="companyName"
                   value={form.companyName}
                   onChange={updateField}
+                  readOnly={accountType === "company_member"}
                   className="inp"
                   placeholder="Your clinic or company"
                 />
               </div>
 
-              <div>
+              {accountType === "company" && <div>
                 <label className="field-label">
                   SST Number
                 </label>
@@ -1140,7 +1146,7 @@ export default function ProfileSettingsPage() {
                     You have already used your one SST Number change. Further changes must be requested by email.
                   </p>
                 )}
-              </div>
+              </div>}
             </div>
           </div>
         )}
