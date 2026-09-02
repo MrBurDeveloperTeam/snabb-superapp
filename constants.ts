@@ -137,7 +137,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Kaneiko',
     category: 'Shops',
     icon: '/icons/kaneiko_black.png',
-    // iconDark: '/icons/kaneiko_white.png',
+    route: 'https://kaneiko.com/',
     colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
   },
   // {
