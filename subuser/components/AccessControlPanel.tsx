@@ -80,6 +80,20 @@ const APPOINTMENT_BACKEND_KEYS: Record<string, string> = {
   settings: 'appointment.settings.manage',
 };
 
+const INVENTORY_BACKEND_KEYS: Record<string, string> = {
+  access: 'inventory.access',
+  clinic: 'inventory.clinic.manage',
+  items: 'inventory.items.manage',
+  stock: 'inventory.stock.manage',
+  insights: 'inventory.insights.view',
+  export: 'inventory.export',
+};
+
+const BACKEND_KEYS: Record<AppKey, Record<string, string>> = {
+  inventory: INVENTORY_BACKEND_KEYS,
+  appointment: APPOINTMENT_BACKEND_KEYS,
+};
+
 function PermissionSwitch({
   checked,
   disabled = false,
@@ -128,30 +142,33 @@ function PermissionSwitch({
 export default function AccessControlPanel() {
   const [activeApp, setActiveApp] = useState<AppKey>('inventory');
   const [permissions, setPermissions] = useState<PermissionState>(INITIAL_PERMISSIONS);
-  const [appointmentLoaded, setAppointmentLoaded] = useState(false);
+  const [loadedApps, setLoadedApps] = useState<Record<AppKey, boolean>>({
+    inventory: false,
+    appointment: false,
+  });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const definitions = PERMISSIONS[activeApp];
   const app = APP_META[activeApp];
 
   useEffect(() => {
-    if (activeApp !== 'appointment' || appointmentLoaded) return;
+    if (loadedApps[activeApp]) return;
 
     let cancelled = false;
 
-    const loadAppointmentPermissions = async () => {
+    const loadPermissions = async () => {
       setLoading(true);
 
       try {
-        const result = await getCompanyAccessMatrix('appointment');
+        const result = await getCompanyAccessMatrix(activeApp);
         if (cancelled) return;
 
-        const appointmentPermissions = (['admin', 'nurse', 'dentist'] as EditableRole[])
+        const appPermissions = (['admin', 'nurse', 'dentist'] as EditableRole[])
           .reduce<Record<EditableRole, Record<string, boolean>>>((next, role) => {
             next[role] = Object.fromEntries(
-              PERMISSIONS.appointment.map(({ key }) => [
+              PERMISSIONS[activeApp].map(({ key }) => [
                 key,
-                result.roles?.[role]?.[APPOINTMENT_BACKEND_KEYS[key]] === true,
+                result.roles?.[role]?.[BACKEND_KEYS[activeApp][key]] === true,
               ]),
             );
             return next;
@@ -159,26 +176,29 @@ export default function AccessControlPanel() {
 
         setPermissions((current) => ({
           ...current,
-          appointment: appointmentPermissions,
+          [activeApp]: appPermissions,
         }));
-        setAppointmentLoaded(true);
+        setLoadedApps((current) => ({
+          ...current,
+          [activeApp]: true,
+        }));
       } catch (error: any) {
         toast.error(
           error?.response?.data?.error ||
           error?.message ||
-          'Unable to load Appointment permissions.',
+          `Unable to load ${APP_META[activeApp].label} permissions.`,
         );
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
-    loadAppointmentPermissions();
+    loadPermissions();
 
     return () => {
       cancelled = true;
     };
-  }, [activeApp, appointmentLoaded]);
+  }, [activeApp, loadedApps]);
 
   const allEnabled = useMemo(() => {
     return (['admin', 'nurse', 'dentist'] as EditableRole[]).reduce<Record<EditableRole, boolean>>(
@@ -226,37 +246,32 @@ export default function AccessControlPanel() {
   };
 
   const handleSave = async () => {
-    if (activeApp !== 'appointment') {
-      toast.info('Inventory backend syncing will be connected after the Appointment test.');
-      return;
-    }
-
     setSaving(true);
 
     try {
       await Promise.all(
         (['admin', 'nurse', 'dentist'] as EditableRole[]).map((role) => {
           const backendPermissions = Object.fromEntries(
-            PERMISSIONS.appointment.map(({ key }) => [
-              APPOINTMENT_BACKEND_KEYS[key],
-              permissions.appointment[role][key] === true,
+            PERMISSIONS[activeApp].map(({ key }) => [
+              BACKEND_KEYS[activeApp][key],
+              permissions[activeApp][role][key] === true,
             ]),
           );
 
           return saveCompanyRolePermissions(
-            'appointment',
+            activeApp,
             role,
             backendPermissions,
           );
         }),
       );
 
-      toast.success('Appointment permissions saved.');
+      toast.success(`${APP_META[activeApp].label} permissions saved.`);
     } catch (error: any) {
       toast.error(
         error?.response?.data?.error ||
         error?.message ||
-        'Unable to save Appointment permissions.',
+        `Unable to save ${APP_META[activeApp].label} permissions.`,
       );
     } finally {
       setSaving(false);
