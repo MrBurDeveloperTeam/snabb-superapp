@@ -3,7 +3,7 @@ import { Menu, MenuItem } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { toast } from 'sonner';
-import { COMPANY_MEMBER_ROLES } from '../config';
+import { COMPANY_MEMBER_ROLES, getCompanyRoleBadgeClass, } from '../config';
 import type { CompanyRole, InvitationRow, MemberRow } from '../types';
 import { getCompanyPeople, sendCompanyInvitations, updateCompanyMemberRole, removeCompanyMember } from '../services/subuserService';
 import ExistingUserInviteModal from './ExistingUserInviteModal';
@@ -184,7 +184,11 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
                 <p className="truncate text-sm text-slate-400">{member.email}</p>
               </div>
               <div className="ml-4 flex shrink-0 items-center gap-3">
-                <span className="rounded-full bg-violet-50 px-4 py-1 text-sm font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">{getRoleLabel(member.role)}</span>
+              <span
+                className={`rounded-full border px-4 py-1 text-sm font-semibold ${getCompanyRoleBadgeClass(member.role)}`}
+              >
+                {getRoleLabel(member.role)}
+              </span>
                 <button
                   type="button"
                   onClick={(event) => openMemberMenu(event, member)}
@@ -239,7 +243,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
           </Menu>
           <div className="border-y border-slate-200 bg-slate-50 px-7 py-4 text-xs font-black uppercase tracking-widest text-slate-400">Pending invites</div>
           {invitations.length === 0 && <p className="px-7 py-6 text-sm text-slate-400">No pending invitations.</p>}
-          {invitations.map((invite) => <div key={invite.id} className="flex items-center justify-between border-b border-slate-200 px-7 py-5"><div><p className="font-bold text-slate-900">{invite.email} <span className="ml-2 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">Pending</span></p><p className="text-sm text-slate-400">Expires {new Date(invite.expires_at).toLocaleDateString()}</p></div><span className="rounded-full bg-emerald-50 px-4 py-1 text-sm font-semibold capitalize text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{getRoleLabel(invite.role)}</span></div>)}
+          {invitations.map((invite) => <div key={invite.id} className="flex items-center justify-between border-b border-slate-200 px-7 py-5"><div><p className="font-bold text-slate-900">{invite.email} <span className="ml-2 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">Pending</span></p><p className="text-sm text-slate-400">Expires {new Date(invite.expires_at).toLocaleDateString()}</p></div><span className={`rounded-full border px-4 py-1 text-sm font-semibold ${getCompanyRoleBadgeClass(invite.role)}`}>{getRoleLabel(invite.role)}</span></div>)}
         </section>
         <ExistingUserInviteModal
           open={existingUserModalOpen}

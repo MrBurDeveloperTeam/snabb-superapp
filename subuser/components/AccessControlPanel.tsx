@@ -93,9 +93,18 @@ function PermissionSwitch({
       aria-checked={checked}
       aria-label={label}
       onClick={onChange}
-      className={`relative h-7 w-12 cursor-pointer rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${checked ? 'bg-teal-500 hover:bg-teal-600' : 'bg-slate-300 hover:bg-slate-400 dark:bg-slate-600 dark:hover:bg-slate-500'}`}
+      className={`relative h-7 w-12 cursor-pointer rounded-full transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${
+        checked
+          ? 'bg-teal-500 hover:bg-teal-600'
+          : 'bg-slate-300 hover:bg-slate-400 dark:bg-slate-600'
+      }`}
     >
-      <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+      <span
+        aria-hidden="true"
+        className={`absolute left-0 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
     </button>
   );
 }
