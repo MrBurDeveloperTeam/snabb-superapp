@@ -1,6 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Save, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  getCompanyAccessMatrix,
+  saveCompanyRolePermissions,
+} from '../services/companyAccessControlService';
 
 type AppKey = 'inventory' | 'appointment';
 type EditableRole = 'admin' | 'nurse' | 'dentist';
@@ -67,18 +71,29 @@ const APP_META: Record<AppKey, { label: string; iconPath: string }> = {
   },
 };
 
+const APPOINTMENT_BACKEND_KEYS: Record<string, string> = {
+  access: 'appointment.schedule.access',
+  manage: 'appointment.manage',
+  patients: 'appointment.patients.access',
+  requests: 'appointment.requests.manage',
+  reports: 'appointment.reports.view',
+  settings: 'appointment.settings.manage',
+};
+
 function PermissionSwitch({
   checked,
   disabled = false,
+  locked = false,
   label,
   onChange,
 }: {
   checked: boolean;
   disabled?: boolean;
+  locked?: boolean;
   label: string;
   onChange?: () => void;
 }) {
-  if (disabled) {
+  if (locked) {
     return (
       <span className="inline-grid h-7 w-7 place-items-center rounded-full bg-teal-100 text-teal-600 dark:bg-teal-500/20 dark:text-teal-300" aria-label={label}>
         <Check size={15} strokeWidth={2.5} aria-hidden="true" />
@@ -93,7 +108,8 @@ function PermissionSwitch({
       aria-checked={checked}
       aria-label={label}
       onClick={onChange}
-      className={`relative h-7 w-12 cursor-pointer rounded-full transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${
+      disabled={disabled}
+      className={`relative h-7 w-12 cursor-pointer rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${
         checked
           ? 'bg-teal-500 hover:bg-teal-600'
           : 'bg-slate-300 hover:bg-slate-400 dark:bg-slate-600'
@@ -112,8 +128,57 @@ function PermissionSwitch({
 export default function AccessControlPanel() {
   const [activeApp, setActiveApp] = useState<AppKey>('inventory');
   const [permissions, setPermissions] = useState<PermissionState>(INITIAL_PERMISSIONS);
+  const [appointmentLoaded, setAppointmentLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const definitions = PERMISSIONS[activeApp];
   const app = APP_META[activeApp];
+
+  useEffect(() => {
+    if (activeApp !== 'appointment' || appointmentLoaded) return;
+
+    let cancelled = false;
+
+    const loadAppointmentPermissions = async () => {
+      setLoading(true);
+
+      try {
+        const result = await getCompanyAccessMatrix('appointment');
+        if (cancelled) return;
+
+        const appointmentPermissions = (['admin', 'nurse', 'dentist'] as EditableRole[])
+          .reduce<Record<EditableRole, Record<string, boolean>>>((next, role) => {
+            next[role] = Object.fromEntries(
+              PERMISSIONS.appointment.map(({ key }) => [
+                key,
+                result.roles?.[role]?.[APPOINTMENT_BACKEND_KEYS[key]] === true,
+              ]),
+            );
+            return next;
+          }, { admin: {}, nurse: {}, dentist: {} });
+
+        setPermissions((current) => ({
+          ...current,
+          appointment: appointmentPermissions,
+        }));
+        setAppointmentLoaded(true);
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.error ||
+          error?.message ||
+          'Unable to load Appointment permissions.',
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadAppointmentPermissions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeApp, appointmentLoaded]);
 
   const allEnabled = useMemo(() => {
     return (['admin', 'nurse', 'dentist'] as EditableRole[]).reduce<Record<EditableRole, boolean>>(
@@ -160,8 +225,42 @@ export default function AccessControlPanel() {
     }));
   };
 
-  const handleSave = () => {
-    toast.success('Permission preview saved for this session. Backend syncing will be connected next.');
+  const handleSave = async () => {
+    if (activeApp !== 'appointment') {
+      toast.info('Inventory backend syncing will be connected after the Appointment test.');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await Promise.all(
+        (['admin', 'nurse', 'dentist'] as EditableRole[]).map((role) => {
+          const backendPermissions = Object.fromEntries(
+            PERMISSIONS.appointment.map(({ key }) => [
+              APPOINTMENT_BACKEND_KEYS[key],
+              permissions.appointment[role][key] === true,
+            ]),
+          );
+
+          return saveCompanyRolePermissions(
+            'appointment',
+            role,
+            backendPermissions,
+          );
+        }),
+      );
+
+      toast.success('Appointment permissions saved.');
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.error ||
+        error?.message ||
+        'Unable to save Appointment permissions.',
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -206,7 +305,7 @@ export default function AccessControlPanel() {
                 <div key={role.key} className="flex min-h-[54px] flex-col items-center justify-center gap-2 text-center">
                   <span className={`rounded-full border px-3 py-1 text-sm font-bold ${role.badgeClass}`}>{role.label}</span>
                   {role.key !== 'manager' && (
-                    <button type="button" onClick={() => toggleAll(role.key as EditableRole)} className="cursor-pointer text-xs font-medium text-teal-600 hover:text-teal-700 hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 dark:text-teal-300">
+                    <button type="button" disabled={loading || saving} onClick={() => toggleAll(role.key as EditableRole)} className="cursor-pointer text-xs font-medium text-teal-600 hover:text-teal-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 dark:text-teal-300">
                       {allEnabled[role.key as EditableRole] ? 'Deselect all' : 'Select all'}
                     </button>
                   )}
@@ -220,11 +319,12 @@ export default function AccessControlPanel() {
                   <h3 className="font-bold text-slate-900 dark:text-slate-100">{permission.label}</h3>
                   <p className="mt-1 max-w-sm text-sm leading-6 text-slate-400">{permission.description}</p>
                 </div>
-                <div className="grid place-items-center"><PermissionSwitch checked disabled label={`Manager has ${permission.label}`} /></div>
+                <div className="grid place-items-center"><PermissionSwitch checked locked label={`Manager has ${permission.label}`} /></div>
                 {(['admin', 'nurse', 'dentist'] as EditableRole[]).map((role) => (
                   <div key={role} className="grid place-items-center">
                     <PermissionSwitch
                       checked={permissions[activeApp][role][permission.key]}
+                      disabled={loading || saving}
                       label={`${role} ${permission.label}`}
                       onChange={() => togglePermission(role, permission.key)}
                     />
@@ -240,9 +340,9 @@ export default function AccessControlPanel() {
             <ShieldCheck className="mt-0.5 shrink-0 text-blue-500" size={17} aria-hidden="true" />
             <span><strong className="font-bold text-blue-600 dark:text-blue-300">Manager</strong> always has full access and cannot be restricted.</span>
           </p>
-          <button type="button" onClick={handleSave} className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-teal-500 px-6 py-3 font-bold text-white shadow-sm transition hover:bg-teal-600 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500">
+          <button type="button" onClick={handleSave} disabled={loading || saving} className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-teal-500 px-6 py-3 font-bold text-white shadow-sm transition hover:bg-teal-600 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500">
             <Save size={18} aria-hidden="true" />
-            Save Changes
+            {loading ? 'Loading…' : saving ? 'Saving…' : 'Save Changes'}
           </button>
         </footer>
       </section>
