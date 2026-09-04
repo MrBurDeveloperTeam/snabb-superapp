@@ -18,7 +18,7 @@ export default function ExistingUserInviteModal({ open, onClose, onAdded }: Prop
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<IndividualProfileSearchResult[]>([]);
   const [selected, setSelected] = useState<IndividualProfileSearchResult | null>(null);
-  const [role, setRole] = useState<CompanyRole>('reception');
+  const [role, setRole] = useState<CompanyRole | ''>('');
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -32,7 +32,7 @@ export default function ExistingUserInviteModal({ open, onClose, onAdded }: Prop
       setQuery('');
       setResults([]);
       setSelected(null);
-      setRole('reception');
+      setRole('');
       setError('');
     }
   }, [open]);
@@ -75,7 +75,7 @@ export default function ExistingUserInviteModal({ open, onClose, onAdded }: Prop
   };
 
   const confirmInvite = async () => {
-    if (!selected) return;
+    if (!selected || !role) return;
     setSubmitting(true);
     setError('');
     try {
@@ -101,7 +101,7 @@ export default function ExistingUserInviteModal({ open, onClose, onAdded }: Prop
       aria-labelledby="existing-user-dialog-title"
       PaperProps={{ className: 'existing-user-dialog', sx: { borderRadius: '24px', overflow: 'hidden' } }}
     >
-      <DialogTitle id="existing-user-dialog-title" className="flex items-center gap-3 border-b border-slate-200 px-7 py-5 text-lg font-black text-slate-900">
+      <DialogTitle id="existing-user-dialog-title" className="flex items-center gap-3 border-b border-slate-200 px-7 py-5 text-lg font-black text-slate-900" sx={{ fontWeight: 900 }}>
         <PersonAddAltOutlinedIcon className="text-tiffany-600" />
         Invite an existing Snabbb user
         <IconButton onClick={onClose} disabled={submitting} aria-label="Close invitation dialog" sx={{ ml: 'auto' }}><CloseIcon /></IconButton>
@@ -148,12 +148,23 @@ export default function ExistingUserInviteModal({ open, onClose, onAdded }: Prop
               <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-4 text-sm"><span className="text-slate-500">Account type</span><strong className="text-right text-slate-900">Individual → Company member</strong></div>
             </div>
             <label htmlFor="existing-user-role" className="mt-5 block text-xs font-black uppercase tracking-widest text-slate-500">Assign role</label>
-            <Select id="existing-user-role" fullWidth value={role} onChange={(event) => setRole(event.target.value as CompanyRole)} sx={{ mt: 1.25, borderRadius: '14px', fontWeight: 700 }}>
+            <Select
+              id="existing-user-role"
+              fullWidth
+              displayEmpty
+              value={role}
+              onChange={(event) => setRole(event.target.value as CompanyRole | '')}
+              renderValue={(selectedRole) => selectedRole
+                ? COMPANY_MEMBER_ROLES.find((item) => item.value === selectedRole)?.label
+                : <span className="font-normal text-slate-400">Select Role</span>}
+              sx={{ mt: 1.25, borderRadius: '14px', fontWeight: 700 }}
+            >
+              <MenuItem value="" disabled>Select Role</MenuItem>
               {COMPANY_MEMBER_ROLES.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
             </Select>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => { setStep('search'); setError(''); }} disabled={submitting} className="rounded-xl border border-slate-200 px-5 py-3 font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500 disabled:opacity-50">Back</button>
-              <button type="button" onClick={confirmInvite} disabled={submitting} className="rounded-xl bg-tiffany-600 px-5 py-3 font-bold text-white hover:bg-tiffany-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500 disabled:opacity-50">{submitting ? 'Adding…' : 'Confirm & add'}</button>
+              <button type="button" onClick={confirmInvite} disabled={submitting || !role} className="rounded-xl bg-tiffany-600 px-5 py-3 font-bold text-white hover:bg-tiffany-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500 disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Adding…' : 'Confirm & add'}</button>
             </div>
           </>
         ) : null}
