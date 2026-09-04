@@ -104,8 +104,28 @@ export const VISIBLE_TUTORIAL_VIDEOS = TUTORIAL_VIDEOS.filter(
   (video) => !HIDDEN_TUTORIAL_CATEGORIES.has(video.category),
 );
 
+const CATEGORY_STYLES: Record<TutorialCategory, string> = {
+  Inventory: 'border-violet-400 text-violet-600 bg-violet-50',
+  Events: 'border-amber-400 text-amber-600 bg-amber-50',
+  Appointment: 'border-emerald-400 text-emerald-600 bg-emerald-50',
+  'Content Studio': 'border-rose-400 text-rose-600 bg-rose-50',
+  'Profit Calculator': 'border-sky-400 text-sky-600 bg-sky-50',
+  'To-Do Manager': 'border-blue-400 text-blue-600 bg-blue-50',
+  'E-Learning': 'border-purple-400 text-purple-600 bg-purple-50',
+  Expenses: 'border-orange-400 text-orange-600 bg-orange-50',
+  'Dental Charting': 'border-cyan-400 text-cyan-600 bg-cyan-50',
+  Insurance: 'border-green-400 text-green-600 bg-green-50',
+  Lease: 'border-indigo-400 text-indigo-600 bg-indigo-50',
+  'Snabbb Reward': 'border-teal-400 text-teal-600 bg-teal-50',
+};
+
+export const getTutorialCategoryStyle = (category: TutorialCategory) =>
+  CATEGORY_STYLES[category];
+
 export const getTutorialThumbnail = (playbackId: string) =>
-  `https://image.mux.com/${playbackId}/thumbnail.jpg?time=1&width=900&fit_mode=smartcrop`;
+  // Let Mux use the source video's native dimensions. Requesting a fixed
+  // smart-crop can fail when a tutorial's source width is smaller than it.
+  `https://image.mux.com/${playbackId}/thumbnail.jpg?time=1`;
 
 export const getTutorialPlayerUrl = (playbackId: string) =>
   `https://player.mux.com/${playbackId}?metadata-video-title=Snabbb%20Tutorial`;

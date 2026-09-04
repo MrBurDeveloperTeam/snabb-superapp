@@ -1033,10 +1033,12 @@ useEffect(() => {
       position="top-right"
       richColors
     />
-    <AnnouncementBar
-        isLoggedIn={!!user}
-        profileComplete={(user as any)?.profileComplete}
-      />
+    {!isTutorialRoute && (
+      <AnnouncementBar
+          isLoggedIn={!!user}
+          profileComplete={(user as any)?.profileComplete}
+        />
+    )}
     {isToastBackdropOpen && (
         <div
           className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-[1px]"
@@ -1073,7 +1075,7 @@ useEffect(() => {
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
-      {!isStandaloneSignup && (
+      {!isStandaloneSignup && !isTutorialRoute && (
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <button
@@ -1371,7 +1373,7 @@ useEffect(() => {
             </div>
           </div>
         )}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
           {/* key remounts CatMascot when auth changes → entry walk plays after login */}
           <CatMascot
             key={isLoggedIn ? 'logged-in' : 'guest'}
@@ -1382,7 +1384,7 @@ useEffect(() => {
         </div>
         
         <MolarChat
-          isOpen={isChatOpen && !isVirtualPetOpen}
+          isOpen={isChatOpen && !isVirtualPetOpen && !isTutorialRoute}
           onClose={() => setIsChatOpen(false)}
           chatHistory={chatHistory}
           isChatLoading={isChatLoading}
@@ -1397,7 +1399,7 @@ useEffect(() => {
         <VirtualPetContainer isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
 
         {!isChatOpen && (
-          <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
+          <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
             <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
                <motion.button
                  initial={{ opacity: 0, y: 8 }}

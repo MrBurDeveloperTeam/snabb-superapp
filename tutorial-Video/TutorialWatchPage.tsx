@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowLeft, BookOpenText } from 'lucide-react';
 import TutorialBrand from './TutorialBrand';
-import { getTutorialPlayerUrl, getTutorialThumbnail, VISIBLE_TUTORIAL_VIDEOS } from './tutorialData';
+import { getTutorialCategoryStyle, getTutorialPlayerUrl, getTutorialThumbnail, VISIBLE_TUTORIAL_VIDEOS } from './tutorialData';
 
 interface TutorialWatchPageProps {
   videoId: string;
@@ -33,7 +33,7 @@ const TutorialWatchPage: React.FC<TutorialWatchPageProps> = ({ videoId, onNaviga
             <iframe src={getTutorialPlayerUrl(video.playbackId)} title={video.title} className="h-full w-full border-0" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture" allowFullScreen />
           </div>
           <div className="mt-6">
-            <span className="inline-block rounded border border-tiffany-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-tiffany-700">{video.category}</span>
+            <span className={`inline-block rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${getTutorialCategoryStyle(video.category)}`}>{video.category}</span>
             <h1 className="mt-3 text-3xl font-black tracking-tight">{video.title}</h1>
             <p className="mt-3 text-base leading-7 text-slate-500">{video.description}</p>
             <div className="mt-7 flex items-center gap-3 border-t border-slate-200 pt-6">
@@ -49,7 +49,7 @@ const TutorialWatchPage: React.FC<TutorialWatchPageProps> = ({ videoId, onNaviga
             {upNext.map((item) => (
               <button key={item.id} type="button" onClick={() => onNavigate(`/tutorial-video/${item.id}`)} className="group flex w-full gap-3 text-left">
                 <img src={getTutorialThumbnail(item.playbackId)} alt="" className="h-20 w-32 shrink-0 rounded-xl object-cover" />
-                <span className="min-w-0 py-1"><span className="text-[9px] font-black uppercase tracking-wider text-tiffany-600">{item.category}</span><span className="mt-1 block text-sm font-extrabold leading-5 text-slate-800 group-hover:text-tiffany-700">{item.title}</span></span>
+                <span className="min-w-0 py-1"><span className={`inline-block rounded border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${getTutorialCategoryStyle(item.category)}`}>{item.category}</span><span className="mt-1 block text-sm font-extrabold leading-5 text-slate-800 group-hover:text-tiffany-700">{item.title}</span></span>
               </button>
             ))}
           </div>
