@@ -43,6 +43,9 @@ import { useThemeStore } from './store/themeStore';
 import LoadingOverlay from './components/LoadingOverlay';
 import UserManagementPage from './subuser/components/UserManagementPage';
 import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
+import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
+import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
+import { BookOpenText } from 'lucide-react';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -375,6 +378,9 @@ useEffect(() => {
   const isCompanyMemberSignup =
     path === '/company-member-signup' ||
     /^\/invite\/[^/]+\/?$/.test(path);  const isStandaloneSignup = isInviteSignup || isCompanyMemberSignup;
+
+  const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
+  const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
 
   useEffect(() => {
     let cancelled = false;
@@ -1739,6 +1745,18 @@ useEffect(() => {
             </motion.div>
           )}
 
+          {path === '/tutorial-video' && (
+            <motion.div key="tutorial-library" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <TutorialLibraryPage onNavigate={navigate} />
+            </motion.div>
+          )}
+
+          {tutorialVideoMatch && (
+            <motion.div key={`tutorial-${tutorialVideoMatch[1]}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <TutorialWatchPage videoId={decodeURIComponent(tutorialVideoMatch[1])} onNavigate={navigate} />
+            </motion.div>
+          )}
+
           {path === '/' && (
             <motion.div
               key="gallery"
@@ -1866,7 +1884,7 @@ useEffect(() => {
           )}
         {/* </AnimatePresence> */}
 
-        {!isAuthRoute && !isCompanyMemberSignup && (
+        {!isAuthRoute && !isCompanyMemberSignup && !isTutorialRoute && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
             <div className="py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-slate-400 text-sm font-bold">© 2026 Snabbb Apps Gallery.</p>
