@@ -39,6 +39,9 @@ import { useThemeStore } from './store/themeStore';
 import LoadingOverlay from './components/LoadingOverlay';
 import UserManagementPage from './subuser/components/UserManagementPage';
 import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
+import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
+import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
+import { BookOpenText } from 'lucide-react';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -329,6 +332,9 @@ useEffect(() => {
   const isCompanyMemberSignup =
     path === '/company-member-signup' ||
     /^\/invite\/[^/]+\/?$/.test(path);  const isStandaloneSignup = isInviteSignup || isCompanyMemberSignup;
+
+  const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
+  const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
 
   useEffect(() => {
     let cancelled = false;
@@ -1393,6 +1399,18 @@ useEffect(() => {
         {!isChatOpen && (
           <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
             <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
+               <motion.button
+                 initial={{ opacity: 0, y: 8 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 whileHover={{ scale: 1.04 }}
+                 whileTap={{ scale: 0.97 }}
+                 onClick={() => navigate('/tutorial-video')}
+                 className="mb-5 flex items-center gap-2 rounded-full bg-tiffany-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-tiffany-500/30 hover:bg-tiffany-600"
+                 aria-label="Open the Tutorial Library"
+               >
+                 <BookOpenText size={17} fill="currentColor" />
+                 Tutorials
+               </motion.button>
                <div className="relative flex items-center justify-center">
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
                      <AnimatePresence mode="wait">
@@ -1469,6 +1487,18 @@ useEffect(() => {
           {path === '/disclaimer' && (
             <motion.div key="disclaimer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <DisclaimerPage />
+            </motion.div>
+          )}
+
+          {path === '/tutorial-video' && (
+            <motion.div key="tutorial-library" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <TutorialLibraryPage onNavigate={navigate} />
+            </motion.div>
+          )}
+
+          {tutorialVideoMatch && (
+            <motion.div key={`tutorial-${tutorialVideoMatch[1]}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <TutorialWatchPage videoId={decodeURIComponent(tutorialVideoMatch[1])} onNavigate={navigate} />
             </motion.div>
           )}
 
@@ -1599,7 +1629,7 @@ useEffect(() => {
           )}
         {/* </AnimatePresence> */}
 
-        {!isAuthRoute && !isCompanyMemberSignup && (
+        {!isAuthRoute && !isCompanyMemberSignup && !isTutorialRoute && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
             <div className="py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-slate-400 text-sm font-bold">© 2026 Snabbb Apps Gallery.</p>
