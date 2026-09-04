@@ -55,6 +55,8 @@ export const HIDDEN_TUTORIAL_CATEGORIES = new Set<TutorialCategory>([
 
 const PLACEHOLDER_PLAYBACK_ID = 'RBYw67M01tIGwOuK2mvLPilMrr11tXM8iCuqTApuhowE';
 
+// Use only the Mux playback ID—the part after https://player.mux.com/—not the complete URL. 
+// eg: like the placeHolder above. If you don't have a Mux playback ID yet, you can use the placeholder above until you get one.
 export const TUTORIAL_VIDEOS: TutorialVideo[] = [
   // INVENTORY: Replace this playback ID or add more Inventory videos here.
   { id: 'inventory-getting-started', title: 'Getting Started with Snabbb Inventory', description: 'Learn the essential inventory workflow, from setup to managing your stock.', category: 'Inventory', playbackId: 'O78rmnStGiJhmQKWC00X9DtOCGedRNntFCvA5jzI57Ss', isNew: true },
