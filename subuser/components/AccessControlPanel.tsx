@@ -123,7 +123,7 @@ function PermissionSwitch({
       aria-label={label}
       onClick={onChange}
       disabled={disabled}
-      className={`relative h-7 w-12 cursor-pointer rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${
+      className={`relative h-5 w-8 cursor-pointer rounded-full transition-colors duration-200 sm:h-7 sm:w-12 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 ${
         checked
           ? 'bg-teal-500 hover:bg-teal-600'
           : 'bg-slate-300 hover:bg-slate-400 dark:bg-slate-600'
@@ -131,8 +131,8 @@ function PermissionSwitch({
     >
       <span
         aria-hidden="true"
-        className={`absolute left-0 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out ${
-          checked ? 'translate-x-6' : 'translate-x-1'
+        className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out sm:top-1 sm:h-5 sm:w-5 ${
+          checked ? 'translate-x-3.5 sm:translate-x-6' : 'translate-x-0.5 sm:translate-x-1'
         }`}
       />
     </button>
@@ -279,9 +279,9 @@ export default function AccessControlPanel() {
   };
 
   return (
-    <div className="mt-8 grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-5 text-xs font-black uppercase tracking-[0.14em] text-slate-400 dark:border-slate-700 dark:bg-slate-800/60">
+    <div className="mt-5 grid items-start gap-4 sm:mt-8 sm:gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:rounded-3xl lg:block dark:border-slate-700 dark:bg-slate-900">
+        <div className="col-span-2 border-b border-slate-200 bg-slate-50/80 px-3 py-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400 sm:px-6 sm:py-5 sm:text-xs dark:border-slate-700 dark:bg-slate-800/60">
           Productivity
         </div>
         {(Object.keys(APP_META) as AppKey[]).map((appKey) => {
@@ -293,26 +293,26 @@ export default function AccessControlPanel() {
               type="button"
               aria-pressed={active}
               onClick={() => setActiveApp(appKey)}
-              className={`relative flex w-full cursor-pointer items-center gap-4 px-5 py-5 text-left font-bold transition-colors focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-teal-500 ${active ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' : 'text-slate-800 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}
+              className={`relative flex w-full cursor-pointer items-center justify-center gap-2 px-3 py-3 text-left text-xs font-medium transition-colors sm:gap-4 sm:px-5 sm:py-5 sm:text-base sm:font-bold lg:justify-start focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-teal-500 ${active ? 'border-b-2 border-teal-500 bg-teal-50 text-teal-700 lg:border-b-0 dark:bg-teal-500/10 dark:text-teal-300' : 'text-slate-800 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}
             >
-              <img src={item.iconPath} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover" />
+              <img src={item.iconPath} alt="" className="h-6 w-6 shrink-0 rounded-lg object-cover sm:h-10 sm:w-10 sm:rounded-xl" />
               <span>{item.label}</span>
-              {active && <span className="absolute right-4 h-7 w-1 rounded-full bg-teal-500" aria-hidden="true" />}
+              {active && <span className="absolute right-4 hidden h-7 w-1 rounded-full bg-teal-500 lg:block" aria-hidden="true" />}
             </button>
           );
         })}
       </aside>
 
-      <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby={`${activeApp}-permissions-title`}>
-        <div className="flex items-center gap-4 border-b border-slate-200 px-7 py-5 dark:border-slate-700">
-          <img src={app.iconPath} alt="" className="h-12 w-12 shrink-0 rounded-2xl object-cover" />
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:rounded-3xl dark:border-slate-700 dark:bg-slate-900" aria-labelledby={`${activeApp}-permissions-title`}>
+        <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-4 sm:gap-4 sm:px-7 sm:py-5 dark:border-slate-700">
+          <img src={app.iconPath} alt="" className="h-8 w-8 shrink-0 rounded-xl object-cover sm:h-12 sm:w-12 sm:rounded-2xl" />
           <div>
-            <h2 id={`${activeApp}-permissions-title`} className="text-lg font-black text-slate-900 dark:text-white">{app.label} Permissions</h2>
-            <p className="text-sm text-slate-400">Configure what each role can do in this mini app</p>
+            <h2 id={`${activeApp}-permissions-title`} className="text-sm font-black text-slate-900 sm:text-lg dark:text-white">{app.label} Permissions</h2>
+            <p className="text-[10px] text-slate-400 sm:text-sm">Configure what each role can do in this mini app</p>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="hidden overflow-x-auto sm:block">
           <div className="min-w-[780px]">
             <div className="grid grid-cols-[minmax(280px,1.7fr)_repeat(4,minmax(105px,0.65fr))] items-center border-b border-slate-200 bg-slate-50/70 px-7 py-4 dark:border-slate-700 dark:bg-slate-800/60">
               <span className="text-sm font-bold text-slate-400">Function</span>
@@ -350,13 +350,41 @@ export default function AccessControlPanel() {
           </div>
         </div>
 
-        <footer className="flex flex-col gap-4 border-t border-slate-200 px-7 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
-          <p className="flex items-start gap-2 text-sm text-slate-400">
+        <div className="sm:hidden">
+          {definitions.map((permission) => (
+            <div key={permission.key} className="border-b border-slate-200 px-3 py-4 last:border-b-0 dark:border-slate-700">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">{permission.label}</h3>
+              <p className="mt-1 text-[10px] leading-4 text-slate-400">{permission.description}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {ROLES.map((role) => (
+                  <div key={role.key} className={`flex h-9 items-center justify-between rounded-xl border px-2.5 ${role.badgeClass}`}>
+                    <span className="text-[10px] font-bold">{role.label}</span>
+                    {role.key === 'manager' ? (
+                      <span className="inline-grid h-4 w-4 place-items-center rounded-full bg-teal-100 text-teal-600" aria-label={`Manager has ${permission.label}`}>
+                        <Check size={10} strokeWidth={3} aria-hidden="true" />
+                      </span>
+                    ) : (
+                      <PermissionSwitch
+                        checked={permissions[activeApp][role.key as EditableRole][permission.key]}
+                        disabled={loading || saving}
+                        label={`${role.label} ${permission.label}`}
+                        onChange={() => togglePermission(role.key as EditableRole, permission.key)}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <footer className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:gap-4 sm:px-7 sm:py-5 md:flex-row md:items-center md:justify-between dark:border-slate-700">
+          <p className="flex items-start gap-2 text-[10px] leading-4 text-slate-400 sm:text-sm">
             <ShieldCheck className="mt-0.5 shrink-0 text-blue-500" size={17} aria-hidden="true" />
             <span><strong className="font-bold text-blue-600 dark:text-blue-300">Manager</strong> always has full access and cannot be restricted.</span>
           </p>
-          <button type="button" onClick={handleSave} disabled={loading || saving} className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-teal-500 px-6 py-3 font-bold text-white shadow-sm transition hover:bg-teal-600 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500">
-            <Save size={18} aria-hidden="true" />
+          <button type="button" onClick={handleSave} disabled={loading || saving} className="inline-flex min-h-8 w-fit cursor-pointer items-center justify-center gap-2 rounded-xl bg-teal-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-teal-600 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-11 sm:rounded-2xl sm:px-6 sm:py-3 sm:text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500">
+            <Save size={14} className="sm:h-[18px] sm:w-[18px]" aria-hidden="true" />
             {loading ? 'Loading…' : saving ? 'Saving…' : 'Save Changes'}
           </button>
         </footer>
