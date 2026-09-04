@@ -293,7 +293,7 @@ export default function AccessControlPanel() {
               type="button"
               aria-pressed={active}
               onClick={() => setActiveApp(appKey)}
-              className={`relative flex w-full cursor-pointer items-center justify-center gap-2 px-3 py-3 text-left text-xs font-medium transition-colors sm:gap-4 sm:px-5 sm:py-5 sm:text-base sm:font-bold lg:justify-start focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-teal-500 ${active ? 'border-b-2 border-teal-500 bg-teal-50 text-teal-700 lg:border-b-0 dark:bg-teal-500/10 dark:text-teal-300' : 'text-slate-800 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}
+              className={`relative flex w-full cursor-pointer items-center justify-center gap-2 px-3 py-3 text-left text-xs font-bold transition-colors sm:gap-4 sm:px-5 sm:py-5 sm:text-base lg:justify-start focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-teal-500 ${active ? 'border-b-2 border-teal-500 bg-teal-50 text-teal-700 lg:border-b-0 dark:bg-teal-500/10 dark:text-teal-300' : 'text-slate-800 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}
             >
               <img src={item.iconPath} alt="" className="h-6 w-6 shrink-0 rounded-lg object-cover sm:h-10 sm:w-10 sm:rounded-xl" />
               <span>{item.label}</span>
