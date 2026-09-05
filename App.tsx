@@ -13,10 +13,14 @@ import { debounce } from 'lodash';
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
 import CatMascot from './components/CatMascot';
-import { MolarChat } from './components/MolarChat';
-import type { ChatHistory } from './components/MolarChat';
-import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
-import { chatWithGemini } from './services/geminiService';
+import { SharedMolarAI } from '@mrburdeveloperteam/molar-experience/ai';
+import type { MolarChatEmptyState } from '@mrburdeveloperteam/molar-experience/ai';
+import { createAppGalleryMolarAdapter } from './aiExperience/appGalleryMolarAdapter';
+import { MOLAR_LOGO_URL } from './aiExperience/molarExperienceAssets';
+import AppGalleryVirtualPet from './petExperience/AppGalleryVirtualPet';
+import MeowdokuLauncher from './petExperience/MeowdokuLauncher';
+import { isPersonalizedPetDialogueEnabled } from './features/petDialogue/dialogueFlag';
+import type { ProfileCompletionStatus } from './features/petDialogue/types';
 import { fetchUserChatContext, buildUserContextString } from './services/userContextService';
 import { supabase } from './services/supabaseClient';
 import { SnabbbIcon } from './public/icons/SnabbbIcon';
@@ -160,21 +164,50 @@ const App: React.FC = () => {
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [, setLoggedInUser] = useState<AuthFormData | null>(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false);
   const [userChatContext, setUserChatContext] = useState<string>('');
+  // Molar user-context ownership — see reconcileSupabaseIdentity/verifySession
+  // below. `userChatContext` alone is not a safe signal that the fetched
+  // context actually belongs to the CURRENT verified Odoo identity: on a
+  // direct A -> B account switch, the old value can still be sitting in
+  // this state while B's own fetch is in flight. `hasSafeMolarContext`
+  // (computed below, near the Molar mount) is the only thing General Chat
+  // is allowed to read.
+  const [userChatContextStatus, setUserChatContextStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [userChatContextOwnerEmail, setUserChatContextOwnerEmail] = useState<string | null>(null);
+  const userChatContextGenerationRef = useRef(0);
+  // Tri-state canonical Shared Cat/Molar/Pet owner identity — see
+  // reconcileSupabaseIdentity below. `undefined` = reconciliation still in
+  // progress/not yet attempted (never guess); `null` = confirmed guest or a
+  // definitive reconciliation failure; a string = the Supabase auth user id
+  // confirmed (via /sso/exchange) to belong to the same account as the
+  // currently Odoo-verified user.
+  const [matchedSupabaseUserId, setMatchedSupabaseUserId] = useState<string | null | undefined>(undefined);
+  const reconcileGenerationRef = useRef(0);
+  // The last Odoo email a successful verifySession() actually applied —
+  // used ONLY to detect a real identity change synchronously, so
+  // matchedSupabaseUserId/userChatContext can be invalidated in the SAME
+  // tick the new email is accepted, before any reconciliation await even
+  // starts (closing the window where a slow reconcile/context fetch could
+  // otherwise still publish/read the outgoing user's values). Routine
+  // re-verification of the SAME email (focus/visibility/SSO_LOGIN checks)
+  // must NOT flip this — see verifySession below.
+  const lastVerifiedEmailRef = useRef<string | null>(null);
+  const verifySessionGenerationRef = useRef(0);
+  const [profileCompletionStatus, setProfileCompletionStatus] = useState<ProfileCompletionStatus>('unknown');
+  // `undefined` collapsed to a 'guest' sentinel for components that only
+  // need a stable cache/key identity (never cache/key under a guessed,
+  // unconfirmed id) — the personalized-dialogue system itself continues to
+  // read the raw tri-state `matchedSupabaseUserId` directly.
+  const petCatOwnerId = matchedSupabaseUserId === undefined ? null : matchedSupabaseUserId;
+  const isPetOwnerReconciling = isLoggedIn === true && matchedSupabaseUserId === undefined;
   const setConfig = useAnnouncementBarStore((s) => s.setConfig);
   const [isToastBackdropOpen, setIsToastBackdropOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const didInitRef = useRef(false);
   const checkingSessionRef = useRef(false);
   const lastVerifyAtRef = useRef(0);
-  const handleClearChat = () => setChatHistory([]);
-  const [badgeText, setBadgeText] = useState("Ask Me");
   const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -283,21 +316,6 @@ useEffect(() => {
       .catch(() => setCreditBalance(null))
   })();
 }, [authFormData?.partner_id, authFormData?.email])
-
-  useEffect(() => {
-    const texts = !isLoggedIn 
-      ? ['Log In', 'Get Started']
-      : ['Ask Me', 'Try Me!', 'SNAI'];
-      
-    let i = 0;
-    setBadgeText(texts[0]);
-
-    const interval = setInterval(() => {
-      i = (i + 1) % texts.length;
-      setBadgeText(texts[i]);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [isLoggedIn]);
 
   const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
@@ -489,69 +507,59 @@ useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!chatInput.trim() || isChatLoading) return;
+  // Molar General Chat context ownership gate — see the state declarations
+  // above. Only General Chat may read `userChatContext`; it must never see
+  // a value that wasn't actually fetched for the CURRENT verified Odoo
+  // identity.
+  const hasSafeMolarContext =
+    typeof matchedSupabaseUserId === 'string' &&
+    !!user?.email &&
+    userChatContextStatus === 'ready' &&
+    userChatContextOwnerEmail === user.email.trim().toLowerCase();
 
-    const userMsg = chatInput.trim();
-    setChatInput("");
-    setChatHistory((prev) => [...prev, { role: "user", parts: [{ text: userMsg }] }]);
-    setIsChatLoading(true);
+  const safeUserChatContext = hasSafeMolarContext ? userChatContext : '';
 
-    try {
-      let response = null;
+  const [molarEmptyState, setMolarEmptyState] = useState<MolarChatEmptyState>({});
 
-      // 1. Check custom responses first
-      const { data: apps } = await supabase
-        .from('aiboard_response_target_apps')
-        .select('response_id')
-        .in('app_name', ['App.Snabbb', 'All']);
+  useEffect(() => {
+    let cancelled = false;
+    const fetchSimConfig = async () => {
+      try {
+        const { data: configs } = await supabase
+          .from('aiboard_simulator_configs')
+          .select('id, title, subtitle')
+          .eq('module_name', 'App.Snabbb')
+          .limit(1);
 
-      if (apps && apps.length > 0) {
-        const responseIds = apps.map(a => a.response_id);
-        const { data: keywords } = await supabase
-          .from('aiboard_response_keywords')
-          .select('keyword, response_id')
-          .in('response_id', responseIds);
+        if (configs && configs.length > 0) {
+          const title = configs[0].title;
+          const subtitle = configs[0].subtitle || undefined;
 
-        if (keywords && keywords.length > 0) {
-          const matchedKeyword = keywords.find(k => userMsg.toLowerCase().includes(k.keyword.toLowerCase()));
+          const { data: promptData } = await supabase
+            .from('aiboard_simulator_prompts')
+            .select('text, icon_name, sort_order')
+            .eq('config_id', configs[0].id)
+            .order('sort_order', { ascending: true });
 
-          if (matchedKeyword) {
-            const { data: respData } = await supabase
-              .from('aiboard_responses')
-              .select('response')
-              .eq('id', matchedKeyword.response_id)
-              .single();
+          const prompts = promptData && promptData.length > 0
+            ? promptData.map((p) => ({ label: p.text, iconName: p.icon_name }))
+            : undefined;
 
-            if (respData) {
-              response = respData.response;
-            }
-          }
+          if (!cancelled) setMolarEmptyState({ title, subtitle, prompts });
         }
+      } catch (err) {
+        console.error('Error fetching sim configs:', err);
       }
+    };
 
-      // 2. Fallback to Gemini
-      if (!response) {
-        response = await chatWithGemini(
-          chatHistory,
-          userMsg,
-          "SuperApp Gallery context.",
-          "",
-          "",
-          userChatContext || undefined,
-        );
-      }
-      
-      setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: response as string }] }]);
-    } catch (error) {
-      console.error(error);
-      setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "SNAI Error: Unable to process request." }] }]);
-    } finally {
-      setIsChatLoading(false);
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }
-  };
+    fetchSimConfig();
+    return () => { cancelled = true; };
+  }, []);
+
+  const molarAdapter = useMemo(
+    () => createAppGalleryMolarAdapter({ userChatContext: safeUserChatContext }),
+    [safeUserChatContext]
+  );
 
   const getAvatarColor = (name: string) => {
     const colors = [
@@ -604,13 +612,57 @@ useEffect(() => {
     setAuthFormData(initialFormData);
     setIsProfileMenuOpen(false);
     setUserChatContext('');
+    setUserChatContextStatus('idle');
+    setUserChatContextOwnerEmail(null);
+    userChatContextGenerationRef.current += 1;
+    setProfileCompletionStatus('unknown');
+    // Bumping the reconcile generation invalidates any in-flight
+    // reconcileSupabaseIdentity call so a late exchange response can never
+    // apply after this logout (or log the user back in as the outgoing
+    // account).
+    reconcileGenerationRef.current += 1;
+    // Same idea for verifySession: an intentional auth reset (logout, a
+    // genuine session failure) must invalidate any verifySession call
+    // already in flight, so it can't resolve afterward and resurrect stale
+    // "logged in" state.
+    verifySessionGenerationRef.current += 1;
+    setMatchedSupabaseUserId(null);
+    lastVerifiedEmailRef.current = null;
   }, []);
 
-    const verifySession = useCallback(async () => {
+  // Cross-tab SSO_LOGOUT never calls the Odoo server logout endpoint again
+  // (the tab that actually initiated logout already did that) and never
+  // ran a local Supabase sign-out of its own — but Supabase's persisted
+  // session lives in *this origin's* localStorage, which a different
+  // origin's sign-out cannot reach. A receiving tab must still clear its
+  // own local copy, best-effort, before resetting React state, so this
+  // origin's Supabase session doesn't silently survive an otherwise-
+  // complete logout.
+  const clearLocalSessionOnReceivedLogout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('[SSO_LOGOUT] Best-effort local Supabase sign-out failed:', err);
+    }
+    clearAuthState();
+  }, [clearAuthState]);
+
+    const verifySession = useCallback(async (): Promise<boolean | null> => {
     if (user && (user as any).isSimulated) return true;
+
+    // Claim this invocation's generation before the only await that can
+    // race (getSessionInfo()). If verifySessionGenerationRef has moved on
+    // by the time that await resolves — a newer verifySession() call
+    // started, or clearAuthState() ran (logout/explicit reset) — this
+    // call's result is stale and must not be applied to auth state.
+    const myGeneration = ++verifySessionGenerationRef.current;
 
     try {
       const res = (await getSessionInfo()) as any;
+
+      if (myGeneration !== verifySessionGenerationRef.current) {
+        return null;
+      }
 
       if (!res?.sessionInfo) {
         if (user && (user as any).isSimulated) return true;
@@ -636,14 +688,45 @@ useEffect(() => {
       setAuthFormData(nextUser);
       setUser(nextUser);
 
+      // Synchronous identity-change invalidation — BEFORE any async
+      // reconciliation/context fetch starts. A direct A -> B Odoo account
+      // switch must never leave A's matchedSupabaseUserId/userChatContext
+      // readable even for the brief window while B's own reconciliation/
+      // fetch is in flight. Routine re-verification of the SAME email
+      // (focus/visibility/SSO_LOGIN re-checks) intentionally does NOT hit
+      // this branch, so it doesn't force a needless Cat/Pet/Molar remount.
+      const normalizedNextEmail = nextUser.email.trim().toLowerCase();
+      if (normalizedNextEmail !== lastVerifiedEmailRef.current) {
+        lastVerifiedEmailRef.current = normalizedNextEmail;
+        setMatchedSupabaseUserId(undefined);
+        setUserChatContext('');
+        setUserChatContextStatus('loading');
+        setUserChatContextOwnerEmail(null);
+        userChatContextGenerationRef.current += 1;
+      }
+
+      // Fire-and-forget: confirms/repairs the Supabase session for this
+      // Odoo-verified identity before any personalized-dialogue provider is
+      // allowed to run. Every verifySession() success reconciles again
+      // (not just the first one) — this is what actually closes the
+      // cross-tab/focus/visibility account-switch gap, not just one-time
+      // bootstrap hydration.
+      void reconcileSupabaseIdentity(nextUser.email);
+
+      setProfileCompletionStatus('loading');
       try {
         const partnerRes = await api.get(
           `/partner/profile?email=${encodeURIComponent(nextUser.email)}`
         );
+        if (myGeneration !== verifySessionGenerationRef.current) return null;
         const profileComplete = partnerRes?.data?.profileComplete ?? false;
         setUser({ ...nextUser, profileComplete } as any);
+        setProfileCompletionStatus(profileComplete ? 'complete' : 'incomplete');
       } catch (e) {
         console.warn("Failed to fetch partner profile:", e);
+        if (myGeneration === verifySessionGenerationRef.current) {
+          setProfileCompletionStatus('unknown');
+        }
       }
 
      const COMPANY_SUBDOMAIN_MAP: Record<string, string> = {
@@ -671,12 +754,31 @@ useEffect(() => {
       }
       
 
-      // Fetch personalized context for Molar AI
-      try {
-        const ctx = await fetchUserChatContext(nextUser.email);
-        setUserChatContext(buildUserContextString(ctx));
-      } catch (e) {
-        console.warn('[MolarAI] Context fetch failed:', e);
+      // Fetch personalized context for Molar AI — latest-request-wins,
+      // gated by BOTH the userChatContext generation and the requested
+      // owner email still matching by the time the fetch resolves (see
+      // hasSafeMolarContext at the Molar mount site, which additionally
+      // re-checks this at read time).
+      {
+        const myContextGeneration = ++userChatContextGenerationRef.current;
+        try {
+          const ctx = await fetchUserChatContext(nextUser.email);
+          if (
+            myContextGeneration === userChatContextGenerationRef.current &&
+            myGeneration === verifySessionGenerationRef.current
+          ) {
+            setUserChatContext(buildUserContextString(ctx));
+            setUserChatContextOwnerEmail(normalizedNextEmail);
+            setUserChatContextStatus('ready');
+          }
+        } catch (e) {
+          console.warn('[MolarAI] Context fetch failed:', e);
+          if (myContextGeneration === userChatContextGenerationRef.current) {
+            setUserChatContext('');
+            setUserChatContextOwnerEmail(null);
+            setUserChatContextStatus('error');
+          }
+        }
       }
 
       // localStorage.setItem("company_code", String(companyCode));
@@ -779,25 +881,109 @@ useEffect(() => {
     }
   }
 
-  const hydrateSupabaseSession = useCallback(async () => {
+  // Confirms — and if necessary repairs — that the Supabase Auth session
+  // belongs to the same account as `expectedEmail` (the just Odoo-verified
+  // user). This is the sole gate personalized-dialogue providers and Shared
+  // Pet key off (via matchedSupabaseUserId/petCatOwnerId) — it never runs
+  // an Inventory/Todo/Appointment query itself.
+  //
+  // /sso/exchange is cookie-scoped to whichever Odoo session is currently
+  // active server-side — calling it always returns tokens for *the
+  // current* Odoo account, never a stale/cached one, so re-exchanging here
+  // is safe to repeat on every Odoo re-verification.
+  //
+  // Single-flight: `reconcileGenerationRef` is bumped on every call
+  // (including a logout, via clearAuthState); any earlier call's
+  // continuation checks `isStaleReconcile()` before every state-setting
+  // step, so a slower User A exchange can never overwrite a faster User B
+  // result (or vice versa), and a logout mid-reconciliation can never let a
+  // late exchange response log the user back in.
+  //
+  // Email is the mapping used because it's the only identity value present
+  // in both systems today: the Odoo session-info response's `username`
+  // field is already treated as email throughout this file, and Supabase's
+  // own session always carries `session.user.email`.
+  const reconcileSupabaseIdentity = useCallback(async (expectedEmail: string | null) => {
+    const generation = ++reconcileGenerationRef.current;
+    const isStaleReconcile = () => generation !== reconcileGenerationRef.current;
+
+    if (!expectedEmail) {
+      setMatchedSupabaseUserId(null);
+      return;
+    }
+
+    const normalizedExpected = expectedEmail.trim().toLowerCase();
+    if (!normalizedExpected) {
+      setMatchedSupabaseUserId(null);
+      return;
+    }
+
     try {
-      const { data: existing } = await supabase.auth.getSession();
-      
-      if (existing?.session) return; // already have a Supabase session
-      
-      // Bridge the shared Snabbb SSO cookie into a real Supabase Auth session,
-      // so VirtualPet (and anything else using supabase.auth) sees the same
-      // logged-in user as the other Snabbb apps.
-      const sso = await api.get('/sso/exchange');
-      if (sso?.data?.access_token && sso?.data?.refresh_token) {
-        await supabase.auth.setSession({
-          access_token: sso.data.access_token,
-          refresh_token: sso.data.refresh_token,
-        });
+      // Check whether the current Supabase session ALREADY matches the
+      // expected account before ever flipping matchedSupabaseUserId to
+      // `undefined` — this function runs on every successful
+      // verifySession() (mount, every focus/visibility check, every
+      // SSO_LOGIN broadcast), far more often than the identity actually
+      // changes, so avoid needless Cat/Pet/Molar remount flicker for the
+      // common "already correct" case. (The genuine-identity-change case
+      // is additionally covered synchronously by verifySession's own
+      // lastVerifiedEmailRef check, which fires before this function is
+      // even called — this internal check here is a second, independent
+      // layer, not the only one.)
+      const {
+        data: { session: existingSession },
+      } = await supabase.auth.getSession();
+      if (isStaleReconcile()) return;
+
+      const existingEmail = existingSession?.user?.email?.trim().toLowerCase() ?? null;
+
+      if (existingSession && existingEmail === normalizedExpected) {
+        setMatchedSupabaseUserId(existingSession.user.id);
+        return;
       }
+
+      setMatchedSupabaseUserId(undefined);
+
+      if (existingSession) {
+        // A stale cross-account session must be cleared before exchanging,
+        // never layered under a new one.
+        await supabase.auth.signOut();
+        if (isStaleReconcile()) return;
+      }
+
+      const sso = await api.get('/sso/exchange');
+      if (isStaleReconcile()) return;
+
+      if (!sso?.data?.access_token || !sso?.data?.refresh_token) {
+        console.warn('[SSO] identity reconciliation: exchange returned no tokens');
+        setMatchedSupabaseUserId(null);
+        return;
+      }
+
+      const { data: setResult, error: setSessionError } = await supabase.auth.setSession({
+        access_token: sso.data.access_token,
+        refresh_token: sso.data.refresh_token,
+      });
+      if (isStaleReconcile()) return;
+
+      if (setSessionError || !setResult.session) {
+        console.warn('[SSO] identity reconciliation: setSession failed');
+        setMatchedSupabaseUserId(null);
+        return;
+      }
+
+      const newEmail = setResult.session.user?.email?.trim().toLowerCase() ?? null;
+      if (newEmail !== normalizedExpected) {
+        console.warn('[SSO] identity reconciliation: exchange result did not match expected account');
+        setMatchedSupabaseUserId(null);
+        return;
+      }
+
+      setMatchedSupabaseUserId(setResult.session.user.id);
     } catch (err) {
-      // Non-fatal: the Odoo-based login flow below doesn't depend on this.
-      console.warn('[SSO] Supabase session hydrate failed:', err);
+      if (isStaleReconcile()) return;
+      console.warn('[SSO] identity reconciliation failed:', err);
+      setMatchedSupabaseUserId(null);
     }
   }, []);
 
@@ -815,8 +1001,6 @@ useEffect(() => {
         window.location.reload();
         return;
       }
-
-      await hydrateSupabaseSession();
 
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('sid');
@@ -848,14 +1032,14 @@ useEffect(() => {
     };
 
     bootstrapSession();
-  }, [verifySessionSafe, clearAuthState, navigate, hydrateSupabaseSession]);
+  }, [verifySessionSafe, clearAuthState, navigate]);
 
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (!ALLOWED_ORIGINS.includes(event.origin)) return;
 
       if (event.data?.type === 'SSO_LOGOUT') {
-        clearAuthState();
+        await clearLocalSessionOnReceivedLogout();
       }
 
       if (event.data?.type === 'SSO_LOGIN') {
@@ -865,7 +1049,7 @@ useEffect(() => {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [verifySessionSafe, clearAuthState]);
+  }, [verifySessionSafe, clearLocalSessionOnReceivedLogout]);
 
   useEffect(() => {
     const onFocus = () => {
@@ -1365,58 +1549,89 @@ useEffect(() => {
             </div>
           </div>
         )}
+        {/* `petCatOwnerId` collapses matchedSupabaseUserId's `undefined`
+            ("still reconciling") down to `null` for CatMascot's own
+            account-sensitive presentation cache — never cache/key under a
+            guessed, unconfirmed identity. `key` is identity-bound (not
+            just the guest/logged-in boolean this previously used):
+            'guest' while signed out or still reconciling, the actual
+            reconciled owner id once logged in — so a direct A -> B account
+            switch unmounts A's Cat and mounts a fresh B instance, instead
+            of the old key={isLoggedIn ? 'logged-in' : 'guest'} which never
+            changed across an in-session account swap. */}
         <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
-          {/* key remounts CatMascot when auth changes → entry walk plays after login */}
           <CatMascot
-            key={isLoggedIn ? 'logged-in' : 'guest'}
+            key={!isLoggedIn ? 'guest' : (petCatOwnerId ?? 'guest')}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
             isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen}
+            profileCompletionStatus={isPersonalizedPetDialogueEnabled() ? profileCompletionStatus : 'unknown'}
+            personalizedMatchedUserId={isPersonalizedPetDialogueEnabled() ? matchedSupabaseUserId : null}
+            catCacheOwnerId={petCatOwnerId}
+            onNavigateInternal={navigate}
           />
         </div>
-        
-        <MolarChat
-          isOpen={isChatOpen && !isVirtualPetOpen}
-          onClose={() => setIsChatOpen(false)}
-          chatHistory={chatHistory}
-          isChatLoading={isChatLoading}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          onSendMessage={handleSendMessage}
-          onClearChat={handleClearChat}
-          chatEndRef={chatEndRef}
-          onPetToggle={() => setIsVirtualPetOpen(true)}
-        />
-        
-        <VirtualPetContainer isOpen={isVirtualPetOpen} onClose={() => setIsVirtualPetOpen(false)} />
 
-        {!isChatOpen && (
-          <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
-            <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
-               <div className="relative flex items-center justify-center">
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
-                     <AnimatePresence mode="wait">
-                        <motion.div
-                          key={badgeText}
-                          initial={{ opacity: 0, y: 5, scale: 0.9 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -5, scale: 0.9 }}
-                          className="bg-white text-emerald-500 text-[12px] font-bold tracking-wider px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 whitespace-nowrap"
-                        >
-                          {badgeText}
-                        </motion.div>
-                     </AnimatePresence>
-                  </div>
-                  <button
-                    onClick={() => setIsChatOpen(true)}
-                    disabled={!isLoggedIn}
-                    className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg transition-all relative overflow-hidden ${!isLoggedIn ? 'bg-slate-300 grayscale cursor-not-allowed opacity-70 shadow-none' : 'bg-[#1F7A6F] hover:scale-105 hover:shadow-xl shadow-[#1F7A6F]/30'}`}
-                  >
-                    <img src="/icons/ai_logo.png" alt="Molar AI" className={`w-10 h-10 object-contain drop-shadow-sm transition-transform ${!isLoggedIn ? 'brightness-80' : ''}`} />
-                  </button>
-               </div>
-            </div>
-          </div>
+        {/* SharedMolarAI owns the floating trigger button, chat panel,
+            history, loading, submit mechanics, and badge-text cycling
+            internally — kept mounted (CSS-hidden, not unmounted) while Pet
+            is open or on an auth route, exactly mirroring CatMascot's own
+            wrapper above.
+            Keyed by the reconciled owner identity (never just the boolean
+            isLoggedIn) so a direct A -> B account switch unmounts A's chat
+            history/adapter and mounts a fresh B instance, rather than
+            leaving A's history visible under B. Disabled entirely — not
+            just context-starved — while a logged-in identity is still
+            unreconciled, so no chat can start under an unconfirmed owner. */}
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
+          <SharedMolarAI
+            key={!isLoggedIn ? 'guest' : typeof matchedSupabaseUserId === 'string' ? matchedSupabaseUserId : 'reconciling'}
+            adapter={molarAdapter}
+            disabled={!isLoggedIn || typeof matchedSupabaseUserId !== 'string'}
+            onPetToggle={() => setIsVirtualPetOpen(true)}
+            emptyState={molarEmptyState}
+            logoUrl={MOLAR_LOGO_URL}
+          />
+        </div>
+
+        {/* Withheld entirely while an already-Odoo-logged-in user's
+            Supabase reconciliation is still pending — never mount an
+            authenticated Pet instance under a guessed/null owner just
+            because that lookup hasn't resolved yet. `key` forces a full
+            unmount/remount on any real owner-identity change, including a
+            direct A -> B switch that never passes through a null/guest
+            state. Guest (petCatOwnerId === null, not reconciling) still
+            mounts, preserving existing guest Pet behavior; userId={null}
+            there is intentional ephemeral mode, never a persisted
+            "anonymous" identity. */}
+        {!isPetOwnerReconciling && (
+          <AppGalleryVirtualPet
+            key={petCatOwnerId ?? 'guest'}
+            isOpen={isVirtualPetOpen}
+            onClose={() => setIsVirtualPetOpen(false)}
+            userId={petCatOwnerId}
+            extraGames={petCatOwnerId ? [
+              {
+                id: 'meowdoku',
+                title: 'Meowdoku',
+                iconUrl: '/games/meowdoku/cover-148.png',
+                onSelect: () => setIsMeowdokuOpen(true),
+              },
+            ] : undefined}
+          />
+        )}
+        {/* Meowdoku is already live/user-facing in Production (legacy
+            VirtualPet/{GamePage,RoomMenus}.tsx) — exposed here as a 4th
+            game via SharedVirtualPet's extraGames slot instead. Rendered
+            as a sibling ABOVE SharedVirtualPet's own z-[1000] overlay
+            (z-[1100]) so it never renders invisibly behind it; closing it
+            leaves SharedVirtualPet's Games room still open underneath. */}
+        {petCatOwnerId && (
+          <MeowdokuLauncher
+            isOpen={isMeowdokuOpen}
+            onClose={() => setIsMeowdokuOpen(false)}
+            userId={petCatOwnerId}
+          />
         )}
 
         {/* <AnimatePresence mode="wait" initial={false}> */}

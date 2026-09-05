@@ -223,6 +223,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
         }}
         className={wrapperClass}
         data-no-cat="true"
+        data-mascot-ignore="true"
       >
         <div className="relative">
           <div className={cardClass} style={activeCardStyle}>
@@ -295,6 +296,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
       }}
       className={`${wrapperClass} ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       data-no-cat="true"
+      data-mascot-ignore="true"
     >
       <div className="relative">
         <motion.div
