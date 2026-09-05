@@ -128,6 +128,34 @@ const readSignupInviteFromUrl =
     };
   };
 
+const SUPPORT_MAILTO_URL = 'https://mail.google.com/mail/?view=cm&fs=1&to=support%40snabbb.com&su=Customer%20Inquiry';
+
+/** Suite-standard Email Support affordance rendered inside the Molar panel
+ *  via molar-experience 0.9.6's `footerContent` prop — same pattern already
+ *  shipped for the other Snabbb apps. Plain existing Font Awesome icon (no
+ *  new dependency); App Gallery's own Tailwind utility classes only — no
+ *  E-learning-specific `elearning-support-*` class names, which this host
+ *  does not own any CSS rules for. */
+function AppGallerySupportCard() {
+  return (
+    <a
+      href={SUPPORT_MAILTO_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Email support at support@snabbb.com"
+      className="flex w-full items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/90 px-3 py-2.5 text-left text-slate-700 transition-all duration-200 hover:border-emerald-200 hover:bg-emerald-50/50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-200 dark:hover:border-emerald-800"
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400">
+        <i className="fa-solid fa-envelope text-[15px]" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">Email Support</span>
+        <span className="block truncate text-xs opacity-70">Contact support@snabbb.com</span>
+      </span>
+    </a>
+  );
+}
+
 const App: React.FC = () => {
   const { 
     mutateAsync: createAppLinks,
@@ -1614,6 +1642,7 @@ useEffect(() => {
             onPetToggle={() => setIsVirtualPetOpen(true)}
             emptyState={molarEmptyState}
             logoUrl={MOLAR_LOGO_URL}
+            footerContent={<AppGallerySupportCard />}
           />
         </div>
 
