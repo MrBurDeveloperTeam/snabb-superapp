@@ -317,21 +317,6 @@ useEffect(() => {
   })();
 }, [authFormData?.partner_id, authFormData?.email])
 
-  useEffect(() => {
-    const texts = !isLoggedIn 
-      ? ['Log In', 'Get Started']
-      : ['Ask Me', 'Try Me!', 'SNAI'];
-      
-    let i = 0;
-    setBadgeText(texts[0]);
-
-    const interval = setInterval(() => {
-      i = (i + 1) % texts.length;
-      setBadgeText(texts[i]);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [isLoggedIn]);
-
   const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
   const userName = authFormData?.fullName || 'Guest User';
