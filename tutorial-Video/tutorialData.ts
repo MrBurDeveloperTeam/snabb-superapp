@@ -128,4 +128,4 @@ export const getTutorialThumbnail = (playbackId: string) =>
   `https://image.mux.com/${playbackId}/thumbnail.jpg?time=1`;
 
 export const getTutorialPlayerUrl = (playbackId: string) =>
-  `https://player.mux.com/${playbackId}?metadata-video-title=Snabbb%20Tutorial`;
+  `https://player.mux.com/${playbackId}?metadata-video-title=Snabbb%20Tutorial&accent-color=%2314b8a6`;

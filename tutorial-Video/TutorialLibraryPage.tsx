@@ -16,12 +16,11 @@ const TutorialLibraryPage: React.FC<TutorialLibraryPageProps> = ({ onNavigate })
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-slate-50/70 text-slate-900">
-      <div className="border-b border-slate-200 bg-white px-5 py-4 lg:px-10">
-        <div className="relative mx-auto flex max-w-[1500px] items-center justify-center">
-          <TutorialBrand onHome={() => onNavigate('/')} showLabel={false} />
-          <span className="absolute right-0 text-sm font-semibold text-slate-400">{VISIBLE_TUTORIAL_VIDEOS.length} videos</span>
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200/50 bg-white/80 shadow-[0_2px_15px_rgba(0,0,0,0.02)] backdrop-blur-2xl">
+        <div className="flex w-full items-center px-4 py-5 sm:px-6">
+          <TutorialBrand onHome={() => onNavigate('/')} />
         </div>
-      </div>
+      </header>
 
       <main className="mx-auto max-w-[1500px] px-5 py-10 lg:px-10 lg:py-14">
         <section className="flex items-start gap-4">

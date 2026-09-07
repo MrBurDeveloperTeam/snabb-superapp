@@ -24,9 +24,11 @@ const TutorialWatchPage: React.FC<TutorialWatchPageProps> = ({ videoId, onNaviga
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-slate-50/70 text-slate-900">
-      <div className="border-b border-slate-200 bg-white/80 px-5 py-3 lg:px-10">
-        <div className="mx-auto max-w-[1500px]"><TutorialBrand onHome={() => onNavigate('/')} showBack /></div>
-      </div>
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200/50 bg-white/80 shadow-[0_2px_15px_rgba(0,0,0,0.02)] backdrop-blur-2xl">
+        <div className="flex w-full items-center px-4 py-5 sm:px-6">
+          <TutorialBrand onHome={() => onNavigate('/')} />
+        </div>
+      </header>
       <main className="mx-auto grid max-w-[1250px] gap-10 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_330px] lg:px-10 lg:py-12">
         <article>
           <div className="aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl shadow-slate-900/15">
