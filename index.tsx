@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { TrackerProvider } from './lib/tracker';
 import { useTheme } from './hooks/useTheme';
 import './index.css';
+import '@mrburdeveloperteam/molar-experience/styles.css';
 
 /** Keeps the global theme class on <html> in sync with the theme store. */
 const ThemeBootstrap: React.FC<{ children: React.ReactNode }> = ({ children }) => {
