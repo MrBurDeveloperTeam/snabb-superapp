@@ -1308,7 +1308,7 @@ useEffect(() => {
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
-      {!isStandaloneSignup && (
+      {!isStandaloneSignup && !isTutorialRoute && (
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <button
@@ -1616,12 +1616,12 @@ useEffect(() => {
             switch unmounts A's Cat and mounts a fresh B instance, instead
             of the old key={isLoggedIn ? 'logged-in' : 'guest'} which never
             changed across an in-session account swap. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
           <CatMascot
             key={!isLoggedIn ? 'guest' : (petCatOwnerId ?? 'guest')}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
-            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen}
+            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute}
             profileCompletionStatus={isPersonalizedPetDialogueEnabled() ? profileCompletionStatus : 'unknown'}
             personalizedMatchedUserId={isPersonalizedPetDialogueEnabled() ? matchedSupabaseUserId : null}
             catCacheOwnerId={petCatOwnerId}
@@ -1640,7 +1640,7 @@ useEffect(() => {
             leaving A's history visible under B. Disabled entirely — not
             just context-starved — while a logged-in identity is still
             unreconciled, so no chat can start under an unconfirmed owner. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
           <SharedMolarAI
             key={!isLoggedIn ? 'guest' : typeof matchedSupabaseUserId === 'string' ? matchedSupabaseUserId : 'reconciling'}
             adapter={molarAdapter}
@@ -1651,6 +1651,37 @@ useEffect(() => {
             footerContent={<AppGallerySupportCard />}
           />
         </div>
+
+        
+         {/*Tutorial button to navigate the tutorial videos */
+         !isAuthRoute &&
+          !isCompanyMemberSignup &&
+          !isVirtualPetOpen &&
+          !isTutorialRoute && (
+            <div className="fixed bottom-28 right-6 z-[60]">
+              <div className="group/tutorial relative">
+                <div className="pointer-events-none absolute -top-9 left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-bold text-tiffany-600 opacity-0 shadow-lg shadow-tiffany-500/20 transition-all duration-200 group-hover/tutorial:translate-y-0 group-hover/tutorial:opacity-100 group-focus-within/tutorial:translate-y-0 group-focus-within/tutorial:opacity-100">
+                  Explore Tutorials
+                </div>
+
+                <motion.button
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => navigate('/tutorial-video')}
+                  className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white shadow-lg shadow-tiffany-500/25 ring-1 ring-tiffany-200/70 transition-shadow hover:shadow-xl hover:shadow-tiffany-500/40 focus:outline-none focus:ring-4 focus:ring-tiffany-500/25"
+                  aria-label="Explore Tutorials"
+                >
+                  <img
+                    src="/icons/tutorial-video.png"
+                    alt=""
+                    className="h-14 w-14 object-contain transition-transform duration-300 group-hover/tutorial:scale-105"
+                  />
+                </motion.button>
+              </div>
+            </div>
+          )}
 
         {/* Withheld entirely while an already-Odoo-logged-in user's
             Supabase reconciliation is still pending — never mount an
