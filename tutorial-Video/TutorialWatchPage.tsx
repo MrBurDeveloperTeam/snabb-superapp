@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowLeft, BookOpenText } from 'lucide-react';
 import TutorialBrand from './TutorialBrand';
-import { getTutorialPlayerUrl, getTutorialThumbnail, VISIBLE_TUTORIAL_VIDEOS } from './tutorialData';
+import { getTutorialCategoryStyle, getTutorialPlayerUrl, getTutorialThumbnail, VISIBLE_TUTORIAL_VIDEOS } from './tutorialData';
 
 interface TutorialWatchPageProps {
   videoId: string;
@@ -24,16 +24,28 @@ const TutorialWatchPage: React.FC<TutorialWatchPageProps> = ({ videoId, onNaviga
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-slate-50/70 text-slate-900">
-      <div className="border-b border-slate-200 bg-white/80 px-5 py-3 lg:px-10">
-        <div className="mx-auto max-w-[1500px]"><TutorialBrand onHome={() => onNavigate('/')} showBack /></div>
-      </div>
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200/50 bg-white/80 shadow-[0_2px_15px_rgba(0,0,0,0.02)] backdrop-blur-2xl">
+        <div className="flex w-full items-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
+          <button
+            type="button"
+            onClick={() => onNavigate('/tutorial-video')}
+            className="flex items-center gap-1.5 text-sm font-bold text-slate-500 transition-colors hover:text-tiffany-600"
+            aria-label="Back to Tutorial Library"
+          >
+            <ArrowLeft size={17} />
+            Back
+          </button>
+          <span className="h-7 w-px bg-slate-200" aria-hidden="true" />
+          <TutorialBrand onHome={() => onNavigate('/')} />
+        </div>
+      </header>
       <main className="mx-auto grid max-w-[1250px] gap-10 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_330px] lg:px-10 lg:py-12">
         <article>
           <div className="aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl shadow-slate-900/15">
             <iframe src={getTutorialPlayerUrl(video.playbackId)} title={video.title} className="h-full w-full border-0" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture" allowFullScreen />
           </div>
           <div className="mt-6">
-            <span className="inline-block rounded border border-tiffany-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-tiffany-700">{video.category}</span>
+            <span className={`inline-block rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${getTutorialCategoryStyle(video.category)}`}>{video.category}</span>
             <h1 className="mt-3 text-3xl font-black tracking-tight">{video.title}</h1>
             <p className="mt-3 text-base leading-7 text-slate-500">{video.description}</p>
             <div className="mt-7 flex items-center gap-3 border-t border-slate-200 pt-6">
@@ -49,7 +61,7 @@ const TutorialWatchPage: React.FC<TutorialWatchPageProps> = ({ videoId, onNaviga
             {upNext.map((item) => (
               <button key={item.id} type="button" onClick={() => onNavigate(`/tutorial-video/${item.id}`)} className="group flex w-full gap-3 text-left">
                 <img src={getTutorialThumbnail(item.playbackId)} alt="" className="h-20 w-32 shrink-0 rounded-xl object-cover" />
-                <span className="min-w-0 py-1"><span className="text-[9px] font-black uppercase tracking-wider text-tiffany-600">{item.category}</span><span className="mt-1 block text-sm font-extrabold leading-5 text-slate-800 group-hover:text-tiffany-700">{item.title}</span></span>
+                <span className="min-w-0 py-1"><span className={`inline-block rounded border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${getTutorialCategoryStyle(item.category)}`}>{item.category}</span><span className="mt-1 block text-sm font-extrabold leading-5 text-slate-800 group-hover:text-tiffany-700">{item.title}</span></span>
               </button>
             ))}
           </div>
