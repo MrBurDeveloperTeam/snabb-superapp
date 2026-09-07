@@ -25,7 +25,17 @@ const TutorialWatchPage: React.FC<TutorialWatchPageProps> = ({ videoId, onNaviga
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-slate-50/70 text-slate-900">
       <header className="sticky top-0 z-50 w-full border-b border-slate-200/50 bg-white/80 shadow-[0_2px_15px_rgba(0,0,0,0.02)] backdrop-blur-2xl">
-        <div className="flex w-full items-center px-4 py-5 sm:px-6">
+        <div className="flex w-full items-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
+          <button
+            type="button"
+            onClick={() => onNavigate('/tutorial-video')}
+            className="flex items-center gap-1.5 text-sm font-bold text-slate-500 transition-colors hover:text-tiffany-600"
+            aria-label="Back to Tutorial Library"
+          >
+            <ArrowLeft size={17} />
+            Back
+          </button>
+          <span className="h-7 w-px bg-slate-200" aria-hidden="true" />
           <TutorialBrand onHome={() => onNavigate('/')} />
         </div>
       </header>
