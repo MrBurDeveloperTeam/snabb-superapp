@@ -41,7 +41,6 @@ import UserManagementPage from './subuser/components/UserManagementPage';
 import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
 import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
 import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
-import { BookOpenText } from 'lucide-react';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -1401,18 +1400,26 @@ useEffect(() => {
         {!isChatOpen && (
           <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
             <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
-               <motion.button
-                 initial={{ opacity: 0, y: 8 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 whileHover={{ scale: 1.04 }}
-                 whileTap={{ scale: 0.97 }}
-                 onClick={() => navigate('/tutorial-video')}
-                 className="mb-5 flex items-center gap-2 rounded-full bg-tiffany-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-tiffany-500/30 hover:bg-tiffany-600"
-                 aria-label="Open the Tutorial Library"
-               >
-                 <BookOpenText size={17} fill="currentColor" />
-                 Tutorials
-               </motion.button>
+               <div className="group/tutorial relative mb-5">
+                 <div className="pointer-events-none absolute -top-9 left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-bold text-tiffany-600 opacity-0 shadow-lg shadow-tiffany-500/20 transition-all duration-200 group-hover/tutorial:translate-y-0 group-hover/tutorial:opacity-100 group-focus-within/tutorial:translate-y-0 group-focus-within/tutorial:opacity-100">
+                   Explore Tutorials
+                 </div>
+                 <motion.button
+                   initial={{ opacity: 0, y: 8 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   whileHover={{ scale: 1.08 }}
+                   whileTap={{ scale: 0.94 }}
+                   onClick={() => navigate('/tutorial-video')}
+                   className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white shadow-lg shadow-tiffany-500/25 ring-1 ring-tiffany-200/70 transition-shadow hover:shadow-xl hover:shadow-tiffany-500/40 focus:outline-none focus:ring-4 focus:ring-tiffany-500/25"
+                   aria-label="Explore Tutorials"
+                 >
+                   <img
+                     src="/icons/tutorial-video.png"
+                     alt=""
+                     className="h-14 w-14 object-contain transition-transform duration-300 group-hover/tutorial:scale-105"
+                   />
+                 </motion.button>
+               </div>
                <div className="relative flex items-center justify-center">
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
                      <AnimatePresence mode="wait">

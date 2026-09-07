@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpenText, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 import TutorialBrand from './TutorialBrand';
 import { getTutorialCategoryStyle, getTutorialThumbnail, VISIBLE_TUTORIAL_CATEGORIES, VISIBLE_TUTORIAL_VIDEOS, TutorialCategory } from './tutorialData';
 
@@ -24,8 +24,8 @@ const TutorialLibraryPage: React.FC<TutorialLibraryPageProps> = ({ onNavigate })
 
       <main className="mx-auto max-w-[1500px] px-5 py-10 lg:px-10 lg:py-14">
         <section className="flex items-start gap-4">
-          <div className="mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-tiffany-100 text-tiffany-600">
-            <BookOpenText size={27} />
+          <div className="mt-1 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-tiffany-100">
+            <img src="/icons/tutorial-video.png" alt="" className="h-12 w-12 object-contain" />
           </div>
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-tiffany-600">Learn Snabbb</p>
