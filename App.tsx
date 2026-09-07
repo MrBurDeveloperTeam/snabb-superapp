@@ -1308,7 +1308,7 @@ useEffect(() => {
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
-      {!isStandaloneSignup && (
+      {!isStandaloneSignup && !isTutorialRoute && (
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <button
@@ -1616,12 +1616,12 @@ useEffect(() => {
             switch unmounts A's Cat and mounts a fresh B instance, instead
             of the old key={isLoggedIn ? 'logged-in' : 'guest'} which never
             changed across an in-session account swap. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
           <CatMascot
             key={!isLoggedIn ? 'guest' : (petCatOwnerId ?? 'guest')}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
-            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen}
+            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute}
             profileCompletionStatus={isPersonalizedPetDialogueEnabled() ? profileCompletionStatus : 'unknown'}
             personalizedMatchedUserId={isPersonalizedPetDialogueEnabled() ? matchedSupabaseUserId : null}
             catCacheOwnerId={petCatOwnerId}
@@ -1640,7 +1640,7 @@ useEffect(() => {
             leaving A's history visible under B. Disabled entirely — not
             just context-starved — while a logged-in identity is still
             unreconciled, so no chat can start under an unconfirmed owner. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
           <SharedMolarAI
             key={!isLoggedIn ? 'guest' : typeof matchedSupabaseUserId === 'string' ? matchedSupabaseUserId : 'reconciling'}
             adapter={molarAdapter}
