@@ -65,7 +65,7 @@ export const TUTORIAL_VIDEOS: TutorialVideo[] = [
   // { id: 'events-getting-started', title: 'Managing Events with Snabbb', description: 'A practical walkthrough for setting up and managing an event.', category: 'Events', playbackId: PLACEHOLDER_PLAYBACK_ID },
 
   // APPOINTMENT: Replace the placeholder playback ID or add more Appointment videos here.
-  { id: 'appointment-getting-started', title: 'Booking Appointments End-to-End', description: 'See how to configure schedules and manage customer appointments.', category: 'Appointment', playbackId: 'Pxfqoq500OO02Ikm9BDlEubroRFg57xMDXsruPw6OUE00c' , isNew: true },
+  { id: 'appointment-getting-started', title: 'Booking Appointments End-to-End', description: 'See how to configure schedules and manage customer appointments.', category: 'Appointment', playbackId: 'ow02NRO2qN01lImnuuBgGEAyp02ecaGfp9ooiXPD02PfRLY' , isNew: true },
 
   // CONTENT STUDIO: Replace the placeholder playback ID or add more Content Studio videos here.
   // { id: 'content-studio-getting-started', title: 'Creating Content with Content Studio', description: 'Create and organize content for your business in a few simple steps.', category: 'Content Studio', playbackId: PLACEHOLDER_PLAYBACK_ID },
