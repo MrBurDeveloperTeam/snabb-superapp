@@ -15,8 +15,8 @@ const TutorialLibraryPage: React.FC<TutorialLibraryPageProps> = ({ onNavigate })
   );
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-slate-50/70 text-slate-900">
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200/50 bg-white/80 shadow-[0_2px_15px_rgba(0,0,0,0.02)] backdrop-blur-2xl">
+    <div className="tutorial-page min-h-[calc(100vh-5rem)] bg-slate-50/70 text-slate-900">
+      <header className="tutorial-header sticky top-0 z-50 w-full border-b border-slate-200/50 bg-white/80 shadow-[0_2px_15px_rgba(0,0,0,0.02)] backdrop-blur-2xl">
         <div className="flex w-full items-center px-4 py-5 sm:px-6">
           <TutorialBrand onHome={() => onNavigate('/')} />
         </div>
@@ -24,7 +24,7 @@ const TutorialLibraryPage: React.FC<TutorialLibraryPageProps> = ({ onNavigate })
 
       <main className="mx-auto max-w-[1500px] px-5 py-10 lg:px-10 lg:py-14">
         <section className="flex items-start gap-4">
-          <div className="mt-1 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-tiffany-100">
+          <div className="tutorial-icon-card mt-1 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-tiffany-100">
             <img src="/icons/tutorial-video.png" alt="" className="h-12 w-12 object-contain" />
           </div>
           <div>
@@ -35,13 +35,13 @@ const TutorialLibraryPage: React.FC<TutorialLibraryPageProps> = ({ onNavigate })
         </section>
 
         <div className="mt-8 space-y-4">
-          <button type="button" onClick={() => setActiveCategory('All')} className={`rounded-full px-5 py-2.5 text-sm font-bold transition-all ${activeCategory === 'All' ? 'bg-tiffany-600 text-white shadow-lg shadow-tiffany-600/20' : 'border border-slate-200 bg-white text-slate-600 hover:border-tiffany-300'}`}>Show All</button>
+          <button type="button" onClick={() => setActiveCategory('All')} className={`tutorial-filter rounded-full px-5 py-2.5 text-sm font-bold transition-all ${activeCategory === 'All' ? 'tutorial-filter-active bg-tiffany-600 text-white shadow-lg shadow-tiffany-600/20' : 'border border-slate-200 bg-white text-slate-600 hover:border-tiffany-300'}`}>Show All</button>
           {VISIBLE_TUTORIAL_CATEGORIES.map(({ group, items }) => (
             <div key={group}>
               <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{group}</p>
               <div className="flex flex-wrap gap-2">
                 {items.map((category) => (
-                  <button key={category} type="button" onClick={() => setActiveCategory(category)} className={`rounded-full border px-4 py-2 text-sm font-bold transition-all ${activeCategory === category ? 'border-tiffany-600 bg-tiffany-600 text-white shadow-md shadow-tiffany-600/20' : 'border-slate-200 bg-white text-slate-600 hover:border-tiffany-300 hover:text-tiffany-700'}`}>{category}</button>
+                  <button key={category} type="button" onClick={() => setActiveCategory(category)} className={`tutorial-filter rounded-full border px-4 py-2 text-sm font-bold transition-all ${activeCategory === category ? 'tutorial-filter-active border-tiffany-600 bg-tiffany-600 text-white shadow-md shadow-tiffany-600/20' : 'border-slate-200 bg-white text-slate-600 hover:border-tiffany-300 hover:text-tiffany-700'}`}>{category}</button>
                 ))}
               </div>
             </div>
@@ -50,7 +50,7 @@ const TutorialLibraryPage: React.FC<TutorialLibraryPageProps> = ({ onNavigate })
 
         <section className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-live="polite">
           {videos.map((video) => (
-            <button key={video.id} type="button" onClick={() => onNavigate(`/tutorial-video/${video.id}`)} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition-all hover:-translate-y-1 hover:border-tiffany-200 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-tiffany-500/20">
+            <button key={video.id} type="button" onClick={() => onNavigate(`/tutorial-video/${video.id}`)} className="tutorial-card group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition-all hover:-translate-y-1 hover:border-tiffany-200 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-tiffany-500/20">
               <div className="relative aspect-video overflow-hidden bg-slate-900">
                 <img src={getTutorialThumbnail(video.playbackId)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                 <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/30 group-focus-visible:bg-black/30">
@@ -61,7 +61,7 @@ const TutorialLibraryPage: React.FC<TutorialLibraryPageProps> = ({ onNavigate })
                 {video.isNew && <span className="absolute left-3 top-3 rounded-md bg-tiffany-500 px-2 py-1 text-[10px] font-black text-white">NEW</span>}
               </div>
               <div className="p-4">
-                <span className={`inline-block rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${getTutorialCategoryStyle(video.category)}`}>{video.category}</span>
+                <span className={`tutorial-category inline-block rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${getTutorialCategoryStyle(video.category)}`}>{video.category}</span>
                 <h2 className="mt-2 line-clamp-2 text-base font-extrabold text-slate-900">{video.title}</h2>
                 <p className="mt-1 line-clamp-2 text-sm text-slate-500">{video.description}</p>
               </div>
