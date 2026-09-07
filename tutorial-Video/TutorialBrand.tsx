@@ -8,7 +8,7 @@ interface TutorialBrandProps {
 const TutorialBrand: React.FC<TutorialBrandProps> = ({ onHome }) => (
   <button
     type="button"
-    className="flex cursor-pointer items-center gap-2 text-left sm:gap-3"
+    className="tutorial-brand flex cursor-pointer items-center gap-2 text-left sm:gap-3"
     onClick={onHome}
     aria-label="Return to the App.Snabbb home page"
   >

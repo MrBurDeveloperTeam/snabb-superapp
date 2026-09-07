@@ -53,6 +53,7 @@
 .dark .bg-white\/20        { background-color: rgba(15, 23, 42, 0.25); }
 
 .dark .bg-slate-50         { background-color: #1e293b; } /* slate-800 — elevated chips/insets */
+.dark .bg-slate-50\/70     { background-color: rgba(11, 18, 32, 0.82); }
 .dark .bg-slate-50\/80     { background-color: rgba(30, 41, 59, 0.8); }
 .dark .bg-slate-50\/50     { background-color: rgba(30, 41, 59, 0.5); }
 .dark .bg-slate-100        { background-color: #1e293b; }
@@ -163,6 +164,66 @@
 .dark .member-actions-menu .border-slate-200 {
   border-color: #1e293b;
 }
+
+/* Tutorial library/watch pages use a restrained navy hierarchy so the
+   translucent light-mode canvas never washes the dark theme out to grey. */
+.dark .tutorial-page {
+  background-color: #080f1e;
+  background-image:
+    radial-gradient(circle at 18% 0%, rgba(20, 184, 166, 0.08), transparent 34rem),
+    radial-gradient(circle at 88% 12%, rgba(59, 130, 246, 0.06), transparent 30rem);
+  color: #f1f5f9;
+}
+.dark .tutorial-header {
+  background-color: rgba(10, 18, 34, 0.88);
+  border-color: rgba(51, 65, 85, 0.7);
+  box-shadow: 0 1px 0 rgba(148, 163, 184, 0.04), 0 12px 32px rgba(2, 6, 23, 0.24);
+}
+.dark .tutorial-brand .text-slate-900 { color: #f8fafc; }
+.dark .tutorial-icon-card {
+  background-color: #111c31;
+  --tw-ring-color: rgba(45, 212, 191, 0.24);
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.3);
+}
+.dark .tutorial-filter:not(.tutorial-filter-active) {
+  background-color: #111b2f;
+  border-color: #2a3a54;
+  color: #b8c5d8;
+}
+.dark .tutorial-filter:not(.tutorial-filter-active):hover {
+  background-color: #17243b;
+  border-color: #2dd4bf;
+  color: #99f5e9;
+}
+.dark .tutorial-filter-active {
+  background-color: #0a9f9d;
+  border-color: #2dd4bf;
+  color: #ffffff;
+}
+.dark .tutorial-card {
+  background-color: #101a2d;
+  border-color: #263650;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.2);
+}
+.dark .tutorial-card:hover {
+  background-color: #132039;
+  border-color: rgba(45, 212, 191, 0.58);
+  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.42);
+}
+.dark .tutorial-category {
+  background-color: rgba(15, 23, 42, 0.82);
+  color: #cbd5e1;
+}
+.dark .tutorial-mini-app-icon {
+  background-color: rgba(20, 184, 166, 0.14);
+  color: #5eead4;
+}
+.dark .tutorial-back-button {
+  background-color: rgba(20, 184, 166, 0.12);
+  border-color: rgba(45, 212, 191, 0.36);
+  color: #5eead4;
+}
+.dark .tutorial-back-button:hover { background-color: rgba(20, 184, 166, 0.2); }
 .dark .existing-user-dialog {
   background-color: #0f172a;
   color: #e2e8f0;
