@@ -804,7 +804,7 @@ export default function ProfileSettingsPage() {
   };
 
   const handleDiscard = () => {
-    window.location.reload();
+    window.history.back();
   };
 
   if (loading) {
