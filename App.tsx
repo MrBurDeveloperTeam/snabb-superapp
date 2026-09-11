@@ -1484,7 +1484,7 @@ useEffect(() => {
                         type="button"
                         disabled={isOpeningSupportTickets}
                         onClick={openSupportTickets}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
+                        className="hidden w-full items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <span className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
                           <i className="fa-solid fa-life-ring text-xs" aria-hidden="true"></i>
