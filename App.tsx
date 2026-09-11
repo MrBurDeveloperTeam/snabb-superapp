@@ -258,22 +258,27 @@ const App: React.FC = () => {
         return;
       }
 
+      // The Odoo session becomes available before the matching Supabase
+      // identity has necessarily finished reconciling. Waiting here prevents
+      // us from caching the old/empty profile type for the whole page visit.
+      if (matchedSupabaseUserId === undefined) {
+        setIsCheckingAccountType(true);
+        return;
+      }
+
+      if (!matchedSupabaseUserId) {
+        setAccountType(null);
+        setIsCheckingAccountType(false);
+        return;
+      }
+
       setIsCheckingAccountType(true);
 
       try {
-        const { data: authData, error: authError } = await supabase.auth.getUser();
-        if (authError) throw authError;
-
-        const userId = authData.user?.id;
-        if (!userId) {
-          if (!cancelled) setAccountType(null);
-          return;
-        }
-
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('account_type')
-          .eq('user_id', userId)
+          .eq('user_id', matchedSupabaseUserId)
           .maybeSingle();
 
         if (profileError) throw profileError;
@@ -291,7 +296,7 @@ const App: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, matchedSupabaseUserId]);
 
 useEffect(() => {
   const partnerId = authFormData?.partner_id // or however you store partner_id after login
