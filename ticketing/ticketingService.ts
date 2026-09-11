@@ -66,10 +66,20 @@ export async function addMessage(ticketId: string, body: string, isInternal = fa
 }
 
 export async function sendGmailReply(ticketId: string, body: string): Promise<TicketMessage> {
-  const { data, error } = await supabase.functions.invoke('ticketing-gmail', {
-    body: { action: 'send_reply', ticket_id: ticketId, body: body.trim() },
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (sessionError || !accessToken) throw new Error('Please sign in again.');
+
+  const response = await fetch('/api/ticketing/gmail/reply', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ticket_id: ticketId, body: body.trim() }),
   });
-  if (error) throw error;
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.message || 'Unable to send Gmail reply.');
   if (!data?.ok) throw new Error(data?.message || 'Unable to send Gmail reply.');
   return data.message as TicketMessage;
 }
