@@ -1029,7 +1029,14 @@ useEffect(() => {
       }
 
       const newEmail = setResult.session.user?.email?.trim().toLowerCase() ?? null;
-      if (newEmail !== normalizedExpected) {
+      // Some Odoo internal users sign in with a login name (for example
+      // "developer") while their synchronized Supabase account has a real
+      // email address. /sso/exchange is scoped to the currently verified Odoo
+      // session, so its returned Supabase user is authoritative in that case.
+      // Keep the strict equality check whenever Odoo actually supplied an
+      // email address, which still protects normal email-based identities.
+      const expectedIdentityIsEmail = normalizedExpected.includes('@');
+      if (expectedIdentityIsEmail && newEmail !== normalizedExpected) {
         console.warn('[SSO] identity reconciliation: exchange result did not match expected account');
         setMatchedSupabaseUserId(null);
         return;
