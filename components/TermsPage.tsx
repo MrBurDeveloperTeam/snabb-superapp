@@ -30,48 +30,68 @@ const TermsPage: React.FC<TermsPageProps> = ({ onBack }) => {
 
       <div className="mb-12">
         <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">Terms of Service</h1>
-        <p className="text-slate-500 font-medium">Effective Date: May 20, 2025</p>
+        <p className="text-slate-500 font-medium">Effective Date: May 28, 2026</p>
       </div>
 
       <div className="prose prose-slate max-w-none space-y-12">
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">1. Acceptance of Terms</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">1. Introduction</h2>
           <p className="text-slate-600 leading-relaxed">
-            By accessing Snabbb Apps, you agree to be bound by these Terms of Service. If you do not agree 
-            with any part of these terms, you may not use our platform.
+            Welcome to App.Snabbb (“Platform”). By accessing or using the Platform, you agree to comply with and be bound by these Terms of Use.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">2. Use License</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">2. ⁠Purpose of Platform</h2>
           <p className="text-slate-600 leading-relaxed">
-            We grant you a personal, non-exclusive, non-transferable license to use our mini-apps for 
-            professional and personal productivity. You may not reverse engineer or attempt to extract 
-            source code from our tools.
+            The Platform provides general productivity, workflow support, educational, and operational tools for users and businesses.
+            <br/>
+            The Platform is not intended to replace certified accounting systems, medical record systems, audit systems, clinical management software, or regulatory compliance systems.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">3. Account Responsibility</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">3. User Responsibility</h2>
           <p className="text-slate-600 leading-relaxed">
-            You are responsible for maintaining the confidentiality of your login credentials and for all 
-            activities that occur under your account. Notify us immediately of any unauthorized use.
+            Users are solely responsible for verifying the accuracy, completeness, and suitability of any data, schedules, calculations, inventory records, appointments, or information generated or stored through the Platform.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">4. Limitations</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">4. No Warranty</h2>
           <p className="text-slate-600 leading-relaxed">
-            In no event shall Snabbb Apps or its suppliers be liable for any damages arising out of the 
-            use or inability to use the materials on our platform, even if notified orally or in writing.
+            The Platform and its services are provided on an “as-is” and “as-available” basis without warranties of any kind.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">5. Revisions and Errata</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">5. Limitation of Liability</h2>
           <p className="text-slate-600 leading-relaxed">
-            The materials appearing on Snabbb Apps could include technical, typographical, or photographic 
-            errors. We do not warrant that any of the materials on its website are accurate, complete, or current.
+            The Company shall not be liable for any loss, damages, operational interruption, business decisions, compliance issues, or claims arising from the use or inability to use the Platform or its tools.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">6. Data & Privacy</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Users are responsible for maintaining their own backups and ensuring compliance with applicable data protection and privacy regulations.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">7. Platform Availability</h2>
+          <p className="text-slate-600 leading-relaxed">
+            The Company may modify, suspend, or discontinue any part of the Platform or its features at any time without prior notice.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">8. Intellectual Property</h2>
+          <p className="text-slate-600 leading-relaxed">
+            All Platform content, branding, software, designs, and materials remain the intellectual property of the Company unless otherwise stated.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">9. Account Termination</h2>
+          <p className="text-slate-600 leading-relaxed">
+            The Company reserves the right to suspend or terminate accounts that misuse the Platform or violate these Terms of Use.
           </p>
         </section>
       </div>

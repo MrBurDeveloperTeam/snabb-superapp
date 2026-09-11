@@ -3,13 +3,15 @@ import { PET_OPTIONS, normalizePetId, type PetId } from '../petOptions';
 import { useGameState } from '../context/GameStateContext';
 
 const PetAdoptionModal: React.FC = () => {
-  const { hasAdoptedPet, isPetAdoptionReady, adoptPet } = useGameState();
+  const { adoptionCheckStatus, adoptPet } = useGameState();
   const [selectedPetId, setSelectedPetId] = useState<PetId>('mallow');
   const [confirmPetId, setConfirmPetId] = useState<PetId | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
-  if (!isPetAdoptionReady || hasAdoptedPet) return null;
+  // Only show after Supabase explicitly confirms that this user has no pet.
+  // Loading, missing sessions, and query errors must never look like a new user.
+  if (adoptionCheckStatus !== 'confirmed_not_adopted') return null;
 
   const selectedPet = PET_OPTIONS.find((pet) => pet.id === selectedPetId) || PET_OPTIONS[0];
   const confirmPet = confirmPetId

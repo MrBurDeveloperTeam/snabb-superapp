@@ -5,6 +5,7 @@ import { supabase } from '../../services/supabaseClient';
 import { DEFAULT_PET_ID, normalizePetId } from '../petOptions';
 
 type SoapInventory = Record<'soap' | 'soap2', number>;
+export type AdoptionCheckStatus = 'checking' | 'confirmed_adopted' | 'confirmed_not_adopted' | 'error';
 const TOY_ITEM_IDS = TOY_ITEMS.map((toy) => toy.id);
 const ACTIVE_BED_KEY = 'pet_active_bed';
 const ACTIVE_BED_DEFAULT_MIGRATION_KEY = 'pet_active_bed_default_none_v1';
@@ -25,6 +26,7 @@ interface GameStateContextType {
     setPetName: (name: string) => void;
     hasAdoptedPet: boolean;
     isPetAdoptionReady: boolean;
+    adoptionCheckStatus: AdoptionCheckStatus;
     adoptPet: (name: string) => Promise<boolean>;
     currentRoom: RoomType;
     setCurrentRoom: (room: RoomType) => void;
@@ -58,6 +60,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
     const [petName, _setPetName] = useState(DEFAULT_PET_ID);
     const [hasAdoptedPet, setHasAdoptedPet] = useState(false);
     const [isPetAdoptionReady, setIsPetAdoptionReady] = useState(false);
+    const [adoptionCheckStatus, setAdoptionCheckStatus] = useState<AdoptionCheckStatus>('checking');
     const setPetName = (name: string) => {
         if (!hasAdoptedPet) _setPetName(normalizePetId(name));
     };
@@ -165,9 +168,13 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                 if (sessionData?.session?.user) {
                     currentUserId = sessionData.session.user.id;
                     setUserId(currentUserId);
+                    console.info('[VirtualPet][Adoption] Supabase session ready', { userId: currentUserId });
+                } else {
+                    console.warn('[VirtualPet][Adoption] Supabase session is not ready; adoption prompt will stay hidden.');
                 }
             } catch (err) {
-                console.error("Auth error", err);
+                console.error('[VirtualPet][Adoption] Failed to read Supabase session; adoption prompt will stay hidden.', err);
+                setAdoptionCheckStatus('error');
             }
 
             // Load from localStorage as fallback
@@ -228,9 +235,19 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                         .eq('user_id', currentUserId)
                         .maybeSingle();
 
+                    if (petErr) {
+                        console.error('[VirtualPet][Adoption] Failed to check existing pet; preserving local selection.', {
+                            userId: currentUserId,
+                            error: petErr,
+                        });
+                        setAdoptionCheckStatus('error');
+                    }
+
                     if (!petData && !petErr) {
+                        console.info('[VirtualPet][Adoption] No pet record found; adoption is available.', { userId: currentUserId });
                         _setPetName(DEFAULT_PET_ID);
                         setHasAdoptedPet(false);
+                        setAdoptionCheckStatus('confirmed_not_adopted');
                         localStorage.removeItem(PET_ADOPTION_CONFIRMED_KEY);
                         localStorage.removeItem('pet_name');
                     }
@@ -278,13 +295,22 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                             const adoptedPet = normalizePetId(petData.pet_name);
                             _setPetName(adoptedPet);
                             setHasAdoptedPet(true);
+                            setAdoptionCheckStatus('confirmed_adopted');
                             localStorage.setItem('pet_name', adoptedPet);
                             localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+                            console.info('[VirtualPet][Adoption] Existing pet confirmed.', {
+                                userId: currentUserId,
+                                petName: adoptedPet,
+                            });
                         } else {
                             _setPetName(DEFAULT_PET_ID);
                             setHasAdoptedPet(false);
+                            setAdoptionCheckStatus('confirmed_not_adopted');
                             localStorage.removeItem(PET_ADOPTION_CONFIRMED_KEY);
                             localStorage.removeItem('pet_name');
+                            console.info('[VirtualPet][Adoption] Pet record has no selection; adoption is available.', {
+                                userId: currentUserId,
+                            });
                         }
                         setIsSleeping(shouldUseLocalSleep ? savedSleeping === 'true' : !!petData.is_sleeping);
                         if (petData.active_ball_id) setActiveBallId(petData.active_ball_id);
@@ -309,8 +335,11 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                         setInventory(newInv);
                     }
                 } catch (err) {
-                    console.error("Failed to load from supabase", err);
+                    console.error('[VirtualPet][Adoption] Failed to load from Supabase; preserving local selection.', err);
+                    setAdoptionCheckStatus('error');
                 }
+            } else {
+                setAdoptionCheckStatus('error');
             }
             
             setIsPetAdoptionReady(true);
@@ -318,6 +347,83 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
         };
 
         init();
+    }, []);
+
+    // Re-check adoption after the SSO bridge creates or refreshes the Supabase session.
+    // The prompt remains hidden while checking or on error, so a transient auth issue
+    // can never be mistaken for a brand-new user.
+    useEffect(() => {
+        let isActive = true;
+
+        const verifyAdoptionForSession = async (nextUserId: string) => {
+            setAdoptionCheckStatus('checking');
+            console.info('[VirtualPet][Adoption] Auth changed; re-checking pet selection.', { userId: nextUserId });
+
+            try {
+                const { data: petData, error } = await supabase
+                    .from('inventory_pet')
+                    .select('pet_name')
+                    .eq('user_id', nextUserId)
+                    .maybeSingle();
+
+                if (!isActive) return;
+
+                if (error) {
+                    console.error('[VirtualPet][Adoption] Re-check failed; preserving current selection.', {
+                        userId: nextUserId,
+                        error,
+                    });
+                    setAdoptionCheckStatus('error');
+                    return;
+                }
+
+                setUserId(nextUserId);
+                if (petData?.pet_name) {
+                    const adoptedPet = normalizePetId(petData.pet_name);
+                    _setPetName(adoptedPet);
+                    setHasAdoptedPet(true);
+                    setAdoptionCheckStatus('confirmed_adopted');
+                    localStorage.setItem('pet_name', adoptedPet);
+                    localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+                    return;
+                }
+
+                _setPetName(DEFAULT_PET_ID);
+                setHasAdoptedPet(false);
+                setAdoptionCheckStatus('confirmed_not_adopted');
+                localStorage.removeItem(PET_ADOPTION_CONFIRMED_KEY);
+                localStorage.removeItem('pet_name');
+            } catch (error) {
+                if (!isActive) return;
+                console.error('[VirtualPet][Adoption] Re-check threw unexpectedly; preserving current selection.', {
+                    userId: nextUserId,
+                    error,
+                });
+                setAdoptionCheckStatus('error');
+            }
+        };
+
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_OUT') {
+                setUserId(null);
+                setAdoptionCheckStatus('error');
+                console.info('[VirtualPet][Adoption] Supabase signed out; adoption prompt hidden.');
+                return;
+            }
+
+            const nextUserId = session?.user?.id;
+            if (!nextUserId) return;
+
+            // Run outside the auth callback to avoid blocking Supabase's internal lock.
+            window.setTimeout(() => {
+                if (isActive) void verifyAdoptionForSession(nextUserId);
+            }, 0);
+        });
+
+        return () => {
+            isActive = false;
+            authListener.subscription.unsubscribe();
+        };
     }, []);
 
     // Sync to Supabase / LocalStorage
@@ -487,6 +593,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
 
             _setPetName(adoptedPet);
             setHasAdoptedPet(true);
+            setAdoptionCheckStatus('confirmed_adopted');
             localStorage.setItem('pet_name', adoptedPet);
             localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
             window.dispatchEvent(new CustomEvent('virtual-pet-selection-change', { detail: adoptedPet }));
@@ -527,6 +634,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
             petName, setPetName,
             hasAdoptedPet,
             isPetAdoptionReady,
+            adoptionCheckStatus,
             adoptPet,
             currentRoom, setCurrentRoom,
             isSleeping, setIsSleeping,

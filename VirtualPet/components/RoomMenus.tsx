@@ -152,14 +152,15 @@ interface GamesMenuProps {
 
 export const GamesMenu: React.FC<GamesMenuProps> = ({ onStartGame }) => (
     <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center animate-in slide-in-from-bottom-10 fade-in duration-300">
-        <div className="bg-violet-900/60 backdrop-blur-xl p-4 rounded-3xl shadow-xl border border-violet-500/50 flex gap-4">
+        <div className="max-w-[calc(100vw-24px)] overflow-x-auto bg-violet-900/60 backdrop-blur-xl p-3 sm:p-4 rounded-3xl shadow-xl border border-violet-500/50 flex gap-3 sm:gap-4">
             <button
                 onClick={() => onStartGame('flappy')}
                 className="flex flex-col items-center group transition-all duration-200 hover:scale-105 active:scale-95"
             >
-                <div className="w-20 h-20 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-2xl shadow-lg flex items-center justify-center text-3xl font-black text-white group-hover:-rotate-12 transition-transform border-4 border-white/50">
-                    F
-                </div>
+                <div
+                    className="w-20 h-20 bg-cover bg-center rounded-2xl shadow-lg flex items-center justify-center text-3xl font-black text-white group-hover:-rotate-12 transition-transform border-4 border-white/50"
+                    style={{ backgroundImage: "url('/games/flappy-cat/143.jpg')" }}
+                />
                 <span className="text-[10px] font-black text-white mt-1.5 uppercase tracking-wide drop-shadow-md">Flappy</span>
             </button>
 
@@ -167,9 +168,10 @@ export const GamesMenu: React.FC<GamesMenuProps> = ({ onStartGame }) => (
                 onClick={() => onStartGame('paccat')}
                 className="flex flex-col items-center group transition-all duration-200 hover:scale-105 active:scale-95"
             >
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl shadow-lg flex items-center justify-center text-3xl font-black text-white group-hover:rotate-12 transition-transform border-4 border-white/50">
-                    P
-                </div>
+                <div
+                    className="w-20 h-20 bg-cover bg-center rounded-2xl shadow-lg flex items-center justify-center text-3xl font-black text-white group-hover:-rotate-12 transition-transform border-4 border-white/50"
+                    style={{ backgroundImage: "url('/games/pac-cat/img/145.jpg')" }}
+                />
                 <span className="text-[10px] font-black text-white mt-1.5 uppercase tracking-wide drop-shadow-md">Pac-Cat</span>
             </button>
 
@@ -177,10 +179,22 @@ export const GamesMenu: React.FC<GamesMenuProps> = ({ onStartGame }) => (
                 onClick={() => onStartGame('tetris')}
                 className="flex flex-col items-center group transition-all duration-200 hover:scale-105 active:scale-95"
             >
-                <div className="w-20 h-20 bg-gradient-to-br from-red-400 to-pink-500 rounded-2xl shadow-lg flex items-center justify-center text-3xl font-black text-white group-hover:translate-y-1 transition-transform border-4 border-white/50">
-                    T
-                </div>
+                <div
+                    className="w-20 h-20 bg-cover bg-center rounded-2xl shadow-lg flex items-center justify-center text-3xl font-black text-white group-hover:-rotate-12 transition-transform border-4 border-white/50"
+                    style={{ backgroundImage: "url('/games/tetris/144.jpg')" }}
+                />
                 <span className="text-[10px] font-black text-white mt-1.5 uppercase tracking-wide drop-shadow-md">Tetris</span>
+            </button>
+
+            <button
+                onClick={() => onStartGame('meowdoku')}
+                className="flex flex-col items-center group transition-all duration-200 hover:scale-105 active:scale-95"
+            >
+                <div
+                    className="w-20 h-20 bg-cover bg-center rounded-2xl shadow-lg flex items-center justify-center text-3xl font-black text-white group-hover:-rotate-12 transition-transform border-4 border-white/50"
+                    style={{ backgroundImage: "url('/games/meowdoku/cover-148.png')" }}
+                />
+                <span className="text-[10px] font-black text-white mt-1.5 uppercase tracking-wide drop-shadow-md">Meowdoku</span>
             </button>
         </div>
     </div>

@@ -1,2 +1,2 @@
-export const inputClasses = "w-full bg-white border border-slate-200 rounded-xl px-11 py-3 text-slate-800 focus:outline-none focus:border-blue-600 text-sm font-medium placeholder:text-slate-400 transition-all appearance-none";
+export const inputClasses = "w-full bg-white border border-slate-200 rounded-xl px-11 py-3 text-slate-800 focus:outline-none focus:border-tiffany-600 text-sm font-medium placeholder:text-slate-400 transition-all appearance-none";
 export const labelClasses = "block text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1.5 ml-1";
