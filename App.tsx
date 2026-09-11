@@ -46,6 +46,7 @@ import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPag
 import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
 import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
 import { BookOpenText } from 'lucide-react';
+import TicketingDashboard from './ticketing/TicketingDashboard';
 
 const initialFormData: AuthFormData = {
   fullName: '',
@@ -191,7 +192,6 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false);
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [, setLoggedInUser] = useState<AuthFormData | null>(null);
@@ -243,7 +243,7 @@ const App: React.FC = () => {
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<string | null>(null);
-  const [isCheckingAccountType, setIsCheckingAccountType] = useState(false);
+  const [isCheckingAccountType, setIsCheckingAccountType] = useState(true);
   // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const { profileImageUrl } = useProfileImage(isLoggedIn);
   const isCompanyAccount = accountType === 'company';
@@ -541,6 +541,21 @@ useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const isTicketingRoute = path === '/admin/dashboard' || path === '/user/dashboard';
+
+  useEffect(() => {
+    if (!isTicketingRoute || isLoggedIn === null) return;
+
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+
+    if (path === '/admin/dashboard' && !isCheckingAccountType && accountType !== 'admin') {
+      navigate('/user/dashboard');
+    }
+  }, [accountType, isCheckingAccountType, isLoggedIn, isTicketingRoute, navigate, path]);
+
   // Molar General Chat context ownership gate — see the state declarations
   // above. Only General Chat may read `userChatContext`; it must never see
   // a value that wasn't actually fetched for the CURRENT verified Odoo
@@ -640,27 +655,6 @@ useEffect(() => {
   };
 
   const avatarBgColor = useMemo(() => getAvatarColor(userName), [userName]);
-
-  const openSupportTickets = useCallback(async () => {
-    if (isOpeningSupportTickets) return;
-
-    setIsProfileMenuOpen(false);
-    setIsOpeningSupportTickets(true);
-
-    try {
-      const { data } = await api.post('/ticketing/sso');
-      // const data = await data.json().catch(() => null);
-
-      if (!data?.redirectUrl) {
-        throw new Error(data?.error || 'Unable to open the support portal.');
-      }
-
-      window.location.assign(data.redirectUrl);
-    } catch (error) {
-      console.error('Ticketing SSO failed:', error);
-      setIsOpeningSupportTickets(false);
-    }
-  }, [isOpeningSupportTickets]);
 
   const clearAuthState = useCallback(() => {
     setIsLoggedIn(false);
@@ -1482,16 +1476,18 @@ useEffect(() => {
  
                       <button
                         type="button"
-                        disabled={isOpeningSupportTickets}
-                        onClick={openSupportTickets}
-                        className="hidden w-full items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => {
+                          navigate(accountType === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
                         <span className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
                           <i className="fa-solid fa-life-ring text-xs" aria-hidden="true"></i>
                         </span>
                         <span className="flex-1 min-w-0">
-                          <span className="block text-sm font-bold text-slate-900 leading-tight">Support Tickets</span>
-                          <span className="block text-[11px] font-semibold text-slate-500 truncate">Create and track your support tickets</span>
+                          <span className="block text-sm font-bold text-slate-900 leading-tight">{accountType === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}</span>
+                          <span className="block text-[11px] font-semibold text-slate-500 truncate">{accountType === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}</span>
                         </span>
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-500 transition-colors" aria-hidden="true"></i>
                       </button>
@@ -1747,6 +1743,17 @@ useEffect(() => {
               <UserManagementPage
                 isCompanyAccount={isCompanyAccount}
                 isCheckingAccountType={isCheckingAccountType}
+              />
+            </motion.div>
+          )}
+
+          {isTicketingRoute && isLoggedIn && !isCheckingAccountType && (
+            <motion.div key={path} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <TicketingDashboard
+                isAdmin={path === '/admin/dashboard' && accountType === 'admin'}
+                userName={user?.fullName || authUser?.name || ''}
+                userEmail={user?.email || authUser?.username || ''}
+                onNavigate={navigate}
               />
             </motion.div>
           )}
