@@ -266,9 +266,14 @@ const App: React.FC = () => {
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<string | null>(null);
+  const [accountTypeOwnerId, setAccountTypeOwnerId] = useState<string | null>(null);
   const [isCheckingAccountType, setIsCheckingAccountType] = useState(true);
   // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const { profileImageUrl } = useProfileImage(isLoggedIn);
+  const isAccountTypeReady =
+    !isCheckingAccountType &&
+    typeof matchedSupabaseUserId === 'string' &&
+    accountTypeOwnerId === matchedSupabaseUserId;
   const isCompanyAccount = accountType === 'company';
 
   useEffect(() => {
@@ -277,6 +282,7 @@ const App: React.FC = () => {
     const loadAccountType = async () => {
       if (!isLoggedIn) {
         setAccountType(null);
+        setAccountTypeOwnerId(null);
         setIsCheckingAccountType(false);
         return;
       }
@@ -285,12 +291,15 @@ const App: React.FC = () => {
       // identity has necessarily finished reconciling. Waiting here prevents
       // us from caching the old/empty profile type for the whole page visit.
       if (matchedSupabaseUserId === undefined) {
+        setAccountType(null);
+        setAccountTypeOwnerId(null);
         setIsCheckingAccountType(true);
         return;
       }
 
       if (!matchedSupabaseUserId) {
         setAccountType(null);
+        setAccountTypeOwnerId(null);
         setIsCheckingAccountType(false);
         return;
       }
@@ -305,10 +314,16 @@ const App: React.FC = () => {
           .maybeSingle();
 
         if (profileError) throw profileError;
-        if (!cancelled) setAccountType(profile?.account_type ?? null);
+        if (!cancelled) {
+          setAccountType(profile?.account_type ?? null);
+          setAccountTypeOwnerId(matchedSupabaseUserId);
+        }
       } catch (error) {
         console.warn('[User Management] Failed to load account type:', error);
-        if (!cancelled) setAccountType(null);
+        if (!cancelled) {
+          setAccountType(null);
+          setAccountTypeOwnerId(matchedSupabaseUserId);
+        }
       } finally {
         if (!cancelled) setIsCheckingAccountType(false);
       }
@@ -579,10 +594,10 @@ useEffect(() => {
       return;
     }
 
-    if (path === '/admin/dashboard' && !isCheckingAccountType && accountType !== 'admin') {
+    if (path === '/admin/dashboard' && isAccountTypeReady && accountType !== 'admin') {
       navigate('/user/dashboard');
     }
-  }, [accountType, isCheckingAccountType, isLoggedIn, isTicketingRoute, navigate, path]);
+  }, [accountType, isAccountTypeReady, isLoggedIn, isTicketingRoute, navigate, path]);
 
   // Molar General Chat context ownership gate — see the state declarations
   // above. Only General Chat may read `userChatContext`; it must never see
@@ -1512,7 +1527,9 @@ useEffect(() => {
                       <button
                         type="button"
                         onClick={() => {
-                          navigate(accountType === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+                          if (isAccountTypeReady) {
+                            navigate(accountType === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+                          }
                           setIsProfileMenuOpen(false);
                         }}
                         className="flex w-full items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
@@ -1521,8 +1538,8 @@ useEffect(() => {
                           <i className="fa-solid fa-life-ring text-xs" aria-hidden="true"></i>
                         </span>
                         <span className="flex-1 min-w-0">
-                          <span className="block text-sm font-bold text-slate-900 leading-tight">{accountType === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}</span>
-                          <span className="block text-[11px] font-semibold text-slate-500 truncate">{accountType === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}</span>
+                          <span className="block text-sm font-bold text-slate-900 leading-tight">{isAccountTypeReady ? (accountType === 'admin' ? 'Admin Dashboard' : 'User Dashboard') : 'Loading Dashboard…'}</span>
+                          <span className="block text-[11px] font-semibold text-slate-500 truncate">{isAccountTypeReady ? (accountType === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets') : 'Verifying account access'}</span>
                         </span>
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-500 transition-colors" aria-hidden="true"></i>
                       </button>
@@ -1777,12 +1794,21 @@ useEffect(() => {
             <motion.div key="user-management" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <UserManagementPage
                 isCompanyAccount={isCompanyAccount}
-                isCheckingAccountType={isCheckingAccountType}
+                isCheckingAccountType={!isAccountTypeReady}
               />
             </motion.div>
           )}
 
-          {isTicketingRoute && isLoggedIn && !isCheckingAccountType && (
+          {isTicketingRoute && isLoggedIn && !isAccountTypeReady && (
+            <div className="min-h-[70vh] flex items-center justify-center" aria-busy="true">
+              <div className="flex flex-col items-center gap-3 text-slate-500">
+                <div className="w-11 h-11 rounded-full border-4 border-tiffany-600 border-t-transparent animate-spin" />
+                <p className="text-sm font-semibold">Verifying dashboard access…</p>
+              </div>
+            </div>
+          )}
+
+          {isTicketingRoute && isLoggedIn && isAccountTypeReady && (
             <motion.div key={path} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <TicketingDashboard
                 isAdmin={path === '/admin/dashboard' && accountType === 'admin'}
