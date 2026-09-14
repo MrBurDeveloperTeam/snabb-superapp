@@ -48,6 +48,29 @@ import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
 import { BookOpenText } from 'lucide-react';
 import TicketingDashboard from './ticketing/TicketingDashboard';
 
+// The Odoo launch token may arrive in the top-level URL after the SSO cookie
+// has already been planted.  This application does not consume that query
+// parameter, so remove it before React starts to avoid leaving a bearer token
+// visible in the address bar, browser history, copied links, or later
+// same-page referrers.  Preserve every unrelated query parameter and hash.
+const scrubSsoTokenFromAddressBar = () => {
+  try {
+    const cleanUrl = new URL(window.location.href);
+    if (!cleanUrl.searchParams.has('sso_token')) return;
+
+    cleanUrl.searchParams.delete('sso_token');
+    window.history.replaceState(
+      window.history.state,
+      document.title,
+      `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`
+    );
+  } catch (error) {
+    console.warn('[SSO] unable to clean token from address bar:', error);
+  }
+};
+
+scrubSsoTokenFromAddressBar();
+
 const initialFormData: AuthFormData = {
   fullName: '',
   jobPosition: '',
