@@ -10,7 +10,8 @@ const gmailBase = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
 type SupabaseAdmin = ReturnType<typeof createClient>;
 type GmailPart = { mimeType?: string; filename?: string; headers?: Array<{ name?: string; value?: string }>; body?: { data?: string; attachmentId?: string; size?: number }; parts?: GmailPart[] };
-type GmailMessage = { id: string; threadId?: string; internalDate?: string; snippet?: string; payload?: GmailPart };
+type GmailMessage = { id: string; threadId?: string; internalDate?: string; snippet?: string; labelIds?: string[]; payload?: GmailPart };
+type GmailLabel = { id: string; name: string; type?: string };
 
 function env(name: string) {
   const value = Deno.env.get(name);
@@ -40,27 +41,6 @@ function parseAddress(value: string) {
   if (match) return { name: match[1]?.trim() || match[2].trim(), email: match[2].trim().toLowerCase() };
   const email = value.trim().replace(/^mailto:/i, '').toLowerCase();
   return { name: email, email };
-}
-
-function normalizedHeaderAddresses(value = '') {
-  return [...value.matchAll(/[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
-    .map((match) => match[0].toLowerCase());
-}
-
-function wasDeliveredTo(payload: GmailPart | undefined, recipient: string) {
-  const h = headers(payload);
-  const deliveryHeaders = [
-    'to',
-    'cc',
-    'delivered-to',
-    'x-original-to',
-    'x-google-original-to',
-    'envelope-to',
-    'x-forwarded-to',
-    'resent-to',
-  ];
-  const expected = recipient.trim().toLowerCase();
-  return deliveryHeaders.some((name) => normalizedHeaderAddresses(h[name]).includes(expected));
 }
 
 function messageText(payload?: GmailPart) {
@@ -135,12 +115,13 @@ async function importAttachments(admin: SupabaseAdmin, token: string, gmailMessa
   }
 }
 
-async function processIncoming(admin: SupabaseAdmin, token: string, message: GmailMessage, mailbox: string, ticketAddress: string) {
+async function processIncoming(admin: SupabaseAdmin, token: string, message: GmailMessage, mailbox: string, ticketAddress: string, requiredLabelId: string) {
   if (!message.id) return false;
-  // The OAuth mailbox can be marketing@snabbb.com while support@snabbb.com
-  // is a Gmail alias. Only mail explicitly delivered to the support alias
-  // belongs in Ticketing; all other marketing inbox traffic is ignored.
-  if (!wasDeliveredTo(message.payload, ticketAddress)) return false;
+  // Gmail aliases and forwarding can rewrite recipient headers. The explicit
+  // customer-inquiries label is therefore the canonical ticketing boundary.
+  // Validate it again on the full message even though the list call is also
+  // label-scoped, so a broad/stale listing can never import marketing mail.
+  if (!message.labelIds?.includes(requiredLabelId)) return false;
   const { data: duplicate } = await admin.from('support_ticket_messages').select('id').eq('gmail_message_id', message.id).maybeSingle();
   const { data: initialDuplicate } = await admin.from('support_tickets').select('id').eq('initial_gmail_message_id', message.id).maybeSingle();
   if (duplicate || initialDuplicate) return false;
@@ -165,7 +146,11 @@ async function processIncoming(admin: SupabaseAdmin, token: string, message: Gma
 async function syncInbox(admin: SupabaseAdmin) {
   const mailbox = env('GMAIL_SUPPORT_EMAIL').toLowerCase();
   const ticketAddress = (Deno.env.get('GMAIL_TICKETING_EMAIL') || 'support@snabbb.com').trim().toLowerCase();
+  const ticketLabelName = (Deno.env.get('GMAIL_TICKETING_LABEL') || 'customer-inquiries').trim();
   const token = await accessToken();
+  const { labels = [] } = await gmail<{ labels?: GmailLabel[] }>(token, '/labels');
+  const ticketLabel = labels.find((label) => label.name.trim().toLowerCase() === ticketLabelName.toLowerCase());
+  if (!ticketLabel?.id) throw new Error(`Gmail label not found: ${ticketLabelName}`);
   const { data: state } = await admin.from('support_gmail_sync_state').select('*').eq('mailbox_email', mailbox).maybeSingle();
   if (!state) {
     const { error } = await admin.from('support_gmail_sync_state').insert({ mailbox_email: mailbox, last_sync_at: new Date().toISOString(), last_success_at: new Date().toISOString() });
@@ -175,11 +160,10 @@ async function syncInbox(admin: SupabaseAdmin) {
   const cutoff = Math.floor(new Date(state.created_at).getTime() / 1000);
   let processed = 0;
   try {
-    const recipientQuery = `{to:${ticketAddress} deliveredto:${ticketAddress}}`;
-    const listing = await gmail<{ messages?: Array<{ id: string }> }>(token, `/messages?labelIds=INBOX&maxResults=100&q=${encodeURIComponent(`after:${cutoff} ${recipientQuery}`)}`);
+    const listing = await gmail<{ messages?: Array<{ id: string }> }>(token, `/messages?labelIds=${encodeURIComponent(ticketLabel.id)}&maxResults=100&q=${encodeURIComponent(`after:${cutoff}`)}`);
     for (const item of [...(listing.messages || [])].reverse()) {
       const message = await gmail<GmailMessage>(token, `/messages/${item.id}?format=full`);
-      processed += Number(await processIncoming(admin, token, message, mailbox, ticketAddress));
+      processed += Number(await processIncoming(admin, token, message, mailbox, ticketAddress, ticketLabel.id));
     }
     await admin.from('support_gmail_sync_state').update({ last_sync_at: new Date().toISOString(), last_success_at: new Date().toISOString(), last_error: null }).eq('mailbox_email', mailbox);
     return { initialized: false, processed };
