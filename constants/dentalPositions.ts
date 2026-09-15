@@ -6,6 +6,5 @@ export const DENTAL_POSITIONS = [
   "Endodontist",
   "Orthodontist",
   "Periodontist",
-  "Oral Surgeon",
-  "Other"
+  "Oral Surgeon"
 ];

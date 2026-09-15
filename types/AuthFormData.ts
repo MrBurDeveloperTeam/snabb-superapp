@@ -6,4 +6,7 @@ export interface AuthFormData {
   password: string;
   confirmPassword: string;
   agreedToTerms: boolean;
+  country: string;
+  dob?: string;
+  partner_id: number;
 }

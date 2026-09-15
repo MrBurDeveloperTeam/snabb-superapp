@@ -105,6 +105,14 @@ export default defineConfig(({ mode }) => {
         }: undefined,
       },
       plugins: [react()],
+        build: {
+        rollupOptions: {
+          input: {
+            main: 'index.html',
+            ssocheck: 'sso-check.html',  // ← separate entry
+          }
+        }
+      },
       define: {
         // Expose process.env.API_KEY to the frontend as required by Google GenAI guidelines
         'process.env.API_KEY': JSON.stringify(env.API_KEY || env.GEMINI_API_KEY),

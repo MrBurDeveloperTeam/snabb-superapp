@@ -75,29 +75,31 @@ export async function fetchUserChatContext(userEmail: string): Promise<UserChatC
   try {
     // 1. Fetch profile by email
     const { data: profileData } = await supabase
-      .from('profiles')
-      .select('user_id, name, email, account_type, role, specialty, is_verified, is_creator, follower_count, video_count, bio, institution, registration_number')
-      .eq('email', userEmail)
-      .single();
+        .from('profiles')
+        .select('user_id, name, email, account_type, role, specialty, is_verified, is_creator, follower_count, video_count, bio, institution, registration_number')
+        .limit(1);
+        
+      // Get the FIRST item if array, or use directly if single object
+      const profile = Array.isArray(profileData) ? profileData[0] : profileData;
+        
+      if (!profile) return ctx; // This checks if profile exists after indexing
+        
+      ctx.profile = {
+        name: profile.name,
+        email: profile.email,
+        role: profile.role,
+        specialty: profile.specialty,
+        accountType: profile.account_type,
+        isVerified: profile.is_verified,
+        isCreator: profile.is_creator,
+        followerCount: profile.follower_count,
+        videoCount: profile.video_count,
+        bio: profile.bio,
+        institution: profile.institution,
+        registrationNumber: profile.registration_number,
+      };
 
-    if (!profileData) return ctx;
-
-    ctx.profile = {
-      name: profileData.name,
-      email: profileData.email,
-      role: profileData.role,
-      specialty: profileData.specialty,
-      accountType: profileData.account_type,
-      isVerified: profileData.is_verified,
-      isCreator: profileData.is_creator,
-      followerCount: profileData.follower_count,
-      videoCount: profileData.video_count,
-      bio: profileData.bio,
-      institution: profileData.institution,
-      registrationNumber: profileData.registration_number,
-    };
-
-    const userId = profileData.user_id;
+    const userId = profile.user_id;
 
     // 2. Fetch clinic memberships
     const { data: membershipData } = await supabase
