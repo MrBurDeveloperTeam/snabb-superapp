@@ -43,6 +43,27 @@ function parseAddress(value: string) {
   return { name: email, email };
 }
 
+function normalizedHeaderAddresses(value = '') {
+  return [...value.matchAll(/[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
+    .map((match) => match[0].toLowerCase());
+}
+
+function wasDeliveredTo(payload: GmailPart | undefined, recipient: string) {
+  const h = headers(payload);
+  const deliveryHeaders = [
+    'to',
+    'cc',
+    'delivered-to',
+    'x-original-to',
+    'x-google-original-to',
+    'envelope-to',
+    'x-forwarded-to',
+    'resent-to',
+  ];
+  const expected = recipient.trim().toLowerCase();
+  return deliveryHeaders.some((name) => normalizedHeaderAddresses(h[name]).includes(expected));
+}
+
 function messageText(payload?: GmailPart) {
   const plain: string[] = [], html: string[] = [];
   const visit = (part?: GmailPart) => {
@@ -117,11 +138,11 @@ async function importAttachments(admin: SupabaseAdmin, token: string, gmailMessa
 
 async function processIncoming(admin: SupabaseAdmin, token: string, message: GmailMessage, mailbox: string, ticketAddress: string, requiredLabelId: string) {
   if (!message.id) return false;
-  // Gmail aliases and forwarding can rewrite recipient headers. The explicit
-  // customer-inquiries label is therefore the canonical ticketing boundary.
-  // Validate it again on the full message even though the list call is also
-  // label-scoped, so a broad/stale listing can never import marketing mail.
+  // Ticket creation requires both the dedicated Gmail label and proof that the
+  // message was delivered to the support alias. A thread-level/stale label by
+  // itself must never turn ordinary marketing mail into a ticket.
   if (!message.labelIds?.includes(requiredLabelId)) return false;
+  if (!wasDeliveredTo(message.payload, ticketAddress)) return false;
   const { data: duplicate } = await admin.from('support_ticket_messages').select('id').eq('gmail_message_id', message.id).maybeSingle();
   const { data: initialDuplicate } = await admin.from('support_tickets').select('id').eq('initial_gmail_message_id', message.id).maybeSingle();
   if (duplicate || initialDuplicate) return false;
@@ -160,7 +181,7 @@ async function syncInbox(admin: SupabaseAdmin) {
   const cutoff = Math.floor(new Date(state.created_at).getTime() / 1000);
   let processed = 0;
   try {
-    const listing = await gmail<{ messages?: Array<{ id: string }> }>(token, `/messages?labelIds=${encodeURIComponent(ticketLabel.id)}&maxResults=100&q=${encodeURIComponent(`after:${cutoff}`)}`);
+    const listing = await gmail<{ messages?: Array<{ id: string }> }>(token, `/messages?labelIds=${encodeURIComponent(ticketLabel.id)}&maxResults=100&q=${encodeURIComponent(`after:${cutoff} to:${ticketAddress}`)}`);
     for (const item of [...(listing.messages || [])].reverse()) {
       const message = await gmail<GmailMessage>(token, `/messages/${item.id}?format=full`);
       processed += Number(await processIncoming(admin, token, message, mailbox, ticketAddress, ticketLabel.id));
