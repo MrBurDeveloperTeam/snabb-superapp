@@ -7,6 +7,7 @@ const cors = {
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const gmailBase = 'https://gmail.googleapis.com/gmail/v1/users/me';
+const ticketingAddress = 'support@snabbb.com';
 
 type SupabaseAdmin = ReturnType<typeof createClient>;
 type GmailPart = { mimeType?: string; filename?: string; headers?: Array<{ name?: string; value?: string }>; body?: { data?: string; attachmentId?: string; size?: number }; parts?: GmailPart[] };
@@ -166,7 +167,9 @@ async function processIncoming(admin: SupabaseAdmin, token: string, message: Gma
 
 async function syncInbox(admin: SupabaseAdmin) {
   const mailbox = env('GMAIL_SUPPORT_EMAIL').toLowerCase();
-  const ticketAddress = (Deno.env.get('GMAIL_TICKETING_EMAIL') || 'support@snabbb.com').trim().toLowerCase();
+  // The OAuth mailbox may be marketing@snabbb.com, but only this alias is
+  // allowed to create tickets. Do not let a stale project secret override it.
+  const ticketAddress = ticketingAddress;
   const ticketLabelName = (Deno.env.get('GMAIL_TICKETING_LABEL') || 'customer-inquiries').trim();
   const token = await accessToken();
   const { labels = [] } = await gmail<{ labels?: GmailLabel[] }>(token, '/labels');
@@ -202,7 +205,7 @@ async function sendReply(admin: SupabaseAdmin, userId: string, ticketId: string,
   if (!ticket.gmail_thread_id) throw new Error('This ticket did not originate from Gmail.');
   if (!ticket.requester_email) throw new Error('This Gmail ticket has no requester email.');
   const token = await accessToken();
-  const mailbox = (Deno.env.get('GMAIL_TICKETING_EMAIL') || 'support@snabbb.com').trim().toLowerCase();
+  const mailbox = ticketingAddress;
   const subject = /^re:/i.test(ticket.subject) ? ticket.subject : `Re: ${ticket.subject}`;
   const raw = [`From: ${mailbox}`, `To: ${ticket.requester_email}`, `Subject: ${subject}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', '', body].join('\r\n');
   const sent = await gmail<{ id: string; threadId: string }>(token, '/messages/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw: toBase64Url(raw), threadId: ticket.gmail_thread_id }) });
