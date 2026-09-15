@@ -586,7 +586,11 @@ useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const isTicketingRoute = path === '/admin/dashboard' || path === '/user/dashboard';
+  const ticketingRouteMatch = path.match(/^\/(admin|user)\/dashboard(?:\/tickets\/([^/]+))?$/);
+  const isTicketingRoute = Boolean(ticketingRouteMatch);
+  const ticketRouteId = ticketingRouteMatch?.[2]
+    ? decodeURIComponent(ticketingRouteMatch[2])
+    : null;
 
   useEffect(() => {
     if (!isTicketingRoute || isLoggedIn === null) return;
@@ -597,15 +601,18 @@ useEffect(() => {
     }
 
     if (isAccountTypeReady) {
-      const correctDashboardPath = accountType === 'admin'
+      const correctDashboardBase = accountType === 'admin'
         ? '/admin/dashboard'
         : '/user/dashboard';
+      const correctDashboardPath = ticketRouteId
+        ? `${correctDashboardBase}/tickets/${encodeURIComponent(ticketRouteId)}`
+        : correctDashboardBase;
 
       if (path !== correctDashboardPath) {
         navigate(correctDashboardPath);
       }
     }
-  }, [accountType, isAccountTypeReady, isLoggedIn, isTicketingRoute, navigate, path]);
+  }, [accountType, isAccountTypeReady, isLoggedIn, isTicketingRoute, navigate, path, ticketRouteId]);
 
   // Molar General Chat context ownership gate — see the state declarations
   // above. Only General Chat may read `userChatContext`; it must never see
@@ -1804,7 +1811,8 @@ useEffect(() => {
           {isTicketingRoute && isLoggedIn && isAccountTypeReady && (
             <motion.div key={path} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <TicketingDashboard
-                isAdmin={path === '/admin/dashboard' && accountType === 'admin'}
+                isAdmin={accountType === 'admin'}
+                ticketId={ticketRouteId}
                 userName={user?.fullName || authUser?.name || ''}
                 userEmail={user?.email || authUser?.username || ''}
                 onNavigate={navigate}
