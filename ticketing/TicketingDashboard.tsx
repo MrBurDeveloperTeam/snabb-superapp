@@ -119,7 +119,7 @@ export default function TicketingDashboard({ isAdmin, ticketId, userName, userEm
     if (!selected || !messageBody) return; setSaving(true); setError('');
     try {
       const message = isAdmin && selected.gmail_thread_id && !internalNote
-        ? await sendGmailReply(selected.id, messageBody, replyFiles)
+        ? await sendGmailReply(selected.id, messageBody)
         : await addMessage(selected.id, messageBody, isAdmin && internalNote);
       await uploadTicketFiles(selected.id, replyFiles, message.id);
       setReply(''); setReplyFiles([]); setInternalNote(false);

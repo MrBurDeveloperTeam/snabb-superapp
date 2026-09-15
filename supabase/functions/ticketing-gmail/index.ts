@@ -13,7 +13,6 @@ type SupabaseAdmin = ReturnType<typeof createClient>;
 type GmailPart = { mimeType?: string; filename?: string; headers?: Array<{ name?: string; value?: string }>; body?: { data?: string; attachmentId?: string; size?: number }; parts?: GmailPart[] };
 type GmailMessage = { id: string; threadId?: string; internalDate?: string; snippet?: string; labelIds?: string[]; payload?: GmailPart };
 type GmailLabel = { id: string; name: string; type?: string };
-type OutgoingAttachment = { filename?: unknown; mimeType?: unknown; data?: unknown };
 
 function env(name: string) {
   const value = Deno.env.get(name);
@@ -192,7 +191,7 @@ async function syncInbox(admin: SupabaseAdmin) {
   }
 }
 
-async function sendReply(admin: SupabaseAdmin, userId: string, ticketId: string, body: string, requestedAttachments: OutgoingAttachment[] = []) {
+async function sendReply(admin: SupabaseAdmin, userId: string, ticketId: string, body: string) {
   const { data: profile } = await admin.from('profiles').select('account_type').eq('user_id', userId).single();
   if (profile?.account_type !== 'admin') throw new Error('Admin access required.');
   const { data: ticket, error } = await admin.from('support_tickets').select('*').eq('id', ticketId).single();
@@ -203,34 +202,12 @@ async function sendReply(admin: SupabaseAdmin, userId: string, ticketId: string,
   const token = await accessToken();
   const mailbox = ticketingAddress;
   const subject = /^re:/i.test(ticket.subject) ? ticket.subject : `Re: ${ticket.subject}`;
-  if (!Array.isArray(requestedAttachments) || requestedAttachments.length > 5) throw new Error('You can attach up to 5 files.');
-  let attachmentBytes = 0;
-  const attachments = requestedAttachments.map((attachment) => {
-    const filename = String(attachment.filename || 'attachment').replace(/[\r\n]/g, '').slice(0, 255);
-    const mimeType = String(attachment.mimeType || 'application/octet-stream').replace(/[\r\n]/g, '');
-    const data = String(attachment.data || '').replace(/\s/g, '');
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(data)) throw new Error(`Invalid attachment: ${filename}`);
-    const size = Math.floor(data.length * 3 / 4);
-    attachmentBytes += size;
-    if (size > 10 * 1024 * 1024) throw new Error(`${filename} exceeds the 10 MB file limit.`);
-    return { filename, mimeType, data: data.replace(/.{1,76}/g, '$&\r\n').trim() };
-  });
-  if (attachmentBytes > 12 * 1024 * 1024) throw new Error('Attachments must be 12 MB or less in total.');
-  let raw: string;
-  if (attachments.length) {
-    const boundary = `snabbb_${crypto.randomUUID().replace(/-/g, '')}`;
-    const parts = attachments.flatMap((attachment) => [
-      `--${boundary}`,
-      `Content-Type: ${attachment.mimeType}; name*=UTF-8''${encodeURIComponent(attachment.filename)}`,
-      'Content-Transfer-Encoding: base64',
-      `Content-Disposition: attachment; filename*=UTF-8''${encodeURIComponent(attachment.filename)}`,
-      '',
-      attachment.data,
-    ]);
-    raw = [`From: ${mailbox}`, `To: ${ticket.requester_email}`, `Subject: ${subject}`, 'MIME-Version: 1.0', `Content-Type: multipart/mixed; boundary="${boundary}"`, '', `--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', body, ...parts, `--${boundary}--`, ''].join('\r\n');
-  } else {
-    raw = [`From: ${mailbox}`, `To: ${ticket.requester_email}`, `Subject: ${subject}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', '', body].join('\r\n');
-  }
+  const ticketUrl = `https://app.snabbb.com/user/dashboard/tickets/${encodeURIComponent(ticket.id)}`;
+  const ticketNumber = `ST-${String(ticket.ticket_no).padStart(6, '0')}`;
+  const textNotice = [`Snabbb Support has replied to your request ${ticketNumber}.`, '', 'For your privacy, the reply is available in App.Snabbb.', 'Sign in to view the response and continue the conversation:', '', ticketUrl, '', 'Thank you,', 'Snabbb Support'].join('\r\n');
+  const htmlNotice = `<!doctype html><html><body style="margin:0;background:#f4f7f8;font-family:Arial,sans-serif;color:#172033"><div style="max-width:560px;margin:32px auto;background:#fff;border:1px solid #dfe8ea;border-radius:18px;overflow:hidden"><div style="height:6px;background:#0a9f9b"></div><div style="padding:32px"><div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#0a7a78;text-transform:uppercase">${ticketNumber}</div><h1 style="margin:14px 0 12px;font-size:24px;line-height:1.3">Admin has replied to your request</h1><p style="margin:0 0 22px;color:#5d6878;font-size:15px;line-height:1.7">For your privacy, please sign in to App.Snabbb to view the response and continue the conversation.</p><a href="${ticketUrl}" style="display:inline-block;padding:13px 22px;border-radius:12px;background:#0a9f9b;color:#fff;text-decoration:none;font-size:14px;font-weight:700">View reply in App.Snabbb</a><p style="margin:24px 0 0;color:#8993a2;font-size:12px;line-height:1.6">If the button does not work, copy this link:<br><a href="${ticketUrl}" style="color:#0a7a78">${ticketUrl}</a></p></div></div></body></html>`;
+  const boundary = `snabbb_notice_${crypto.randomUUID().replace(/-/g, '')}`;
+  const raw = [`From: ${mailbox}`, `To: ${ticket.requester_email}`, `Subject: ${subject}`, 'MIME-Version: 1.0', `Content-Type: multipart/alternative; boundary="${boundary}"`, '', `--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', textNotice, `--${boundary}`, 'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', htmlNotice, `--${boundary}--`, ''].join('\r\n');
   const sent = await gmail<{ id: string; threadId: string }>(token, '/messages/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw: toBase64Url(raw), threadId: ticket.gmail_thread_id }) });
   const { data: inserted, error: insertError } = await admin.from('support_ticket_messages').insert({ ticket_id: ticket.id, author_id: userId, body, is_internal: false, direction: 'outgoing', source: 'gmail', gmail_message_id: sent.id, gmail_thread_id: sent.threadId, delivery_status: 'sent' }).select('*').single();
   if (insertError) throw insertError;
@@ -254,7 +231,7 @@ Deno.serve(async (request) => {
       if (!auth.user) return json({ ok: false, message: 'Authentication required.' }, 401);
       const ticketId = String(body.ticket_id || ''), messageBody = String(body.body || '').trim();
       if (!ticketId || !messageBody || messageBody.length > 20000) return json({ ok: false, message: 'A valid ticket and reply are required.' }, 400);
-      return json({ ok: true, message: await sendReply(admin, auth.user.id, ticketId, messageBody, Array.isArray(body.attachments) ? body.attachments : []) });
+      return json({ ok: true, message: await sendReply(admin, auth.user.id, ticketId, messageBody) });
     }
     return json({ ok: false, message: 'Unknown action.' }, 400);
   } catch (error) {
