@@ -151,7 +151,7 @@ async function processIncoming(admin: SupabaseAdmin, token: string, message: Gma
     if (error) throw error;
     await importAttachments(admin, token, message, existing.id, inserted.id);
   } else {
-    const { data: ticket, error } = await admin.from('support_tickets').insert({ created_by: createdBy, requester_name: sender.name, requester_email: sender.email, subject: h.subject || 'Email support request', description: body, category: null, priority: '1', status: 'request', source: 'email', gmail_thread_id: message.threadId || null, initial_gmail_message_id: message.id, last_gmail_message_id: message.id, created_at: receivedAt, last_activity_at: receivedAt }).select('id').single();
+    const { data: ticket, error } = await admin.from('support_tickets').insert({ created_by: createdBy, requester_name: sender.name, requester_email: sender.email, recipient_email: ticketAddress, subject: h.subject || 'Email support request', description: body, category: null, priority: '1', status: 'request', source: 'email', gmail_thread_id: message.threadId || null, initial_gmail_message_id: message.id, last_gmail_message_id: message.id, created_at: receivedAt, last_activity_at: receivedAt }).select('id').single();
     if (error) throw error;
     await importAttachments(admin, token, message, ticket.id, null);
   }
