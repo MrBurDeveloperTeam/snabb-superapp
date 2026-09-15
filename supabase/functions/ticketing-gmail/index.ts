@@ -51,18 +51,11 @@ function normalizedHeaderAddresses(value = '') {
 
 function wasDeliveredTo(payload: GmailPart | undefined, recipient: string) {
   const h = headers(payload);
-  const deliveryHeaders = [
-    'to',
-    'cc',
-    'delivered-to',
-    'x-original-to',
-    'x-google-original-to',
-    'envelope-to',
-    'x-forwarded-to',
-    'resent-to',
-  ];
   const expected = recipient.trim().toLowerCase();
-  return deliveryHeaders.some((name) => normalizedHeaderAddresses(h[name]).includes(expected));
+  // Only trust the sender-visible To header. The OAuth mailbox owns the
+  // support alias, so Gmail delivery/forwarding headers can mention the alias
+  // even when the sender addressed the message directly to marketing.
+  return normalizedHeaderAddresses(h.to).includes(expected);
 }
 
 function messageText(payload?: GmailPart) {
