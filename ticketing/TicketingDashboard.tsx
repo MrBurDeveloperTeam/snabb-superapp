@@ -65,6 +65,33 @@ export default function TicketingDashboard({ isAdmin, ticketId, userName, userEm
   const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const replyFileRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!ticketId) return;
+
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const root = document.documentElement;
+    const body = document.body;
+    const previousRootOverflow = root.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyOverscroll = body.style.overscrollBehavior;
+
+    const syncPageScroll = () => {
+      root.style.overflow = desktop.matches ? 'hidden' : previousRootOverflow;
+      body.style.overflow = desktop.matches ? 'hidden' : previousBodyOverflow;
+      body.style.overscrollBehavior = desktop.matches ? 'none' : previousBodyOverscroll;
+    };
+
+    syncPageScroll();
+    desktop.addEventListener('change', syncPageScroll);
+
+    return () => {
+      desktop.removeEventListener('change', syncPageScroll);
+      root.style.overflow = previousRootOverflow;
+      body.style.overflow = previousBodyOverflow;
+      body.style.overscrollBehavior = previousBodyOverscroll;
+    };
+  }, [ticketId]);
+
   const loadTickets = async () => {
     setLoading(true); setError('');
     try { setTickets(await fetchTickets()); }
