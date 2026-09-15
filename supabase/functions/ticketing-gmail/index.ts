@@ -192,7 +192,7 @@ async function syncInbox(admin: SupabaseAdmin) {
 }
 
 async function sendReply(admin: SupabaseAdmin, userId: string, ticketId: string, body: string) {
-  const { data: profile } = await admin.from('profiles').select('account_type').eq('user_id', userId).single();
+  const { data: profile } = await admin.from('profiles').select('account_type,name,full_name,email').eq('user_id', userId).single();
   if (profile?.account_type !== 'admin') throw new Error('Admin access required.');
   const { data: ticket, error } = await admin.from('support_tickets').select('*').eq('id', ticketId).single();
   if (error || !ticket) throw error || new Error('Ticket not found.');
@@ -209,7 +209,7 @@ async function sendReply(admin: SupabaseAdmin, userId: string, ticketId: string,
   const boundary = `snabbb_notice_${crypto.randomUUID().replace(/-/g, '')}`;
   const raw = [`From: ${mailbox}`, `To: ${ticket.requester_email}`, `Subject: ${subject}`, 'MIME-Version: 1.0', `Content-Type: multipart/alternative; boundary="${boundary}"`, '', `--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', textNotice, `--${boundary}`, 'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', htmlNotice, `--${boundary}--`, ''].join('\r\n');
   const sent = await gmail<{ id: string; threadId: string }>(token, '/messages/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw: toBase64Url(raw), threadId: ticket.gmail_thread_id }) });
-  const { data: inserted, error: insertError } = await admin.from('support_ticket_messages').insert({ ticket_id: ticket.id, author_id: userId, body, is_internal: false, direction: 'outgoing', source: 'gmail', gmail_message_id: sent.id, gmail_thread_id: sent.threadId, delivery_status: 'sent' }).select('*').single();
+  const { data: inserted, error: insertError } = await admin.from('support_ticket_messages').insert({ ticket_id: ticket.id, author_id: userId, author_name: profile.full_name || profile.name || profile.email || 'Snabbb Support', author_email: profile.email || null, body, is_internal: false, direction: 'outgoing', source: 'gmail', gmail_message_id: sent.id, gmail_thread_id: sent.threadId, delivery_status: 'sent' }).select('*').single();
   if (insertError) throw insertError;
   return inserted;
 }

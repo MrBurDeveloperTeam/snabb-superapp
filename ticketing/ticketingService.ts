@@ -57,10 +57,12 @@ export async function fetchMessages(ticketId: string): Promise<TicketMessage[]> 
   return (data || []) as TicketMessage[];
 }
 
-export async function addMessage(ticketId: string, body: string, isInternal = false): Promise<TicketMessage> {
+export async function addMessage(ticketId: string, body: string, isInternal = false, authorName?: string, authorEmail?: string): Promise<TicketMessage> {
   const userId = await requireUserId();
   const { data, error } = await supabase.from('support_ticket_messages').insert({
-    ticket_id: ticketId, author_id: userId, body: body.trim(), is_internal: isInternal,
+    ticket_id: ticketId, author_id: userId, author_name: authorName?.trim() || null,
+    author_email: authorEmail?.trim().toLowerCase() || null,
+    body: body.trim(), is_internal: isInternal,
   }).select('*').single();
   if (error) throw error;
   return data as TicketMessage;

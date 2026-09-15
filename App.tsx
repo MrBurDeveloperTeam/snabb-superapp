@@ -592,10 +592,25 @@ useEffect(() => {
     ? decodeURIComponent(ticketingRouteMatch[2])
     : null;
 
+  const rememberTicketingReturnPath = useCallback((returnPath: string) => {
+    if (/^\/user\/dashboard\/tickets\/[^/]+$/.test(returnPath)) {
+      window.sessionStorage.setItem('snabbb.ticketingReturnPath', returnPath);
+    }
+  }, []);
+
+  const takeTicketingReturnPath = useCallback(() => {
+    const returnPath = window.sessionStorage.getItem('snabbb.ticketingReturnPath');
+    window.sessionStorage.removeItem('snabbb.ticketingReturnPath');
+    return returnPath && /^\/user\/dashboard\/tickets\/[^/]+$/.test(returnPath)
+      ? returnPath
+      : null;
+  }, []);
+
   useEffect(() => {
     if (!isTicketingRoute || isLoggedIn === null) return;
 
     if (!isLoggedIn) {
+      rememberTicketingReturnPath(path);
       navigate('/login');
       return;
     }
@@ -612,7 +627,7 @@ useEffect(() => {
         navigate(correctDashboardPath);
       }
     }
-  }, [accountType, isAccountTypeReady, isLoggedIn, isTicketingRoute, navigate, path, ticketRouteId]);
+  }, [accountType, isAccountTypeReady, isLoggedIn, isTicketingRoute, navigate, path, rememberTicketingReturnPath, ticketRouteId]);
 
   // Molar General Chat context ownership gate — see the state declarations
   // above. Only General Chat may read `userChatContext`; it must never see
@@ -1202,13 +1217,14 @@ useEffect(() => {
 
       if (isAuthRoute) {
         if (loggedIn) {
+          const ticketingReturnPath = takeTicketingReturnPath();
           window.history.replaceState(
             {},
             '',
-            '/'
+            ticketingReturnPath || '/'
           );
 
-          setPath('/');
+          setPath(ticketingReturnPath || '/');
         } else {
           setIsLoggedIn(false);
         }
@@ -1216,7 +1232,7 @@ useEffect(() => {
     };
 
     run();
-  }, [path, isAuthRoute, verifySession]);
+  }, [path, isAuthRoute, takeTicketingReturnPath, verifySession]);
 
   const filteredApps = useMemo(() => {
     return MINI_APPS.filter((app: MiniApp) => {
@@ -1251,7 +1267,7 @@ useEffect(() => {
     setIsLoggedIn(true);
     setAuthFormData(nextUser);
     setUser(nextUser);
-    navigate('/');
+    navigate(takeTicketingReturnPath() || '/');
 
     // Fetch the user's saved theme from Odoo and apply it.
     // Runs after login so the correct cross-device theme is applied immediately.
