@@ -17,6 +17,7 @@ export type TicketRow = {
 export type TicketMessage = {
   id: string; ticket_id: string; author_id: string; author_name: string | null;
   author_email: string | null; body: string; is_internal: boolean; created_at: string;
+  direction?: 'incoming' | 'outgoing' | null; source?: string | null;
 };
 
 export type TicketAttachment = {
@@ -51,7 +52,7 @@ export async function createTicket(input: { subject: string; description: string
 
 export async function fetchMessages(ticketId: string): Promise<TicketMessage[]> {
   const { data, error } = await supabase.from('support_ticket_messages').select('*')
-    .eq('ticket_id', ticketId).order('created_at', { ascending: true });
+    .eq('ticket_id', ticketId).order('created_at', { ascending: false });
   if (error) throw error;
   return (data || []) as TicketMessage[];
 }
@@ -69,7 +70,6 @@ export async function sendGmailReply(ticketId: string, body: string): Promise<Ti
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
   if (sessionError || !accessToken) throw new Error('Please sign in again.');
-
   const response = await fetch('/api/ticketing/gmail/reply', {
     method: 'POST',
     headers: {
