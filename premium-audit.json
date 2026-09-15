@@ -73,15 +73,6 @@
       "severity": "error"
     },
     {
-      "category": "unresolved",
-      "file": "ticketing/TicketingDashboard.tsx",
-      "line": 160,
-      "message": "Native select is used without an explicit ownership decision.",
-      "remediation": "Record Select/Listbox as native or reuse the authored canonical owner.",
-      "ruleId": "ownership.native-select-undecided",
-      "severity": "error"
-    },
-    {
       "category": "violation",
       "file": "public/games/flappy-cat/index.html",
       "line": 54,
@@ -381,16 +372,7 @@
     {
       "category": "violation",
       "file": "ticketing/TicketingDashboard.tsx",
-      "line": 160,
-      "message": "Application-owned form does not declare its validation owner.",
-      "remediation": "Add noValidate/novalidate and implement the canonical validation contract.",
-      "ruleId": "form.novalidate-missing",
-      "severity": "error"
-    },
-    {
-      "category": "violation",
-      "file": "ticketing/TicketingDashboard.tsx",
-      "line": 166,
+      "line": 241,
       "message": "Application-owned form does not declare its validation owner.",
       "remediation": "Add noValidate/novalidate and implement the canonical validation contract.",
       "ruleId": "form.novalidate-missing",
@@ -419,10 +401,10 @@
   "projectRoot": "C:\\Users\\user\\Desktop\\intern\\snabb-superapp",
   "schemaVersion": 1,
   "summary": {
-    "errors": 46,
-    "total": 46,
-    "unresolved": 9,
-    "violations": 37,
+    "errors": 44,
+    "total": 44,
+    "unresolved": 8,
+    "violations": 36,
     "warnings": 0
   }
 }

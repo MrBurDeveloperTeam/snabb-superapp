@@ -20,6 +20,13 @@ export type TicketMessage = {
   direction?: 'incoming' | 'outgoing' | null; source?: string | null;
 };
 
+export type TicketHistoryEvent = {
+  id: string; ticket_id: string; event_type: string;
+  previous_status: TicketStatusCode | null; new_status: TicketStatusCode | null;
+  details: { previous_priority?: TicketPriority; new_priority?: TicketPriority } | null;
+  created_at: string;
+};
+
 export type TicketAttachment = {
   id: string; ticket_id: string; message_id: string | null; uploaded_by: string;
   storage_path: string; file_name: string; mime_type: string | null;
@@ -57,6 +64,15 @@ export async function fetchMessages(ticketId: string): Promise<TicketMessage[]> 
   return (data || []) as TicketMessage[];
 }
 
+export async function fetchTicketHistory(ticketId: string): Promise<TicketHistoryEvent[]> {
+  const { data, error } = await supabase.from('support_ticket_history')
+    .select('id,ticket_id,event_type,previous_status,new_status,details,created_at')
+    .eq('ticket_id', ticketId).in('event_type', ['status_changed', 'priority_changed'])
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as TicketHistoryEvent[];
+}
+
 export async function addMessage(ticketId: string, body: string, isInternal = false, authorName?: string, authorEmail?: string): Promise<TicketMessage> {
   const userId = await requireUserId();
   const { data, error } = await supabase.from('support_ticket_messages').insert({
@@ -88,6 +104,14 @@ export async function sendGmailReply(ticketId: string, body: string): Promise<Ti
 
 export async function updateTicketStatus(ticketId: string, status: TicketStatusCode): Promise<void> {
   const { error } = await supabase.from('support_tickets').update({ status }).eq('id', ticketId);
+  if (error) throw error;
+}
+
+export async function updateTicketPriority(ticketId: string, priority: TicketPriority): Promise<void> {
+  const { error } = await supabase.rpc('ticketing_set_priority', {
+    p_ticket_id: ticketId,
+    p_priority: priority,
+  });
   if (error) throw error;
 }
 
