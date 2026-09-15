@@ -9,7 +9,6 @@ import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
 import api from './services/api';
-import { debounce } from 'lodash';
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
 import CatMascot from './components/CatMascot';
@@ -932,12 +931,6 @@ useEffect(() => {
     }
   }
 
-  // Debounced session check
-  const verifySessionDebounced = useCallback(
-    debounce(async () => {
-      await verifySessionSafe();
-    }, 1000), [verifySessionSafe]);
-
     useEffect(() => {
       if (!user?.email) return;
 
@@ -1039,8 +1032,16 @@ useEffect(() => {
       if (isStaleReconcile()) return;
 
       const existingEmail = existingSession?.user?.email?.trim().toLowerCase() ?? null;
+      const existingOdooLogin = String(
+        existingSession?.user?.user_metadata?.odoo_login ?? ''
+      ).trim().toLowerCase();
+      const expectedIdentityIsEmail = normalizedExpected.includes('@');
+      const existingSessionMatches = existingSession && (
+        existingEmail === normalizedExpected ||
+        (!expectedIdentityIsEmail && existingOdooLogin === normalizedExpected)
+      );
 
-      if (existingSession && existingEmail === normalizedExpected) {
+      if (existingSessionMatches) {
         setMatchedSupabaseUserId(existingSession.user.id);
         return;
       }
@@ -1082,7 +1083,6 @@ useEffect(() => {
       // session, so its returned Supabase user is authoritative in that case.
       // Keep the strict equality check whenever Odoo actually supplied an
       // email address, which still protects normal email-based identities.
-      const expectedIdentityIsEmail = normalizedExpected.includes('@');
       if (expectedIdentityIsEmail && newEmail !== normalizedExpected) {
         console.warn('[SSO] identity reconciliation: exchange result did not match expected account');
         setMatchedSupabaseUserId(null);
@@ -1160,26 +1160,6 @@ useEffect(() => {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [verifySessionSafe, clearLocalSessionOnReceivedLogout]);
-
-  useEffect(() => {
-    const onFocus = () => {
-      verifySessionDebounced();
-    };
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        verifySessionDebounced();
-      }
-    };
-
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    return () => {
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, [verifySessionDebounced]);
 
   const syncmrbursso = async () => {
     if (!user?.email) return;
