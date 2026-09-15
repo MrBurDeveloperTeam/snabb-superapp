@@ -13,6 +13,7 @@ type SupabaseAdmin = ReturnType<typeof createClient>;
 type GmailPart = { mimeType?: string; filename?: string; headers?: Array<{ name?: string; value?: string }>; body?: { data?: string; attachmentId?: string; size?: number }; parts?: GmailPart[] };
 type GmailMessage = { id: string; threadId?: string; internalDate?: string; snippet?: string; labelIds?: string[]; payload?: GmailPart };
 type GmailLabel = { id: string; name: string; type?: string };
+type OutgoingAttachment = { filename?: unknown; mimeType?: unknown; data?: unknown };
 
 function env(name: string) {
   const value = Deno.env.get(name);
@@ -147,6 +148,7 @@ async function processIncoming(admin: SupabaseAdmin, token: string, message: Gma
   const receivedAt = message.internalDate ? new Date(Number(message.internalDate)).toISOString() : new Date().toISOString();
   const { data: existing } = message.threadId ? await admin.from('support_tickets').select('*').eq('gmail_thread_id', message.threadId).maybeSingle() : { data: null };
   if (existing) {
+    if (existing.status === 'done' || existing.status === 'expired') return false;
     const { data: inserted, error } = await admin.from('support_ticket_messages').insert({ ticket_id: existing.id, author_id: createdBy, author_name: sender.name, author_email: sender.email, body, is_internal: false, direction: 'incoming', source: 'gmail', gmail_message_id: message.id, gmail_thread_id: message.threadId || null, rfc_message_id: h['message-id'] || null, delivery_status: 'received', gmail_received_at: receivedAt }).select('id').single();
     if (error) throw error;
     await importAttachments(admin, token, message, existing.id, inserted.id);
@@ -190,17 +192,45 @@ async function syncInbox(admin: SupabaseAdmin) {
   }
 }
 
-async function sendReply(admin: SupabaseAdmin, userId: string, ticketId: string, body: string) {
+async function sendReply(admin: SupabaseAdmin, userId: string, ticketId: string, body: string, requestedAttachments: OutgoingAttachment[] = []) {
   const { data: profile } = await admin.from('profiles').select('account_type').eq('user_id', userId).single();
   if (profile?.account_type !== 'admin') throw new Error('Admin access required.');
   const { data: ticket, error } = await admin.from('support_tickets').select('*').eq('id', ticketId).single();
   if (error || !ticket) throw error || new Error('Ticket not found.');
+  if (ticket.status === 'done' || ticket.status === 'expired') throw new Error('This ticket is closed and can no longer receive replies.');
   if (!ticket.gmail_thread_id) throw new Error('This ticket did not originate from Gmail.');
   if (!ticket.requester_email) throw new Error('This Gmail ticket has no requester email.');
   const token = await accessToken();
   const mailbox = ticketingAddress;
   const subject = /^re:/i.test(ticket.subject) ? ticket.subject : `Re: ${ticket.subject}`;
-  const raw = [`From: ${mailbox}`, `To: ${ticket.requester_email}`, `Subject: ${subject}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', '', body].join('\r\n');
+  if (!Array.isArray(requestedAttachments) || requestedAttachments.length > 5) throw new Error('You can attach up to 5 files.');
+  let attachmentBytes = 0;
+  const attachments = requestedAttachments.map((attachment) => {
+    const filename = String(attachment.filename || 'attachment').replace(/[\r\n]/g, '').slice(0, 255);
+    const mimeType = String(attachment.mimeType || 'application/octet-stream').replace(/[\r\n]/g, '');
+    const data = String(attachment.data || '').replace(/\s/g, '');
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(data)) throw new Error(`Invalid attachment: ${filename}`);
+    const size = Math.floor(data.length * 3 / 4);
+    attachmentBytes += size;
+    if (size > 10 * 1024 * 1024) throw new Error(`${filename} exceeds the 10 MB file limit.`);
+    return { filename, mimeType, data: data.replace(/.{1,76}/g, '$&\r\n').trim() };
+  });
+  if (attachmentBytes > 12 * 1024 * 1024) throw new Error('Attachments must be 12 MB or less in total.');
+  let raw: string;
+  if (attachments.length) {
+    const boundary = `snabbb_${crypto.randomUUID().replace(/-/g, '')}`;
+    const parts = attachments.flatMap((attachment) => [
+      `--${boundary}`,
+      `Content-Type: ${attachment.mimeType}; name*=UTF-8''${encodeURIComponent(attachment.filename)}`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename*=UTF-8''${encodeURIComponent(attachment.filename)}`,
+      '',
+      attachment.data,
+    ]);
+    raw = [`From: ${mailbox}`, `To: ${ticket.requester_email}`, `Subject: ${subject}`, 'MIME-Version: 1.0', `Content-Type: multipart/mixed; boundary="${boundary}"`, '', `--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', body, ...parts, `--${boundary}--`, ''].join('\r\n');
+  } else {
+    raw = [`From: ${mailbox}`, `To: ${ticket.requester_email}`, `Subject: ${subject}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', '', body].join('\r\n');
+  }
   const sent = await gmail<{ id: string; threadId: string }>(token, '/messages/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw: toBase64Url(raw), threadId: ticket.gmail_thread_id }) });
   const { data: inserted, error: insertError } = await admin.from('support_ticket_messages').insert({ ticket_id: ticket.id, author_id: userId, body, is_internal: false, direction: 'outgoing', source: 'gmail', gmail_message_id: sent.id, gmail_thread_id: sent.threadId, delivery_status: 'sent' }).select('*').single();
   if (insertError) throw insertError;
@@ -224,7 +254,7 @@ Deno.serve(async (request) => {
       if (!auth.user) return json({ ok: false, message: 'Authentication required.' }, 401);
       const ticketId = String(body.ticket_id || ''), messageBody = String(body.body || '').trim();
       if (!ticketId || !messageBody || messageBody.length > 20000) return json({ ok: false, message: 'A valid ticket and reply are required.' }, 400);
-      return json({ ok: true, message: await sendReply(admin, auth.user.id, ticketId, messageBody) });
+      return json({ ok: true, message: await sendReply(admin, auth.user.id, ticketId, messageBody, Array.isArray(body.attachments) ? body.attachments : []) });
     }
     return json({ ok: false, message: 'Unknown action.' }, 400);
   } catch (error) {

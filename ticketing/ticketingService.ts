@@ -17,6 +17,7 @@ export type TicketRow = {
 export type TicketMessage = {
   id: string; ticket_id: string; author_id: string; author_name: string | null;
   author_email: string | null; body: string; is_internal: boolean; created_at: string;
+  direction?: 'incoming' | 'outgoing' | null; source?: string | null;
 };
 
 export type TicketAttachment = {
@@ -51,7 +52,7 @@ export async function createTicket(input: { subject: string; description: string
 
 export async function fetchMessages(ticketId: string): Promise<TicketMessage[]> {
   const { data, error } = await supabase.from('support_ticket_messages').select('*')
-    .eq('ticket_id', ticketId).order('created_at', { ascending: true });
+    .eq('ticket_id', ticketId).order('created_at', { ascending: false });
   if (error) throw error;
   return (data || []) as TicketMessage[];
 }
@@ -65,10 +66,24 @@ export async function addMessage(ticketId: string, body: string, isInternal = fa
   return data as TicketMessage;
 }
 
-export async function sendGmailReply(ticketId: string, body: string): Promise<TicketMessage> {
+async function encodeFile(file: File) {
+  if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} exceeds the 10 MB file limit.`);
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error(`Unable to read ${file.name}.`));
+    reader.readAsDataURL(file);
+  });
+  return { filename: file.name, mimeType: file.type || 'application/octet-stream', data: dataUrl.split(',', 2)[1] || '' };
+}
+
+export async function sendGmailReply(ticketId: string, body: string, files: File[] = []): Promise<TicketMessage> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
   if (sessionError || !accessToken) throw new Error('Please sign in again.');
+  if (files.length > 5) throw new Error('You can attach up to 5 files.');
+  if (files.reduce((total, file) => total + file.size, 0) > 12 * 1024 * 1024) throw new Error('Attachments must be 12 MB or less in total.');
+  const attachments = await Promise.all(files.map(encodeFile));
 
   const response = await fetch('/api/ticketing/gmail/reply', {
     method: 'POST',
@@ -76,7 +91,7 @@ export async function sendGmailReply(ticketId: string, body: string): Promise<Ti
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ ticket_id: ticketId, body: body.trim() }),
+    body: JSON.stringify({ ticket_id: ticketId, body: body.trim(), attachments }),
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.message || 'Unable to send Gmail reply.');
