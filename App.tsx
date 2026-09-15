@@ -322,7 +322,10 @@ const App: React.FC = () => {
         console.warn('[User Management] Failed to load account type:', error);
         if (!cancelled) {
           setAccountType(null);
-          setAccountTypeOwnerId(matchedSupabaseUserId);
+          // A failed lookup is still unresolved authorization. Never mark it
+          // as belonging to the current user and accidentally classify an
+          // admin as a normal user just because the request failed.
+          setAccountTypeOwnerId(null);
         }
       } finally {
         if (!cancelled) setIsCheckingAccountType(false);
@@ -594,8 +597,14 @@ useEffect(() => {
       return;
     }
 
-    if (path === '/admin/dashboard' && isAccountTypeReady && accountType !== 'admin') {
-      navigate('/user/dashboard');
+    if (isAccountTypeReady) {
+      const correctDashboardPath = accountType === 'admin'
+        ? '/admin/dashboard'
+        : '/user/dashboard';
+
+      if (path !== correctDashboardPath) {
+        navigate(correctDashboardPath);
+      }
     }
   }, [accountType, isAccountTypeReady, isLoggedIn, isTicketingRoute, navigate, path]);
 
@@ -1524,25 +1533,29 @@ useEffect(() => {
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
  
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isAccountTypeReady) {
+                      {isAccountTypeReady && (
+                        <button
+                          type="button"
+                          onClick={() => {
                             navigate(accountType === 'admin' ? '/admin/dashboard' : '/user/dashboard');
-                          }
-                          setIsProfileMenuOpen(false);
-                        }}
-                        className="flex w-full items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
-                      >
-                        <span className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
-                          <i className="fa-solid fa-life-ring text-xs" aria-hidden="true"></i>
-                        </span>
-                        <span className="flex-1 min-w-0">
-                          <span className="block text-sm font-bold text-slate-900 leading-tight">{isAccountTypeReady ? (accountType === 'admin' ? 'Admin Dashboard' : 'User Dashboard') : 'Loading Dashboard…'}</span>
-                          <span className="block text-[11px] font-semibold text-slate-500 truncate">{isAccountTypeReady ? (accountType === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets') : 'Verifying account access'}</span>
-                        </span>
-                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-500 transition-colors" aria-hidden="true"></i>
-                      </button>
+                            setIsProfileMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                        >
+                          <span className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
+                            <i className="fa-solid fa-life-ring text-xs" aria-hidden="true"></i>
+                          </span>
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-sm font-bold text-slate-900 leading-tight">
+                              {accountType === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}
+                            </span>
+                            <span className="block text-[11px] font-semibold text-slate-500 truncate">
+                              {accountType === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}
+                            </span>
+                          </span>
+                          <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-500 transition-colors" aria-hidden="true"></i>
+                        </button>
+                      )}
 
                       {isCompanyAccount && (
                         <button
