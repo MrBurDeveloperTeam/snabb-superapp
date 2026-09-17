@@ -9,13 +9,22 @@ interface AppCardProps {
   isLoggedIn: boolean | null;
   app: MiniApp;
   index: number;
+  /**
+   * Opens an embedded, in-app screen instead of following `app.route` as a
+   * URL — used by tiles like `unified-shop` that render inside this SPA
+   * rather than launching another site via SSO. `app.route` is still set
+   * (to a non-navigable placeholder) purely so `isComingSoon` below doesn't
+   * grey the tile out; handleClick checks `app.id` for this before it ever
+   * looks at `app.route`.
+   */
+  onOpenEmbedded?: (appId: string) => void;
 }
 
 // Render a 120px image inside the 112px desktop icon viewport.
 // The viewport clips the excess evenly on every side.
 const ICON_SCALE = 120 / 112;
 
-const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
+const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedded }) => {
   const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
 
   // Supports both full image URLs and local public paths like /icons/kaneiko_black.png
@@ -26,6 +35,11 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn }) => {
   const iconCornerRadius = '20%';
 
   const handleClick = async () => {
+    if (app.id === 'unified-shop') {
+      onOpenEmbedded?.(app.id);
+      return;
+    }
+
     if (!app.route) return;
 
     const isExternal =

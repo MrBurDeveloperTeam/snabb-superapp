@@ -8,10 +8,21 @@ export const useCreateAppLink = () => {
       app,
       email,
       name,
+      redirect,
     }: {
       app: string;
       email: string;
       name: string;
+      /**
+       * Optional relative path (e.g. "/unified-shop/checkout-handoff?lines=...")
+       * to land on after SSO instead of the app's default destination.
+       * Forwarded as-is to /v1/sso/app_link's `redirect` param, which
+       * /api/v1/odoo/login_link (see mrbur_sso_idp) already supports on the
+       * Odoo side. Not every app_code's launch path is confirmed to honor
+       * this end-to-end (see checkoutHandoff.ts) — callers that need it
+       * should treat it as best-effort.
+       */
+      redirect?: string;
     }) => {
       const company = getActiveCompanyFromOdooSession();
 
@@ -32,6 +43,7 @@ export const useCreateAppLink = () => {
             name,
             company_id: Number(company.companyId),
             portal: true,
+            ...(redirect ? { redirect } : {}),
           },
           id: 1,
         },

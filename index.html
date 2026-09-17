@@ -9,6 +9,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        // Without this, Tailwind's `dark:` utilities default to the
+        // 'media' strategy and key off the OS/browser's
+        // prefers-color-scheme instead of the app's own light/dark
+        // toggle (the `.dark` class on <html>, set by the pre-paint
+        // script below and store/themeStore.ts). That mismatch is why
+        // a component styled with `dark:` classes could render dark
+        // even while the rest of the app shows light — pinning this to
+        // 'class' makes every dark: utility in the app follow the same
+        // toggle everything else already uses.
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {

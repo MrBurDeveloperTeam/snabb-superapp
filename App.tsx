@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { MINI_APPS, CATEGORIES } from './constants';
 import AppCard from './components/AppCard';
+import UnifiedShopApp from './features/unifiedShop/components/UnifiedShopApp';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import { AuthPage } from './features/auth/pages/AuthPage';
@@ -426,6 +427,7 @@ useEffect(() => {
 
   const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
   const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
+  const isUnifiedShopRoute = path === '/shop';
 
   useEffect(() => {
     let cancelled = false;
@@ -1364,7 +1366,7 @@ useEffect(() => {
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
-      {!isStandaloneSignup && !isTutorialRoute && (
+      {!isStandaloneSignup && !isTutorialRoute && !isUnifiedShopRoute && (
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <button
@@ -1680,12 +1682,12 @@ useEffect(() => {
             switch unmounts A's Cat and mounts a fresh B instance, instead
             of the old key={isLoggedIn ? 'logged-in' : 'guest'} which never
             changed across an in-session account swap. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute ? 'hidden' : 'contents'}>
           <CatMascot
             key={!isLoggedIn ? 'guest' : (petCatOwnerId ?? 'guest')}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
-            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute}
+            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute}
             profileCompletionStatus={isPersonalizedPetDialogueEnabled() ? profileCompletionStatus : 'unknown'}
             personalizedMatchedUserId={isPersonalizedPetDialogueEnabled() ? matchedSupabaseUserId : null}
             catCacheOwnerId={petCatOwnerId}
@@ -1704,7 +1706,7 @@ useEffect(() => {
             leaving A's history visible under B. Disabled entirely — not
             just context-starved — while a logged-in identity is still
             unreconciled, so no chat can start under an unconfirmed owner. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute ? 'hidden' : 'contents'}>
           <SharedMolarAI
             key={!isLoggedIn ? 'guest' : typeof matchedSupabaseUserId === 'string' ? matchedSupabaseUserId : 'reconciling'}
             adapter={molarAdapter}
@@ -1721,7 +1723,8 @@ useEffect(() => {
          !isAuthRoute &&
           !isCompanyMemberSignup &&
           !isVirtualPetOpen &&
-          !isTutorialRoute && (
+          !isTutorialRoute &&
+          !isUnifiedShopRoute && (
             <div className="fixed bottom-28 right-6 z-[60]">
               <div className="group/tutorial relative">
                 <div className="pointer-events-none absolute -top-9 left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-bold text-tiffany-600 opacity-0 shadow-lg shadow-tiffany-500/20 transition-all duration-200 group-hover/tutorial:translate-y-0 group-hover/tutorial:opacity-100 group-focus-within/tutorial:translate-y-0 group-focus-within/tutorial:opacity-100">
@@ -1867,6 +1870,12 @@ useEffect(() => {
             </motion.div>
           )}
 
+          {isUnifiedShopRoute && (
+            <motion.div key="shop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <UnifiedShopApp onBack={() => navigate('/')} />
+            </motion.div>
+          )}
+
           {tutorialVideoMatch && (
             <motion.div key={`tutorial-${tutorialVideoMatch[1]}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <TutorialWatchPage videoId={decodeURIComponent(tutorialVideoMatch[1])} onNavigate={navigate} />
@@ -1962,7 +1971,13 @@ useEffect(() => {
                           className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
                         >
                           {appsInCategory.map((app, index) => (
-                            <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
+                            <AppCard
+                              isLoggedIn={isLoggedIn}
+                              key={app.id}
+                              app={app}
+                              index={index}
+                              onOpenEmbedded={() => navigate('/shop')}
+                            />
                           ))}
                         </motion.div>
                       </div>
@@ -1977,7 +1992,13 @@ useEffect(() => {
                     className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
                   >
                     {filteredApps.map((app, index) => (
-                      <AppCard isLoggedIn={isLoggedIn} key={app.id} app={app} index={index} />
+                      <AppCard
+                        isLoggedIn={isLoggedIn}
+                        key={app.id}
+                        app={app}
+                        index={index}
+                        onOpenEmbedded={() => navigate('/shop')}
+                      />
                     ))}
 
                     {filteredApps.length === 0 && (
@@ -2000,7 +2021,7 @@ useEffect(() => {
           )}
         {/* </AnimatePresence> */}
 
-        {!isAuthRoute && !isCompanyMemberSignup && !isTutorialRoute && !isTicketingRoute && (
+        {!isAuthRoute && !isCompanyMemberSignup && !isTutorialRoute && !isTicketingRoute && !isUnifiedShopRoute && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
             <div className="py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-slate-400 text-sm font-bold">© 2026 Snabbb Apps Gallery.</p>

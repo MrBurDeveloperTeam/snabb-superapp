@@ -25,6 +25,21 @@ export const MINI_APPS: MiniApp[] = [
     route: getMrBurUrlFromCompanyCode(companyCode),
     colorScheme: { text: 'text-[#4338ca]', icon: '#0891b2' }
   },
+  {
+    id: 'unified-shop',
+    title: 'Unified Shop',
+    category: 'Shops',
+    icon: 'fa-solid fa-basket-shopping',
+    // Not used for navigation — AppCard.tsx special-cases id === 'unified-shop'
+    // and opens the embedded UnifiedShopApp overlay instead of following this
+    // as a URL. Kept truthy only so isComingSoon (`!app.route`) doesn't grey
+    // the tile out.
+    route: '#unified-shop',
+    // #089a98 is tiffany-700 from the app's own Tailwind config (index.html)
+    // — the same brand color used inside the Shop screen itself, rather than
+    // an approximated teal.
+    colorScheme: { text: 'text-[#089a98]', icon: '#0891b2' }
+  },
   // ======= PRODUCTIVITY =======
   {
     id: 'app-2',
