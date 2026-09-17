@@ -27,7 +27,7 @@ export const MINI_APPS: MiniApp[] = [
   },
   {
     id: 'unified-shop',
-    title: 'Unified Shop',
+    title: 'Snabbb Shop',
     category: 'Shops',
     icon: 'fa-solid fa-basket-shopping',
     // Not used for navigation — AppCard.tsx special-cases id === 'unified-shop'

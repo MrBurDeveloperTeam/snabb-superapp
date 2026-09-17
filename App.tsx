@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MINI_APPS, CATEGORIES } from './constants';
 import AppCard from './components/AppCard';
 import UnifiedShopApp from './features/unifiedShop/components/UnifiedShopApp';
+import { useUnifiedCartCount, useUnifiedCartStore } from './features/unifiedShop/store/unifiedCartStore';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import { AuthPage } from './features/auth/pages/AuthPage';
@@ -45,7 +46,7 @@ import UserManagementPage from './subuser/components/UserManagementPage';
 import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
 import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
 import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
-import { BookOpenText } from 'lucide-react';
+import { BookOpenText, ShoppingBag, ArrowLeft } from 'lucide-react';
 import TicketingDashboard from './ticketing/TicketingDashboard';
 
 // The Odoo launch token may arrive in the top-level URL after the SSO cookie
@@ -428,6 +429,11 @@ useEffect(() => {
   const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
   const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
   const isUnifiedShopRoute = path === '/unified-shop';
+  // Unified Shop's cart badge/trigger, surfaced in the shared header
+  // (profile-menu entries below, plus a guest-visible icon) instead of
+  // Unified Shop rendering its own separate header.
+  const unifiedCartCount = useUnifiedCartCount();
+  const openUnifiedCart = useUnifiedCartStore((s) => s.open);
 
   useEffect(() => {
     let cancelled = false;
@@ -1366,7 +1372,7 @@ useEffect(() => {
         }}
       />
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col">
-      {!isStandaloneSignup && !isTutorialRoute && !isUnifiedShopRoute && (
+      {!isStandaloneSignup && !isTutorialRoute && (
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
         <div className="w-full flex items-center justify-between py-5 px-4 sm:px-6">
           <button
@@ -1384,9 +1390,29 @@ useEffect(() => {
               <span style={{ transform: 'skewX(353deg)', display: 'inline-block' }}>App.</span>
               <SnabbbIcon />
             </span>
+            {isUnifiedShopRoute && (
+              <span className="hidden sm:inline text-[11px] font-bold text-tiffany-700 border-l border-slate-200 pl-2 sm:pl-3 ml-1">
+                Shop &mdash; MR.BUR &amp; Kaneiko
+              </span>
+            )}
           </button>
 
           <div className="flex items-center gap-2 sm:gap-8">
+            {isUnifiedShopRoute && (
+              <button
+                type="button"
+                onClick={openUnifiedCart}
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+                aria-label="Open cart"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                {unifiedCartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {unifiedCartCount}
+                  </span>
+                )}
+              </button>
+            )}
             <ThemeToggle />
             {isLoggedIn === null ? (
               <div className="w-24 h-11 bg-gray-200 rounded-xl animate-pulse"></div>
@@ -1462,6 +1488,52 @@ useEffect(() => {
                         
                     {/* Nav Items */}
                     <div className="p-2 border-b border-slate-100">
+                      {isUnifiedShopRoute && (
+                        <>
+                          {/* Unified Shop cart, mirrored here so it's also
+                              reachable from the profile menu, not just the
+                              persistent header icon. */}
+                          <button
+                            onClick={() => {
+                              openUnifiedCart();
+                              setIsProfileMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                          >
+                            <div className="w-7 h-7 rounded-xl bg-tiffany-600/10 flex items-center justify-center shrink-0">
+                              <ShoppingBag className="h-3.5 w-3.5 text-tiffany-700" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-800 leading-tight">Cart</p>
+                              <p className="text-[11px] font-semibold text-slate-400 truncate">
+                                {unifiedCartCount > 0 ? `${unifiedCartCount} item${unifiedCartCount === 1 ? '' : 's'}` : 'Your cart is empty'}
+                              </p>
+                            </div>
+                            <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                          </button>
+
+                          {/* Back to the app gallery — the brand mark above
+                              already does this on click, but Unified Shop
+                              gets its own explicit menu entry too. */}
+                          <button
+                            onClick={() => {
+                              navigate('/');
+                              setIsProfileMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                          >
+                            <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                              <ArrowLeft className="h-3.5 w-3.5 text-slate-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-800 leading-tight">Back to App Gallery</p>
+                              <p className="text-[11px] font-semibold text-slate-400 truncate">Leave Unified Shop</p>
+                            </div>
+                            <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                          </button>
+                        </>
+                      )}
+
                       {/* Snabbb Credit */}
                       <button
                         onClick={async () => {
