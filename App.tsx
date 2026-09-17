@@ -1489,49 +1489,26 @@ useEffect(() => {
                     {/* Nav Items */}
                     <div className="p-2 border-b border-slate-100">
                       {isUnifiedShopRoute && (
-                        <>
-                          {/* Unified Shop cart, mirrored here so it's also
-                              reachable from the profile menu, not just the
-                              persistent header icon. */}
-                          <button
-                            onClick={() => {
-                              openUnifiedCart();
-                              setIsProfileMenuOpen(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
-                          >
-                            <div className="w-7 h-7 rounded-xl bg-tiffany-600/10 flex items-center justify-center shrink-0">
-                              <ShoppingBag className="h-3.5 w-3.5 text-tiffany-700" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-slate-800 leading-tight">Cart</p>
-                              <p className="text-[11px] font-semibold text-slate-400 truncate">
-                                {unifiedCartCount > 0 ? `${unifiedCartCount} item${unifiedCartCount === 1 ? '' : 's'}` : 'Your cart is empty'}
-                              </p>
-                            </div>
-                            <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
-                          </button>
-
-                          {/* Back to the app gallery — the brand mark above
-                              already does this on click, but Unified Shop
-                              gets its own explicit menu entry too. */}
-                          <button
-                            onClick={() => {
-                              navigate('/');
-                              setIsProfileMenuOpen(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
-                          >
-                            <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                              <ArrowLeft className="h-3.5 w-3.5 text-slate-500" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-slate-800 leading-tight">Back to App Gallery</p>
-                              <p className="text-[11px] font-semibold text-slate-400 truncate">Leave Unified Shop</p>
-                            </div>
-                            <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
-                          </button>
-                        </>
+                        // Back to the app gallery — the brand mark above
+                        // already does this on click, but Unified Shop gets
+                        // its own explicit menu entry too. (Cart lives only
+                        // in the persistent header icon now, not here.)
+                        <button
+                          onClick={() => {
+                            navigate('/');
+                            setIsProfileMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                        >
+                          <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                            <ArrowLeft className="h-3.5 w-3.5 text-slate-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-800 leading-tight">Back to App Gallery</p>
+                            <p className="text-[11px] font-semibold text-slate-400 truncate">Leave Snabbb Shop</p>
+                          </div>
+                          <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                        </button>
                       )}
 
                       {/* Snabbb Credit */}
