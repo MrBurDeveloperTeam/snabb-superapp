@@ -1,5 +1,5 @@
 // PHASE 9C (Molar AI migration): thin host `AIAdapter` implementation for
-// `@mrburdeveloperteam/molar-experience/ai`'s `<SharedMolarAI>`.
+// `@mrburdeveloperteam/pet-function/ai`'s `<SharedMolarAI>`.
 //
 // This file is a MECHANICAL relocation of App.tsx's pre-9C `handleSendMessage`
 // body — every branch, message string, and query is preserved verbatim.
@@ -14,7 +14,7 @@
 // actions. App Gallery has NO Data Chat pipeline either (no intent
 // classifier, no resolver, no grounded-facts provider) — General Chat only.
 // This adapter therefore has no action parser/dispatcher to relocate.
-import type { AIAdapter, AIMessage } from '@mrburdeveloperteam/molar-experience/contracts';
+import type { AIAdapter, AIMessage } from '@mrburdeveloperteam/pet-function/contracts';
 import { supabase } from '../services/supabaseClient';
 import { chatWithGemini, type ChatHistory } from '../services/geminiService';
 
@@ -22,7 +22,7 @@ import { chatWithGemini, type ChatHistory } from '../services/geminiService';
 // to the `{role, parts:[{text}]}` shape `chatWithGemini` expects — this
 // mapping stays local to the adapter, never leaking a Gemini-shaped type
 // into the shared package (see AIRequest/AIMessage in
-// @mrburdeveloperteam/molar-experience/contracts).
+// @mrburdeveloperteam/pet-function/contracts).
 function toGeminiHistory(history: AIMessage[]): ChatHistory[] {
   return history.map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
 }

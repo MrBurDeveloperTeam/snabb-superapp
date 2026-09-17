@@ -2,6 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-function/scripts/vite-games.mjs';
 
 // Fix for __dirname in ESM modules
 const __filename = fileURLToPath(import.meta.url);
@@ -104,7 +105,7 @@ export default defineConfig(({ mode }) => {
           },
         }: undefined,
       },
-      plugins: [react()],
+      plugins: [react(), sharedGamesPlugin()],
         build: {
         rollupOptions: {
           input: {
@@ -118,6 +119,7 @@ export default defineConfig(({ mode }) => {
         'process.env.API_KEY': JSON.stringify(env.API_KEY || env.GEMINI_API_KEY),
       },
       resolve: {
+        dedupe: ['react', 'react-dom'],
         alias: {
           // Fixed: resolve the '@' alias using the defined __dirname
           '@': path.resolve(__dirname, '.'),
