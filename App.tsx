@@ -427,7 +427,7 @@ useEffect(() => {
 
   const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
   const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
-  const isUnifiedShopRoute = path === '/shop';
+  const isUnifiedShopRoute = path === '/unified-shop';
 
   useEffect(() => {
     let cancelled = false;
@@ -1976,7 +1976,7 @@ useEffect(() => {
                               key={app.id}
                               app={app}
                               index={index}
-                              onOpenEmbedded={() => window.open('/shop', '_blank', 'noopener,noreferrer')}
+                              onOpenEmbedded={() => window.open('/unified-shop', '_blank', 'noopener,noreferrer')}
                             />
                           ))}
                         </motion.div>
@@ -1997,7 +1997,7 @@ useEffect(() => {
                         key={app.id}
                         app={app}
                         index={index}
-                        onOpenEmbedded={() => window.open('/shop', '_blank', 'noopener,noreferrer')}
+                        onOpenEmbedded={() => window.open('/unified-shop', '_blank', 'noopener,noreferrer')}
                       />
                     ))}
 
