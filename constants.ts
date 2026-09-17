@@ -34,7 +34,7 @@ export const MINI_APPS: MiniApp[] = [
     // and opens the embedded UnifiedShopApp overlay instead of following this
     // as a URL. Kept truthy only so isComingSoon (`!app.route`) doesn't grey
     // the tile out.
-    route: '#unified-shop',
+    //route: '#unified-shop',
     // #089a98 is tiffany-700 from the app's own Tailwind config (index.html)
     // — the same brand color used inside the Shop screen itself, rather than
     // an approximated teal.
