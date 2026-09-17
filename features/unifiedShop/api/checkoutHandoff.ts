@@ -33,14 +33,21 @@ type CreateAppLinkFn = (args: {
  * — but additionally asks it to land the shopper on
  * `checkout_handoff` instead of the storefront homepage.
  *
- * Caveat, worth keeping in mind: whether the Cloudflare Worker behind
- * /api/sso/odoo-exchange actually forwards that `redirect` param all the
- * way through to Odoo isn't something this frontend can confirm (the
- * Worker's own source isn't available here). If it doesn't, the shopper
- * still ends up fully logged in on their regional storefront — just on
- * its homepage rather than /shop/checkout with this cart pre-filled.
- * `checkout_handoff`'s auth='user' + Odoo's own /web/login?redirect=...
- * fallback is what makes this degrade gracefully rather than break.
+ * Param name note (confirmed against the Worker's own source): the
+ * /api/sso/odoo-exchange handler reads this destination as `next`, not
+ * `redirect` — it then forwards it as `next` again to the regional
+ * domain's own /sso/token?token=...&next=... hop. Sending `redirect=`
+ * here (as this used to do) is silently ignored by the Worker, which
+ * falls back to `next`'s own default of "/". `next` is what's used below.
+ *
+ * Residual caveat: /sso/token's own handling of `next` on a *successful*
+ * login lives in an Odoo module not available to this frontend, so this
+ * repo can't independently confirm it re-forwards `next` all the way
+ * through. If it doesn't, the shopper still ends up fully logged in on
+ * their regional storefront — just on its homepage rather than
+ * /shop/checkout with this cart pre-filled. `checkout_handoff`'s
+ * auth='user' + Odoo's own /web/login?redirect=... fallback is what makes
+ * this degrade gracefully rather than break either way.
  */
 export async function handOffToOdooCheckout(
   lines: CartLine[],
@@ -80,7 +87,10 @@ export async function handOffToOdooCheckout(
   }
 
   // Mirrors AppCard.tsx's shop-launch rewrite exactly, plus a best-effort
-  // `redirect` forward — see the caveat in this function's doc comment.
+  // `next` forward — see the caveat in this function's doc comment.
+  // NOTE: must be `next`, not `redirect` — that's the param name the
+  // Worker's /api/sso/odoo-exchange handler actually reads (confirmed
+  // against its source; see doc comment above).
   try {
     const ssoUrl = new URL(targetUrl);
     const token = ssoUrl.searchParams.get('token');
@@ -89,7 +99,7 @@ export async function handOffToOdooCheckout(
       targetUrl =
         `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(token)}` +
         `&company_code=${encodeURIComponent(companyCode)}` +
-        `&redirect=${encodeURIComponent(redirectPath)}`;
+        `&next=${encodeURIComponent(redirectPath)}`;
     }
   } catch {
     // targetUrl wasn't a parseable absolute URL — fall through and use it

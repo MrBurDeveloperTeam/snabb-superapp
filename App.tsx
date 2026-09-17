@@ -1976,7 +1976,7 @@ useEffect(() => {
                               key={app.id}
                               app={app}
                               index={index}
-                              onOpenEmbedded={() => navigate('/shop')}
+                              onOpenEmbedded={() => window.open('/shop', '_blank', 'noopener,noreferrer')}
                             />
                           ))}
                         </motion.div>
@@ -1997,7 +1997,7 @@ useEffect(() => {
                         key={app.id}
                         app={app}
                         index={index}
-                        onOpenEmbedded={() => navigate('/shop')}
+                        onOpenEmbedded={() => window.open('/shop', '_blank', 'noopener,noreferrer')}
                       />
                     ))}
 
