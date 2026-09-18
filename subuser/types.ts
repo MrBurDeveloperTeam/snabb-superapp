@@ -25,6 +25,7 @@ export type InvitationDetails = {
   companyName: string;
   country: string;
   expiresAt: string;
+  accountExists: boolean;
 };
 
 export type IndividualProfileSearchResult = {
