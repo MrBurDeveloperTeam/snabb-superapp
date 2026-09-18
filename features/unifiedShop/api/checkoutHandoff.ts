@@ -2,14 +2,25 @@ import { getAuthUser } from '@/utils/authStorage';
 import type { CartLine } from '../types';
 
 /**
- * Route added in the mrbur repo (unified_shop_api/controllers/main.py,
- * `checkout_handoff`). Browser-facing, auth='user' — it rebuilds this cart
- * as a real website order on whichever Odoo storefront domain the shopper
- * lands on, then redirects to that domain's own /shop/checkout. From there
- * it's website_sale's own checkout flow, unchanged — address, shipping,
- * payment, all handled by Odoo itself.
+ * Two routes added in the mrbur repo
+ * (unified_shop_api/controllers/main.py). Both are browser-facing,
+ * auth='user' — they run after the SSO exchange below has landed the
+ * browser on Odoo's own domain with a real first-party session.
+ *
+ * - checkout_handoff: legacy entry point — rebuilds the cart from a
+ *   `lines` param and redirects to Odoo's own /shop/checkout template.
+ *   No longer used by CartDrawer (see handOffToOdooPayment below), kept
+ *   for backward compatibility.
+ * - checkout_confirm_handoff: used by the native Delivery step
+ *   (components/checkout/CheckoutPage.tsx). By the time this fires, the
+ *   order (lines, delivery address, billing address, delivery method)
+ *   has already been built via /api/unified-shop/checkout/* — this route
+ *   does NOT rebuild it, it only needs to give the browser a real
+ *   Odoo-domain session so /shop/payment's own payment-acquirer
+ *   integrations work, then redirects straight there.
  */
 const CHECKOUT_HANDOFF_PATH = '/unified-shop/checkout-handoff';
+const CHECKOUT_CONFIRM_PATH = '/unified-shop/checkout-confirm';
 
 export class CheckoutHandoffError extends Error {}
 
@@ -25,46 +36,36 @@ type CreateAppLinkFn = (args: {
 }) => Promise<any>;
 
 /**
- * Hands off checkout to Odoo's real /shop/checkout for the given cart
- * lines. Mirrors the same SSO exchange AppCard.tsx already uses to launch
- * the "shop" app (a token from useCreateAppLink's /v1/sso/app_link call,
- * rewritten into app.snabbb.com's /api/sso/odoo-exchange URL, which
- * resolves the shopper's regional mrbur.shop domain from company_code)
- * — but additionally asks it to land the shopper on
- * `checkout_handoff` instead of the storefront homepage.
+ * Shared SSO exchange + full-page redirect, used by both hand-off
+ * functions below. Mirrors the SSO exchange AppCard.tsx already uses to
+ * launch the "shop" app tile (a token from useCreateAppLink's
+ * /v1/sso/app_link call, rewritten into app.snabbb.com's own
+ * /api/sso/odoo-exchange URL, which resolves the shopper's regional
+ * mrbur.shop domain from company_code) — but additionally asks it to land
+ * the shopper on `redirectPath` instead of the storefront homepage.
  *
  * Param name note (confirmed against the Worker's own source): the
  * /api/sso/odoo-exchange handler reads this destination as `next`, not
- * `redirect` — it then forwards it as `next` again to the regional
- * domain's own /sso/token?token=...&next=... hop. Sending `redirect=`
- * here (as this used to do) is silently ignored by the Worker, which
- * falls back to `next`'s own default of "/". `next` is what's used below.
+ * `redirect` — sending `redirect=` here is silently ignored, falling back
+ * to `next`'s own default of "/". `next` is what's used below.
  *
- * Residual caveat: /sso/token's own handling of `next` on a *successful*
- * login lives in an Odoo module not available to this frontend, so this
- * repo can't independently confirm it re-forwards `next` all the way
- * through. If it doesn't, the shopper still ends up fully logged in on
- * their regional storefront — just on its homepage rather than
- * /shop/checkout with this cart pre-filled. `checkout_handoff`'s
- * auth='user' + Odoo's own /web/login?redirect=... fallback is what makes
- * this degrade gracefully rather than break either way.
+ * Residual caveat, same as before: /sso/token's own handling of `next` on
+ * a *successful* login lives in an Odoo module not available to this
+ * frontend, so this repo can't independently confirm it re-forwards
+ * `next` all the way through. If it doesn't, the shopper still ends up
+ * fully logged in on their regional storefront — just on its homepage
+ * rather than `redirectPath`. Both Odoo-side routes' `auth='user'` plus
+ * Odoo's own `/web/login?redirect=...` fallback keep this degrading
+ * gracefully rather than breaking outright either way.
  */
-export async function handOffToOdooCheckout(
-  lines: CartLine[],
+async function ssoRedirect(
+  redirectPath: string,
   createAppLink: CreateAppLinkFn
 ): Promise<void> {
-  if (lines.length === 0) {
-    throw new CheckoutHandoffError('Your cart is empty.');
-  }
-
   const user = getAuthUser();
   if (!user) {
     throw new CheckoutHandoffError('Please log in to check out.');
   }
-
-  const redirectPath = `${CHECKOUT_HANDOFF_PATH}?lines=${encodeURIComponent(
-    buildLinesParam(lines)
-  )}`;
 
   const res = await createAppLink({
     app: 'shop',
@@ -86,11 +87,6 @@ export async function handOffToOdooCheckout(
     throw new CheckoutHandoffError('No checkout link was returned.');
   }
 
-  // Mirrors AppCard.tsx's shop-launch rewrite exactly, plus a best-effort
-  // `next` forward — see the caveat in this function's doc comment.
-  // NOTE: must be `next`, not `redirect` — that's the param name the
-  // Worker's /api/sso/odoo-exchange handler actually reads (confirmed
-  // against its source; see doc comment above).
   try {
     const ssoUrl = new URL(targetUrl);
     const token = ssoUrl.searchParams.get('token');
@@ -106,8 +102,39 @@ export async function handOffToOdooCheckout(
     // as-is rather than failing the whole hand-off over the rewrite step.
   }
 
-  // Full-page navigation in the current tab: unlike launching another app
-  // from the gallery (which opens in a new tab), checkout is the thing the
-  // shopper is trying to do right now.
+  // Full-page navigation in the current tab: not a new tab — this *is* the
+  // thing the shopper is trying to do right now.
   window.location.href = targetUrl;
+}
+
+/**
+ * Legacy hand-off: builds the cart from `lines` and lands on Odoo's own
+ * /shop/checkout template. No longer called by CartDrawer (checkout is
+ * now the in-app Delivery step, see UnifiedShopApp/CheckoutPage) — kept
+ * for any other caller that still wants the old "leave app.snabbb.com
+ * immediately" behavior.
+ */
+export async function handOffToOdooCheckout(
+  lines: CartLine[],
+  createAppLink: CreateAppLinkFn
+): Promise<void> {
+  if (lines.length === 0) {
+    throw new CheckoutHandoffError('Your cart is empty.');
+  }
+  const redirectPath = `${CHECKOUT_HANDOFF_PATH}?lines=${encodeURIComponent(
+    buildLinesParam(lines)
+  )}`;
+  await ssoRedirect(redirectPath, createAppLink);
+}
+
+/**
+ * Final step of the native Delivery page: the order (lines, delivery
+ * address, billing address, delivery method) is already built server-side
+ * via /api/unified-shop/checkout/* by this point (see
+ * components/checkout/CheckoutPage.tsx's handleConfirm) — this just needs
+ * to land the browser on Odoo's own domain, with a real session, at
+ * /shop/payment.
+ */
+export async function handOffToOdooPayment(createAppLink: CreateAppLinkFn): Promise<void> {
+  await ssoRedirect(CHECKOUT_CONFIRM_PATH, createAppLink);
 }

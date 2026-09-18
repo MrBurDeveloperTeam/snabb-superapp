@@ -1,0 +1,130 @@
+import type {
+  AddressFormValues,
+  CheckoutCountry,
+  CheckoutStateResponse,
+} from '../types';
+
+/**
+ * Same-origin path, same convention as unifiedShopApi.ts's `/api/unified-
+ * shop/products` and themeStore.ts's `/api/user/theme` — whatever proxies
+ * `/api/*` on app.snabbb.com to Odoo handles this the same way, forwarding
+ * the browser's session cookie (see checkout.py's module docstring in the
+ * mrbur repo for why that's safe to rely on here). Nothing here talks to
+ * an Odoo *.shop domain directly.
+ */
+const BASE = 'https://app.snabbb.com/api/unified-shop/checkout';
+
+export class CheckoutApiError extends Error {
+  body: unknown;
+  constructor(message: string, body?: unknown) {
+    super(message);
+    this.name = 'CheckoutApiError';
+    this.body = body;
+  }
+}
+
+async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...init,
+  });
+
+  let body: Record<string, unknown> | null = null;
+  try {
+    body = await res.json();
+  } catch {
+    // No/invalid JSON body — handled by the ok-check below.
+  }
+
+  if (!res.ok || body?.ok === false) {
+    const message =
+      (typeof body?.error === 'string' && body.error) ||
+      `Request to ${path} failed (${res.status}).`;
+    throw new CheckoutApiError(message, body);
+  }
+
+  return body as T;
+}
+
+/** Matches unified_shop_api's checkout.py `_sync_lines_to_order` param format. */
+export function buildLinesParam(lines: { productId: number; qty: number }[]): string {
+  return lines.map((l) => `${l.productId}:${l.qty}`).join(',');
+}
+
+/**
+ * Fetches the current Delivery-step state. Pass `linesParam` (from
+ * buildLinesParam) the first time the checkout view opens, or whenever the
+ * local cart has changed since the last fetch, so the real Odoo order
+ * stays in sync with the frontend cart — the backend applies it
+ * idempotently (see _sync_lines_to_order's doc comment), so it's safe to
+ * omit on subsequent refetches (e.g. after saving an address).
+ */
+export function fetchCheckoutState(linesParam?: string): Promise<CheckoutStateResponse> {
+  const qs = linesParam ? `?lines=${encodeURIComponent(linesParam)}` : '';
+  return call<CheckoutStateResponse>(`/state${qs}`, { method: 'GET' });
+}
+
+export function fetchCountries(): Promise<{ ok: boolean; countries: CheckoutCountry[] }> {
+  return call(`/countries`, { method: 'GET' });
+}
+
+export function fetchStates(
+  countryId: number
+): Promise<{ ok: boolean; states: { id: number; name: string }[] }> {
+  return call(`/states?country_id=${encodeURIComponent(String(countryId))}`, { method: 'GET' });
+}
+
+export function saveAddress(
+  type: 'delivery' | 'billing',
+  address: AddressFormValues
+): Promise<CheckoutStateResponse> {
+  return call(`/address`, {
+    method: 'POST',
+    body: JSON.stringify({ type, address }),
+  });
+}
+
+export function setBillingSameAsDelivery(sameAsDelivery: boolean): Promise<CheckoutStateResponse> {
+  return call(`/address`, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'billing', same_as_delivery: sameAsDelivery }),
+  });
+}
+
+export function selectDeliveryMethod(
+  carrierId: number
+): Promise<{ ok: boolean; selected_carrier_id: number; amount_delivery: number; amount_total: number }> {
+  return call(`/delivery-method`, {
+    method: 'POST',
+    body: JSON.stringify({ carrier_id: carrierId }),
+  });
+}
+
+export function toggleSnabbbCredit(useCredit: boolean): Promise<{
+  ok: boolean;
+  use_credit: boolean;
+  balance: number;
+  formatted_balance: string;
+  redeemed_credits: number;
+  redeemed_amount: number;
+  amount_total: number;
+}> {
+  return call(`/credit-toggle`, {
+    method: 'POST',
+    body: JSON.stringify({ use_credit: useCredit }),
+  });
+}
+
+export function claimReward(
+  code: string
+): Promise<{ ok: boolean; amount_subtotal: number; amount_total: number }> {
+  return call(`/reward-claim`, {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}
+
+export function confirmCheckout(): Promise<{ ok: boolean; ready_for_payment?: boolean }> {
+  return call(`/confirm`, { method: 'POST' });
+}

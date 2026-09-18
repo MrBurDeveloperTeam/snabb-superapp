@@ -1,11 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X, Minus, Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
-import { handOffToOdooCheckout, CheckoutHandoffError } from '../api/checkoutHandoff';
-import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 import { BRAND_DISPLAY } from './brandMeta';
-import { CART_TOAST_STYLE } from './cartToastStyle';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -15,35 +11,33 @@ function formatPrice(price: number, currency: string) {
   }
 }
 
-const CartDrawer: React.FC = () => {
+interface CartDrawerProps {
+  /**
+   * Switches UnifiedShopApp's own `view` state to the native Delivery
+   * checkout step (components/checkout/CheckoutPage.tsx) — an in-app view
+   * change, not a network call, so there's no loading state on this
+   * button anymore. Building the real Odoo order (and hopping to Odoo's
+   * own domain) now happens further down that page, at Confirm — see
+   * checkoutHandoff.ts's doc comments for why checkout moved off this
+   * button.
+   */
+  onCheckout: () => void;
+}
+
+const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
   const isOpen = useUnifiedCartStore((s) => s.isOpen);
   const close = useUnifiedCartStore((s) => s.close);
   const lines = useUnifiedCartStore((s) => s.lines);
   const setQty = useUnifiedCartStore((s) => s.setQty);
   const removeItem = useUnifiedCartStore((s) => s.removeItem);
-  const { mutateAsync: createAppLink } = useCreateAppLink();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const currency = lines[0]?.currency ?? 'USD';
   const grandTotal = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (lines.length === 0) return;
-    setIsCheckingOut(true);
-    try {
-      // Navigates the tab away to Odoo's real checkout on success — there's
-      // nothing left to do here in that case. Local cart state is left
-      // alone (not cleared) so it's still there if the shopper comes back
-      // via the browser's back button before finishing.
-      await handOffToOdooCheckout(lines, createAppLink);
-    } catch (err) {
-      const message =
-        err instanceof CheckoutHandoffError
-          ? err.message
-          : 'Checkout failed. Please try again.';
-      toast.error(message, { style: CART_TOAST_STYLE });
-      setIsCheckingOut(false);
-    }
+    close();
+    onCheckout();
   };
 
   return (
@@ -169,11 +163,10 @@ const CartDrawer: React.FC = () => {
 
             <button
               type="button"
-              disabled={isCheckingOut}
               onClick={handleCheckout}
-              className="w-full rounded-xl bg-tiffany-500 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-tiffany-600 disabled:opacity-50 disabled:hover:bg-tiffany-500"
+              className="w-full rounded-xl bg-tiffany-500 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-tiffany-600"
             >
-              {isCheckingOut ? 'Redirecting to checkout…' : 'Checkout'}
+              Checkout
             </button>
           </div>
         )}

@@ -101,9 +101,115 @@ export interface CartLine {
   qty: number;
 }
 
-// Checkout is a hand-off to Odoo's real checkout (a full-page SSO redirect
-// — see features/unifiedShop/api/checkoutHandoff.ts), not a JSON
-// request/response round-trip, so there are no Checkout* types here.
-// Kaneiko also isn't a separate res.company/website in Odoo today — a cart
+// Kaneiko isn't a separate res.company/website in Odoo today — a cart
 // mixing "mrbur" and "kaneiko" tagged products is one real order, not one
-// per brand — so there's no per-brand order-split shape to model either.
+// per brand — so there's no per-brand order-split shape below either.
+//
+// The Delivery step itself (address, delivery method, billing toggle,
+// reward claim, Snabbb Credit toggle) IS a JSON request/response round
+// trip against /api/unified-shop/checkout/* — see api/checkoutApi.ts and
+// components/checkout/. Only the final Confirm step is still a full-page
+// SSO hand-off, straight to Odoo's own /shop/payment (see
+// api/checkoutHandoff.ts's handOffToOdooPayment) — building a native
+// payment step is out of scope here.
+
+/** One address on the order — delivery or billing. */
+export interface CheckoutAddress {
+  id: number;
+  name: string;
+  street: string;
+  street2: string;
+  city: string;
+  zip: string;
+  state_id: number | false;
+  state_name: string;
+  country_id: number | false;
+  country_name: string;
+  phone: string;
+  email: string;
+}
+
+/** A partner's saved address (parent partner itself, or a delivery/invoice child contact). */
+export interface SavedAddress extends CheckoutAddress {
+  type: 'delivery' | 'invoice' | 'other' | 'contact';
+}
+
+/** One product line on the real Odoo order (delivery lines are excluded — see amount_delivery). */
+export interface CheckoutLine {
+  id: number;
+  product_template_id: number | false;
+  name: string;
+  qty: number;
+  price_unit: number;
+  price_subtotal: number;
+  image_url: string | false;
+}
+
+/** One available shipping option, with its computed rate for this order/address. */
+export interface DeliveryMethod {
+  id: number;
+  name: string;
+  price: number;
+  delivery_message: string;
+}
+
+/** Snabbb Credit wallet state for the current order (see snabbb_credit module). */
+export interface CreditWalletState {
+  balance: number;
+  formatted_balance: string;
+  use_credit: boolean;
+  redeemed_credits: number;
+  redeemed_amount: number;
+}
+
+/** One reward the shopper can claim on this cart (see snabbb_discount_loyalty_reward_api). */
+export interface ClaimableReward {
+  id: number;
+  code: string;
+  code_masked: string;
+  reward_name: string;
+  benefit_summary: string;
+  valid_until: string;
+}
+
+export interface CheckoutCountry {
+  id: number;
+  name: string;
+  code: string;
+}
+
+/** Response shape of GET /api/unified-shop/checkout/state. */
+export interface CheckoutStateResponse {
+  ok: boolean;
+  authenticated: boolean;
+  cart_empty?: boolean;
+  order_id?: number;
+  currency?: string;
+  lines?: CheckoutLine[];
+  amount_subtotal?: number;
+  amount_tax?: number;
+  amount_delivery?: number;
+  amount_total?: number;
+  delivery_address?: CheckoutAddress | null;
+  billing_address?: CheckoutAddress | null;
+  billing_same_as_delivery?: boolean;
+  saved_addresses?: SavedAddress[];
+  delivery_methods?: DeliveryMethod[];
+  selected_carrier_id?: number | false;
+  credit?: CreditWalletState;
+  rewards?: ClaimableReward[];
+}
+
+/** Editable fields in the add/edit address form — mirrors checkout.py's `address` POST body. */
+export interface AddressFormValues {
+  id?: number;
+  name: string;
+  street: string;
+  street2?: string;
+  city: string;
+  zip: string;
+  state_id?: number | false;
+  country_id: number | false;
+  phone?: string;
+  email?: string;
+}
