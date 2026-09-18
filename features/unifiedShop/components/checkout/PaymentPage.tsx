@@ -155,10 +155,25 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
         if (cancelled) return;
         setTxReference(res.reference);
 
-        const publishableKey = res.processing_values.publishable_key;
-        const clientSecret = res.processing_values.client_secret;
+        // Confirmed via a live /payment/init response on this instance:
+        // processing_values carries client_secret but NEVER a publishable
+        // key — Odoo's own /shop/payment template reads that straight off
+        // provider_sudo.stripe_publishable_key server-side, it never rides
+        // along in processing_values. checkout.py's _provider_json now
+        // attaches it to the provider list instead (GET /payment/methods),
+        // so it comes from selectedProvider here, not from this response.
+        const pv = res.processing_values;
+        const publishableKey = selectedProvider.stripe_publishable_key;
+        const clientSecret = pv.client_secret ?? pv.stripe_client_secret;
         if (typeof publishableKey !== 'string' || typeof clientSecret !== 'string') {
-          throw new Error('Payment provider did not return the details needed to collect a card.');
+          // Surface exactly what's missing so this is self-diagnosing from
+          // the browser — no need for another round trip through DevTools.
+          const gotKeys = Object.keys(pv).join(', ') || '(none)';
+          throw new Error(
+            typeof publishableKey !== 'string'
+              ? 'This provider has no Stripe publishable key configured (Payment Providers > Stripe > Credentials in Odoo).'
+              : `Payment provider did not return a client secret. Fields received: ${gotKeys}`
+          );
         }
 
         const Stripe = await loadStripeJs();
