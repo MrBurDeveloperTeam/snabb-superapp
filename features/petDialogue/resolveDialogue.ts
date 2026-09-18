@@ -1,44 +1,47 @@
-import type { DialogueCandidate, DialoguePriority } from './types';
-
-const PRIORITY_RANK: Record<DialoguePriority, number> = {
-  P0: 0,
-  P1: 1,
-  PROFILE: 2,
-  P2: 3,
-  LEGACY_INTRO: 4,
-  FALLBACK: 5,
-};
-
-function compareCandidates(a: DialogueCandidate, b: DialogueCandidate): number {
-  const rankDiff = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
-  if (rankDiff !== 0) return rankDiff;
-
-  const aEvent = a.eventTime ?? '';
-  const bEvent = b.eventTime ?? '';
-  if (aEvent !== bEvent) return aEvent < bEvent ? -1 : 1;
-
-  const aCreated = a.createdTime ?? '';
-  const bCreated = b.createdTime ?? '';
-  if (aCreated !== bCreated) return aCreated < bCreated ? -1 : 1;
-
-  const aId = a.recordId ?? a.dedupeKey;
-  const bId = b.recordId ?? b.dedupeKey;
-  if (aId !== bId) return aId < bId ? -1 : 1;
-
-  return 0;
-}
-
-/**
- * Pure deterministic selection. No Supabase/network access here — callers
- * evaluate every candidate ahead of time and pass the already-resolved list.
- * `fallback` is required and is always what's returned when nothing else
- * qualifies, so this function never returns null/undefined.
- */
-export function resolvePersonalizedDialogue(
-  candidates: Array<DialogueCandidate | null | undefined>,
-  fallback: DialogueCandidate
-): DialogueCandidate {
-  const eligible = candidates.filter((c): c is DialogueCandidate => Boolean(c));
-  if (eligible.length === 0) return fallback;
-  return [...eligible].sort(compareCandidates)[0];
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "import type { DialogueCandidate, DialoguePriority } from './types';"
+// legacy-line: ""
+// legacy-line: "const PRIORITY_RANK: Record<DialoguePriority, number> = {"
+// legacy-line: "  P0: 0,"
+// legacy-line: "  P1: 1,"
+// legacy-line: "  PROFILE: 2,"
+// legacy-line: "  P2: 3,"
+// legacy-line: "  LEGACY_INTRO: 4,"
+// legacy-line: "  FALLBACK: 5,"
+// legacy-line: "};"
+// legacy-line: ""
+// legacy-line: "function compareCandidates(a: DialogueCandidate, b: DialogueCandidate): number {"
+// legacy-line: "  const rankDiff = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];"
+// legacy-line: "  if (rankDiff !== 0) return rankDiff;"
+// legacy-line: ""
+// legacy-line: "  const aEvent = a.eventTime ?? '';"
+// legacy-line: "  const bEvent = b.eventTime ?? '';"
+// legacy-line: "  if (aEvent !== bEvent) return aEvent < bEvent ? -1 : 1;"
+// legacy-line: ""
+// legacy-line: "  const aCreated = a.createdTime ?? '';"
+// legacy-line: "  const bCreated = b.createdTime ?? '';"
+// legacy-line: "  if (aCreated !== bCreated) return aCreated < bCreated ? -1 : 1;"
+// legacy-line: ""
+// legacy-line: "  const aId = a.recordId ?? a.dedupeKey;"
+// legacy-line: "  const bId = b.recordId ?? b.dedupeKey;"
+// legacy-line: "  if (aId !== bId) return aId < bId ? -1 : 1;"
+// legacy-line: ""
+// legacy-line: "  return 0;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Pure deterministic selection. No Supabase/network access here — callers"
+// legacy-line: " * evaluate every candidate ahead of time and pass the already-resolved list."
+// legacy-line: " * `fallback` is required and is always what's returned when nothing else"
+// legacy-line: " * qualifies, so this function never returns null/undefined."
+// legacy-line: " */"
+// legacy-line: "export function resolvePersonalizedDialogue("
+// legacy-line: "  candidates: Array<DialogueCandidate | null | undefined>,"
+// legacy-line: "  fallback: DialogueCandidate"
+// legacy-line: "): DialogueCandidate {"
+// legacy-line: "  const eligible = candidates.filter((c): c is DialogueCandidate => Boolean(c));"
+// legacy-line: "  if (eligible.length === 0) return fallback;"
+// legacy-line: "  return [...eligible].sort(compareCandidates)[0];"
+// legacy-line: "}"
+// legacy-line: ""

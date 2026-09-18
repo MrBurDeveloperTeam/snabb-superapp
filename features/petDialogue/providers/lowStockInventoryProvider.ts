@@ -1,169 +1,172 @@
-import { getInventoryAppRoute } from '../knownRoutes';
-import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';
-import type { DialogueCandidate, InsightCandidate } from '../types';
-import type { InventorySnapshot, InventorySnapshotItem } from './inventorySnapshotProvider';
-
-/** See expiredInventoryProvider.ts's ExpiredInventoryFacts for the same
- *  design intent — a pure exposure of values already computed by
- *  selectLowStockSourceForItem below, never a new calculation. */
-export interface LowStockInventoryFacts {
-  itemId: string;
-  itemName: string | null;
-  quantity: number;
-  threshold: number;
-}
-
-/**
- * Pure P2 (low stock) evaluation over the same InventorySnapshot P0/expiring
- * soon use — no second Supabase fetch. Unlike those two, Low Stock is
- * evaluated purely from `inventory_items.quantity`: the Inventory app
- * already recalculates that column as the sum of `inventory_item_batches.qty`
- * whenever batches change, so it's already the authoritative total — this
- * evaluator must not re-sum batches itself.
- *
- * Runs second in the same-item precedence chain (expired → low stock →
- * expiring soon — see inventorySnapshotProvider.ts), so it exposes its full
- * qualifying item-id set the same way expired/expiring-soon do: the
- * expiring-soon evaluator excludes every item already flagged here, not
- * just this evaluator's own global winner.
- */
-
-export const INVENTORY_LOW_STOCK_THRESHOLD = 10;
-
-interface LowStockSource {
-  itemId: string;
-  itemName: string | null;
-  quantity: number;
-  createdTime: string | null;
-}
-
-/**
- * Strict finite-number parse — deliberately does NOT fall back to 0 the way
- * other inventory evaluators' `toNumber` helpers do (0 already fails the
- * qualifying range here, but silently coercing a malformed/non-numeric
- * `quantity` value would misrepresent unusable data as "confirmed zero").
- * Returns null for anything that isn't a genuine finite number, and the
- * caller skips the row entirely rather than guessing.
- *
- * Blank/whitespace-only strings are rejected explicitly before the `Number()`
- * coercion: `Number('')` and `Number('   ')` both evaluate to `0` in
- * JavaScript, which would otherwise silently turn "no usable value" into a
- * confirmed-zero quantity instead of an unparseable one.
- */
-function parseFiniteQuantity(value: number | string | null): number | null {
-  if (value === null) return null;
-  if (typeof value === 'string' && value.trim().length === 0) return null;
-  const n = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function selectLowStockSourceForItem(item: InventorySnapshotItem): LowStockSource | null {
-  const quantity = parseFiniteQuantity(item.quantity);
-  if (quantity === null) return null;
-  if (quantity < 1 || quantity > INVENTORY_LOW_STOCK_THRESHOLD) return null;
-
-  return {
-    itemId: item.id,
-    itemName: item.name,
-    quantity,
-    createdTime: item.created_at,
-  };
-}
-
-function compareSourcesForSelection(a: LowStockSource, b: LowStockSource): number {
-  if (a.quantity !== b.quantity) return a.quantity - b.quantity;
-
-  const aCreated = a.createdTime ?? '';
-  const bCreated = b.createdTime ?? '';
-  if (aCreated !== bCreated) return aCreated < bCreated ? -1 : 1;
-
-  return a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0;
-}
-
-function buildCandidateFromSource(source: LowStockSource): InsightCandidate<LowStockInventoryFacts> {
-  const safeName = typeof source.itemName === 'string' && source.itemName.trim().length > 0 ? source.itemName.trim() : null;
-  const message = safeName ? `${safeName} is nearly out of stock.` : 'An inventory item is nearly out of stock.';
-  const messageTemplate = '{itemName} is nearly out of stock.';
-
-  // Quantity is part of the dedupe key (not the message) so a materially
-  // changed stock level — e.g. dropping further — is treated as a new
-  // condition and can appear again, while an unchanged quantity stays
-  // suppressed for the rest of the tab session.
-  const dedupeKey = `inventory_low_stock:${source.itemId}:quantity:${source.quantity}:threshold${INVENTORY_LOW_STOCK_THRESHOLD}`;
-
-  const evaluatedAt = new Date().toISOString();
-  const facts: LowStockInventoryFacts = {
-    itemId: source.itemId,
-    itemName: source.itemName,
-    quantity: source.quantity,
-    threshold: INVENTORY_LOW_STOCK_THRESHOLD,
-  };
-
-  return {
-    app: 'inventory',
-    triggerId: DIALOGUE_ID.INVENTORY_LOW_STOCK,
-    facts,
-    messageTemplate,
-    sourceRecordId: source.itemId,
-    evaluatedAt,
-    userState: 'ACTIVE_USER_URGENT',
-    dialogueId: DIALOGUE_ID.INVENTORY_LOW_STOCK,
-    priority: 'P2',
-    message,
-    action: { label: 'Check Inventory', route: getInventoryAppRoute() },
-    source: {
-      app: 'inventory',
-      recordId: source.itemId,
-      evaluatedAt,
-    },
-    dedupeKey,
-    ruleVersion: PET_DIALOGUE_RULE_VERSION,
-    // No bypassEntryWalk (only P0 does that) and no autoCloseMs (only the
-    // fixed fallback does that) — Low Stock behaves like an ordinary
-    // dialogue: waits for the entry walk, stays until dismissed/acted on.
-    createdTime: source.createdTime ?? undefined,
-    recordId: source.itemId,
-  };
-}
-
-export interface LowStockInventoryEvaluation {
-  candidate: DialogueCandidate | null;
-  /** Every independently eligible Low Stock candidate, in the same business
-   *  order compareSourcesForSelection already produces — `candidates[0]` is
-   *  always identical to `candidate` above. Additive only. */
-  candidates: DialogueCandidate[];
-  /** Every item id with at least one qualifying low-stock source, not just
-   *  the globally-selected winner — the expiring-soon evaluator excludes
-   *  all of these, since low stock now outranks expiring soon for the same
-   *  item (see inventorySnapshotProvider.ts). */
-  lowStockItemIds: Set<string>;
-}
-
-/**
- * `excludedItemIds` is the expired (P0) qualifying item-id set — an item
- * already flagged as expired must never also produce a Low Stock
- * candidate, regardless of session-handled state for that P0 candidate.
- */
-export function evaluateLowStockInventory(
-  snapshot: InventorySnapshot,
-  excludedItemIds: Set<string>
-): LowStockInventoryEvaluation {
-  const sources: LowStockSource[] = [];
-  for (const item of snapshot.items) {
-    if (excludedItemIds.has(item.id)) continue;
-    const source = selectLowStockSourceForItem(item);
-    if (source) sources.push(source);
-  }
-
-  if (sources.length === 0) {
-    return { candidate: null, candidates: [], lowStockItemIds: new Set() };
-  }
-
-  const ordered = [...sources].sort(compareSourcesForSelection);
-  const candidates = ordered.map(buildCandidateFromSource);
-  return {
-    candidate: candidates[0] ?? null,
-    candidates,
-    lowStockItemIds: new Set(sources.map((s) => s.itemId)),
-  };
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "import { getInventoryAppRoute } from '../knownRoutes';"
+// legacy-line: "import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';"
+// legacy-line: "import type { DialogueCandidate, InsightCandidate } from '../types';"
+// legacy-line: "import type { InventorySnapshot, InventorySnapshotItem } from './inventorySnapshotProvider';"
+// legacy-line: ""
+// legacy-line: "/** See expiredInventoryProvider.ts's ExpiredInventoryFacts for the same"
+// legacy-line: " *  design intent — a pure exposure of values already computed by"
+// legacy-line: " *  selectLowStockSourceForItem below, never a new calculation. */"
+// legacy-line: "export interface LowStockInventoryFacts {"
+// legacy-line: "  itemId: string;"
+// legacy-line: "  itemName: string | null;"
+// legacy-line: "  quantity: number;"
+// legacy-line: "  threshold: number;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Pure P2 (low stock) evaluation over the same InventorySnapshot P0/expiring"
+// legacy-line: " * soon use — no second Supabase fetch. Unlike those two, Low Stock is"
+// legacy-line: " * evaluated purely from `inventory_items.quantity`: the Inventory app"
+// legacy-line: " * already recalculates that column as the sum of `inventory_item_batches.qty`"
+// legacy-line: " * whenever batches change, so it's already the authoritative total — this"
+// legacy-line: " * evaluator must not re-sum batches itself."
+// legacy-line: " *"
+// legacy-line: " * Runs second in the same-item precedence chain (expired → low stock →"
+// legacy-line: " * expiring soon — see inventorySnapshotProvider.ts), so it exposes its full"
+// legacy-line: " * qualifying item-id set the same way expired/expiring-soon do: the"
+// legacy-line: " * expiring-soon evaluator excludes every item already flagged here, not"
+// legacy-line: " * just this evaluator's own global winner."
+// legacy-line: " */"
+// legacy-line: ""
+// legacy-line: "export const INVENTORY_LOW_STOCK_THRESHOLD = 10;"
+// legacy-line: ""
+// legacy-line: "interface LowStockSource {"
+// legacy-line: "  itemId: string;"
+// legacy-line: "  itemName: string | null;"
+// legacy-line: "  quantity: number;"
+// legacy-line: "  createdTime: string | null;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Strict finite-number parse — deliberately does NOT fall back to 0 the way"
+// legacy-line: " * other inventory evaluators' `toNumber` helpers do (0 already fails the"
+// legacy-line: " * qualifying range here, but silently coercing a malformed/non-numeric"
+// legacy-line: " * `quantity` value would misrepresent unusable data as \"confirmed zero\")."
+// legacy-line: " * Returns null for anything that isn't a genuine finite number, and the"
+// legacy-line: " * caller skips the row entirely rather than guessing."
+// legacy-line: " *"
+// legacy-line: " * Blank/whitespace-only strings are rejected explicitly before the `Number()`"
+// legacy-line: " * coercion: `Number('')` and `Number('   ')` both evaluate to `0` in"
+// legacy-line: " * JavaScript, which would otherwise silently turn \"no usable value\" into a"
+// legacy-line: " * confirmed-zero quantity instead of an unparseable one."
+// legacy-line: " */"
+// legacy-line: "function parseFiniteQuantity(value: number | string | null): number | null {"
+// legacy-line: "  if (value === null) return null;"
+// legacy-line: "  if (typeof value === 'string' && value.trim().length === 0) return null;"
+// legacy-line: "  const n = typeof value === 'number' ? value : Number(value);"
+// legacy-line: "  return Number.isFinite(n) ? n : null;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function selectLowStockSourceForItem(item: InventorySnapshotItem): LowStockSource | null {"
+// legacy-line: "  const quantity = parseFiniteQuantity(item.quantity);"
+// legacy-line: "  if (quantity === null) return null;"
+// legacy-line: "  if (quantity < 1 || quantity > INVENTORY_LOW_STOCK_THRESHOLD) return null;"
+// legacy-line: ""
+// legacy-line: "  return {"
+// legacy-line: "    itemId: item.id,"
+// legacy-line: "    itemName: item.name,"
+// legacy-line: "    quantity,"
+// legacy-line: "    createdTime: item.created_at,"
+// legacy-line: "  };"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function compareSourcesForSelection(a: LowStockSource, b: LowStockSource): number {"
+// legacy-line: "  if (a.quantity !== b.quantity) return a.quantity - b.quantity;"
+// legacy-line: ""
+// legacy-line: "  const aCreated = a.createdTime ?? '';"
+// legacy-line: "  const bCreated = b.createdTime ?? '';"
+// legacy-line: "  if (aCreated !== bCreated) return aCreated < bCreated ? -1 : 1;"
+// legacy-line: ""
+// legacy-line: "  return a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function buildCandidateFromSource(source: LowStockSource): InsightCandidate<LowStockInventoryFacts> {"
+// legacy-line: "  const safeName = typeof source.itemName === 'string' && source.itemName.trim().length > 0 ? source.itemName.trim() : null;"
+// legacy-line: "  const message = safeName ? `${safeName} is nearly out of stock.` : 'An inventory item is nearly out of stock.';"
+// legacy-line: "  const messageTemplate = '{itemName} is nearly out of stock.';"
+// legacy-line: ""
+// legacy-line: "  // Quantity is part of the dedupe key (not the message) so a materially"
+// legacy-line: "  // changed stock level — e.g. dropping further — is treated as a new"
+// legacy-line: "  // condition and can appear again, while an unchanged quantity stays"
+// legacy-line: "  // suppressed for the rest of the tab session."
+// legacy-line: "  const dedupeKey = `inventory_low_stock:${source.itemId}:quantity:${source.quantity}:threshold${INVENTORY_LOW_STOCK_THRESHOLD}`;"
+// legacy-line: ""
+// legacy-line: "  const evaluatedAt = new Date().toISOString();"
+// legacy-line: "  const facts: LowStockInventoryFacts = {"
+// legacy-line: "    itemId: source.itemId,"
+// legacy-line: "    itemName: source.itemName,"
+// legacy-line: "    quantity: source.quantity,"
+// legacy-line: "    threshold: INVENTORY_LOW_STOCK_THRESHOLD,"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  return {"
+// legacy-line: "    app: 'inventory',"
+// legacy-line: "    triggerId: DIALOGUE_ID.INVENTORY_LOW_STOCK,"
+// legacy-line: "    facts,"
+// legacy-line: "    messageTemplate,"
+// legacy-line: "    sourceRecordId: source.itemId,"
+// legacy-line: "    evaluatedAt,"
+// legacy-line: "    userState: 'ACTIVE_USER_URGENT',"
+// legacy-line: "    dialogueId: DIALOGUE_ID.INVENTORY_LOW_STOCK,"
+// legacy-line: "    priority: 'P2',"
+// legacy-line: "    message,"
+// legacy-line: "    action: { label: 'Check Inventory', route: getInventoryAppRoute() },"
+// legacy-line: "    source: {"
+// legacy-line: "      app: 'inventory',"
+// legacy-line: "      recordId: source.itemId,"
+// legacy-line: "      evaluatedAt,"
+// legacy-line: "    },"
+// legacy-line: "    dedupeKey,"
+// legacy-line: "    ruleVersion: PET_DIALOGUE_RULE_VERSION,"
+// legacy-line: "    // No bypassEntryWalk (only P0 does that) and no autoCloseMs (only the"
+// legacy-line: "    // fixed fallback does that) — Low Stock behaves like an ordinary"
+// legacy-line: "    // dialogue: waits for the entry walk, stays until dismissed/acted on."
+// legacy-line: "    createdTime: source.createdTime ?? undefined,"
+// legacy-line: "    recordId: source.itemId,"
+// legacy-line: "  };"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export interface LowStockInventoryEvaluation {"
+// legacy-line: "  candidate: DialogueCandidate | null;"
+// legacy-line: "  /** Every independently eligible Low Stock candidate, in the same business"
+// legacy-line: "   *  order compareSourcesForSelection already produces — `candidates[0]` is"
+// legacy-line: "   *  always identical to `candidate` above. Additive only. */"
+// legacy-line: "  candidates: DialogueCandidate[];"
+// legacy-line: "  /** Every item id with at least one qualifying low-stock source, not just"
+// legacy-line: "   *  the globally-selected winner — the expiring-soon evaluator excludes"
+// legacy-line: "   *  all of these, since low stock now outranks expiring soon for the same"
+// legacy-line: "   *  item (see inventorySnapshotProvider.ts). */"
+// legacy-line: "  lowStockItemIds: Set<string>;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * `excludedItemIds` is the expired (P0) qualifying item-id set — an item"
+// legacy-line: " * already flagged as expired must never also produce a Low Stock"
+// legacy-line: " * candidate, regardless of session-handled state for that P0 candidate."
+// legacy-line: " */"
+// legacy-line: "export function evaluateLowStockInventory("
+// legacy-line: "  snapshot: InventorySnapshot,"
+// legacy-line: "  excludedItemIds: Set<string>"
+// legacy-line: "): LowStockInventoryEvaluation {"
+// legacy-line: "  const sources: LowStockSource[] = [];"
+// legacy-line: "  for (const item of snapshot.items) {"
+// legacy-line: "    if (excludedItemIds.has(item.id)) continue;"
+// legacy-line: "    const source = selectLowStockSourceForItem(item);"
+// legacy-line: "    if (source) sources.push(source);"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  if (sources.length === 0) {"
+// legacy-line: "    return { candidate: null, candidates: [], lowStockItemIds: new Set() };"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  const ordered = [...sources].sort(compareSourcesForSelection);"
+// legacy-line: "  const candidates = ordered.map(buildCandidateFromSource);"
+// legacy-line: "  return {"
+// legacy-line: "    candidate: candidates[0] ?? null,"
+// legacy-line: "    candidates,"
+// legacy-line: "    lowStockItemIds: new Set(sources.map((s) => s.itemId)),"
+// legacy-line: "  };"
+// legacy-line: "}"
+// legacy-line: ""

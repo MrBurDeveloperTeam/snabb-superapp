@@ -1,115 +1,118 @@
-import { sanitizeTaskTitleForDialogue } from '../safeTaskTitle';
-import { getTodoAppRoute } from '../knownRoutes';
-import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';
-import type { DialogueCandidate, InsightCandidate } from '../types';
-import type { TodoSnapshot } from './todoSnapshotProvider';
-import {
-  compareByCreatedTimeThenTaskId,
-  extractQualifyingHighUrgencyTaskSource,
-  type QualifyingHighUrgencyTaskSource,
-} from './todoTaskFilters';
-
-/** See overdueTaskProvider.ts's OverdueHighTaskFacts for the same design
- *  intent — same source type, `urgency` is always 'HIGH' by construction. */
-export interface HighTaskTodayFacts {
-  taskId: string;
-  title: string | null;
-  dueDate: string;
-  urgency: 'HIGH';
-}
-
-/**
- * Pure P1 (High-priority task due today) evaluation over the TodoSnapshot —
- * no Supabase access here. A task qualifies only when its validated date
- * equals `localToday` exactly; mutually exclusive with the P0 overdue
- * evaluator by construction (`===` here vs `<` there against the same
- * validated date key).
- *
- * `time` is deliberately not part of the fetched TodoSnapshotTask fields
- * (see todoSnapshotProvider.ts) and is not used for eligibility or
- * ordering here — a task due today remains P1 for the whole local day
- * regardless of any time-of-day value, per the fixed trigger rules. Tie
- * -breaking therefore falls straight to created_at/id rather than an
- * optional-time comparison.
- */
-
-function compareSourcesForSelection(a: QualifyingHighUrgencyTaskSource, b: QualifyingHighUrgencyTaskSource): number {
-  // created_at, then task id — see todoTaskFilters.ts for why a
-  // missing/malformed created_at must not silently win this tie.
-  return compareByCreatedTimeThenTaskId(a, b);
-}
-
-function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): InsightCandidate<HighTaskTodayFacts> {
-  const safeTitle = sanitizeTaskTitleForDialogue(source.title);
-  const message = safeTitle
-    ? `Your important task "${safeTitle}" is due today.`
-    : 'You have an important task due today.';
-  const messageTemplate = 'Your important task "{title}" is due today.';
-
-  const evaluatedAt = new Date().toISOString();
-  const facts: HighTaskTodayFacts = {
-    taskId: source.taskId,
-    title: source.title,
-    dueDate: source.validatedDateKey,
-    urgency: 'HIGH',
-  };
-
-  return {
-    app: 'todo',
-    triggerId: DIALOGUE_ID.HIGH_TASK_TODAY,
-    facts,
-    messageTemplate,
-    sourceRecordId: source.taskId,
-    evaluatedAt,
-    userState: 'ACTIVE_USER_URGENT',
-    dialogueId: DIALOGUE_ID.HIGH_TASK_TODAY,
-    priority: 'P1',
-    message,
-    action: { label: 'View Task', route: getTodoAppRoute() },
-    source: {
-      app: 'todo',
-      recordId: source.taskId,
-      evaluatedAt,
-    },
-    dedupeKey: `high_task_today:${source.taskId}:date:${source.validatedDateKey}`,
-    ruleVersion: PET_DIALOGUE_RULE_VERSION,
-    // P1 waits for the entry walk like an ordinary dialogue and does not
-    // auto-close — only P0 bypasses/auto-closes.
-    eventTime: source.validatedDateKey,
-    createdTime: source.createdTime ?? undefined,
-    recordId: source.taskId,
-  };
-}
-
-export interface TaskTodayEvaluation {
-  candidate: DialogueCandidate | null;
-  /** Every independently eligible High Task Today candidate, in the same
-   *  business order compareSourcesForSelection already produces —
-   *  `candidates[0]` is always identical to `candidate` above. Multiple
-   *  HIGH-urgency tasks can share the same due date, so this family is
-   *  MULTI_RECORD_FAMILY, not a singleton — additive only. */
-  candidates: DialogueCandidate[];
-  qualifyingTaskIds: Set<string>;
-}
-
-export function evaluateHighTaskToday(snapshot: TodoSnapshot, localToday: string): TaskTodayEvaluation {
-  const sources: QualifyingHighUrgencyTaskSource[] = [];
-
-  for (const task of snapshot.tasks) {
-    const source = extractQualifyingHighUrgencyTaskSource(task);
-    if (!source) continue;
-    if (source.validatedDateKey === localToday) sources.push(source);
-  }
-
-  if (sources.length === 0) {
-    return { candidate: null, candidates: [], qualifyingTaskIds: new Set() };
-  }
-
-  const ordered = [...sources].sort(compareSourcesForSelection);
-  const candidates = ordered.map(buildCandidateFromSource);
-  return {
-    candidate: candidates[0] ?? null,
-    candidates,
-    qualifyingTaskIds: new Set(sources.map((s) => s.taskId)),
-  };
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "import { sanitizeTaskTitleForDialogue } from '../safeTaskTitle';"
+// legacy-line: "import { getTodoAppRoute } from '../knownRoutes';"
+// legacy-line: "import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';"
+// legacy-line: "import type { DialogueCandidate, InsightCandidate } from '../types';"
+// legacy-line: "import type { TodoSnapshot } from './todoSnapshotProvider';"
+// legacy-line: "import {"
+// legacy-line: "  compareByCreatedTimeThenTaskId,"
+// legacy-line: "  extractQualifyingHighUrgencyTaskSource,"
+// legacy-line: "  type QualifyingHighUrgencyTaskSource,"
+// legacy-line: "} from './todoTaskFilters';"
+// legacy-line: ""
+// legacy-line: "/** See overdueTaskProvider.ts's OverdueHighTaskFacts for the same design"
+// legacy-line: " *  intent — same source type, `urgency` is always 'HIGH' by construction. */"
+// legacy-line: "export interface HighTaskTodayFacts {"
+// legacy-line: "  taskId: string;"
+// legacy-line: "  title: string | null;"
+// legacy-line: "  dueDate: string;"
+// legacy-line: "  urgency: 'HIGH';"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Pure P1 (High-priority task due today) evaluation over the TodoSnapshot —"
+// legacy-line: " * no Supabase access here. A task qualifies only when its validated date"
+// legacy-line: " * equals `localToday` exactly; mutually exclusive with the P0 overdue"
+// legacy-line: " * evaluator by construction (`===` here vs `<` there against the same"
+// legacy-line: " * validated date key)."
+// legacy-line: " *"
+// legacy-line: " * `time` is deliberately not part of the fetched TodoSnapshotTask fields"
+// legacy-line: " * (see todoSnapshotProvider.ts) and is not used for eligibility or"
+// legacy-line: " * ordering here — a task due today remains P1 for the whole local day"
+// legacy-line: " * regardless of any time-of-day value, per the fixed trigger rules. Tie"
+// legacy-line: " * -breaking therefore falls straight to created_at/id rather than an"
+// legacy-line: " * optional-time comparison."
+// legacy-line: " */"
+// legacy-line: ""
+// legacy-line: "function compareSourcesForSelection(a: QualifyingHighUrgencyTaskSource, b: QualifyingHighUrgencyTaskSource): number {"
+// legacy-line: "  // created_at, then task id — see todoTaskFilters.ts for why a"
+// legacy-line: "  // missing/malformed created_at must not silently win this tie."
+// legacy-line: "  return compareByCreatedTimeThenTaskId(a, b);"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function buildCandidateFromSource(source: QualifyingHighUrgencyTaskSource): InsightCandidate<HighTaskTodayFacts> {"
+// legacy-line: "  const safeTitle = sanitizeTaskTitleForDialogue(source.title);"
+// legacy-line: "  const message = safeTitle"
+// legacy-line: "    ? `Your important task \"${safeTitle}\" is due today.`"
+// legacy-line: "    : 'You have an important task due today.';"
+// legacy-line: "  const messageTemplate = 'Your important task \"{title}\" is due today.';"
+// legacy-line: ""
+// legacy-line: "  const evaluatedAt = new Date().toISOString();"
+// legacy-line: "  const facts: HighTaskTodayFacts = {"
+// legacy-line: "    taskId: source.taskId,"
+// legacy-line: "    title: source.title,"
+// legacy-line: "    dueDate: source.validatedDateKey,"
+// legacy-line: "    urgency: 'HIGH',"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  return {"
+// legacy-line: "    app: 'todo',"
+// legacy-line: "    triggerId: DIALOGUE_ID.HIGH_TASK_TODAY,"
+// legacy-line: "    facts,"
+// legacy-line: "    messageTemplate,"
+// legacy-line: "    sourceRecordId: source.taskId,"
+// legacy-line: "    evaluatedAt,"
+// legacy-line: "    userState: 'ACTIVE_USER_URGENT',"
+// legacy-line: "    dialogueId: DIALOGUE_ID.HIGH_TASK_TODAY,"
+// legacy-line: "    priority: 'P1',"
+// legacy-line: "    message,"
+// legacy-line: "    action: { label: 'View Task', route: getTodoAppRoute() },"
+// legacy-line: "    source: {"
+// legacy-line: "      app: 'todo',"
+// legacy-line: "      recordId: source.taskId,"
+// legacy-line: "      evaluatedAt,"
+// legacy-line: "    },"
+// legacy-line: "    dedupeKey: `high_task_today:${source.taskId}:date:${source.validatedDateKey}`,"
+// legacy-line: "    ruleVersion: PET_DIALOGUE_RULE_VERSION,"
+// legacy-line: "    // P1 waits for the entry walk like an ordinary dialogue and does not"
+// legacy-line: "    // auto-close — only P0 bypasses/auto-closes."
+// legacy-line: "    eventTime: source.validatedDateKey,"
+// legacy-line: "    createdTime: source.createdTime ?? undefined,"
+// legacy-line: "    recordId: source.taskId,"
+// legacy-line: "  };"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export interface TaskTodayEvaluation {"
+// legacy-line: "  candidate: DialogueCandidate | null;"
+// legacy-line: "  /** Every independently eligible High Task Today candidate, in the same"
+// legacy-line: "   *  business order compareSourcesForSelection already produces —"
+// legacy-line: "   *  `candidates[0]` is always identical to `candidate` above. Multiple"
+// legacy-line: "   *  HIGH-urgency tasks can share the same due date, so this family is"
+// legacy-line: "   *  MULTI_RECORD_FAMILY, not a singleton — additive only. */"
+// legacy-line: "  candidates: DialogueCandidate[];"
+// legacy-line: "  qualifyingTaskIds: Set<string>;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export function evaluateHighTaskToday(snapshot: TodoSnapshot, localToday: string): TaskTodayEvaluation {"
+// legacy-line: "  const sources: QualifyingHighUrgencyTaskSource[] = [];"
+// legacy-line: ""
+// legacy-line: "  for (const task of snapshot.tasks) {"
+// legacy-line: "    const source = extractQualifyingHighUrgencyTaskSource(task);"
+// legacy-line: "    if (!source) continue;"
+// legacy-line: "    if (source.validatedDateKey === localToday) sources.push(source);"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  if (sources.length === 0) {"
+// legacy-line: "    return { candidate: null, candidates: [], qualifyingTaskIds: new Set() };"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  const ordered = [...sources].sort(compareSourcesForSelection);"
+// legacy-line: "  const candidates = ordered.map(buildCandidateFromSource);"
+// legacy-line: "  return {"
+// legacy-line: "    candidate: candidates[0] ?? null,"
+// legacy-line: "    candidates,"
+// legacy-line: "    qualifyingTaskIds: new Set(sources.map((s) => s.taskId)),"
+// legacy-line: "  };"
+// legacy-line: "}"
+// legacy-line: ""

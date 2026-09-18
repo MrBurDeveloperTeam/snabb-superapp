@@ -1,975 +1,978 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { SharedCatMascot } from '@mrburdeveloperteam/pet-function/cat';
-import type { CatDialoguePresentation } from '@mrburdeveloperteam/pet-function/cat';
-import { supabase } from '../services/supabaseClient';
-import { normalizePetId } from '../VirtualPet/petOptions';
-import { isPersonalizedPetDialogueEnabled } from '../features/petDialogue/dialogueFlag';
-import { usePersonalizedPetDialogue } from '../features/petDialogue/usePersonalizedPetDialogue';
-import { markDialogueDismissed, buildDialogueDismissalKey } from '../features/petDialogue/sessionDedupe';
-import { DIALOGUE_ID, type DialogueCandidate, type ProfileCompletionStatus } from '../features/petDialogue/types';
-import { CAT_SPRITE_SHEET_URLS } from '../aiExperience/molarExperienceAssets';
-
-// PHASE 9D (Cat Presentation migration): the local App Gallery dialogue
-// resolver/arbitration below is UNCHANGED — every effect, ref, and storage
-// call in this file is a byte-identical carry-over from the pre-9D source.
-// Only the generic sprite/movement/bubble PRESENTATION is now delegated to
-// `SharedCatMascot` (confirmed byte-identical entry-walk/click-to-move
-// formulas via `dist/cat.js`). The local dialogue state
-// (dialogSteps/dialogStep/isDialogActive/personalizedActiveCandidate) is
-// transformed into the published `CatDialoguePresentation` shape purely for
-// rendering — see `dialoguePresentation` below — never fed into
-// `useSharedCatDialogueRuntime`, which this app does NOT adopt (see the
-// Phase 9A audit's documented Dialogue semantic gap: sessionStorage
-// shown-at-display/F5 behavior, logout dismissal cleanup, and the flat
-// P0/P1/PROFILE/P2/LEGACY_INTRO/FALLBACK priority model — where urgent
-// candidates can preempt Intro — are all incompatible with the shared
-// runtime's hard-gated 3-slot design).
-const PET_SLEEPING_KEY = 'pet_is_sleeping';
-const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
-const DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS = 6000;
-
-// PHASE APPGALLERY-HOST-1: this Cat presentation cache (pet mood/sleep
-// stats used for the ambient meow bubble/sleep icon) is host-owned and
-// account-sensitive, so it must never bleed across accounts on a shared
-// browser profile. Own namespace — `snabbb_cat:<userId>:<key>` —
-// deliberately distinct from Shared's own `snabbb_pet:<userId>:<key>` (no
-// shared contract for reusing that one). `userId` absent -> no-op/null:
-// presentation optimization only, never a guest-mode persistent store.
-const CAT_CACHE_PREFIX = 'snabbb_cat';
-const getCatStorageKey = (userId: string | null, key: string) => (userId ? `${CAT_CACHE_PREFIX}:${userId}:${key}` : null);
-const readCatStorage = (userId: string | null, key: string): string | null => {
-  const storageKey = getCatStorageKey(userId, key);
-  if (!storageKey) return null;
-  try { return localStorage.getItem(storageKey); } catch { return null; }
-};
-const writeCatStorage = (userId: string | null, key: string, value: string) => {
-  const storageKey = getCatStorageKey(userId, key);
-  if (!storageKey) return;
-  try { localStorage.setItem(storageKey, value); } catch { /* ignore */ }
-};
-
-interface CatMascotProps {
-  onCatClick?: () => void;
-  disabled?: boolean;
-  isHidden?: boolean;
-  /** Odoo-derived profile-completeness signal, resolved by the caller (see App.tsx). Only read when the personalized-dialogue feature flag is enabled. */
-  profileCompletionStatus?: ProfileCompletionStatus;
-  /**
-   * The Supabase Auth user id App.tsx has confirmed (via
-   * reconcileSupabaseIdentity) belongs to the same account as the currently
-   * Odoo-verified user. Three states: `undefined` = reconciliation still in
-   * progress / not yet attempted (stay neutral, don't guess); `null` =
-   * confirmed guest, or a failed/mismatched reconciliation; a string = the
-   * confirmed-matched Supabase user id. This is the sole authority
-   * usePersonalizedPetDialogue uses for "which identity, if any,
-   * personalized providers may run against" — CatMascot never independently
-   * re-derives or double-guesses identity matching.
-   */
-  personalizedMatchedUserId?: string | null;
-  // (component-level default below narrows the "not passed at all" case to
-  // `undefined`, i.e. treated the same as "still reconciling" — never
-  // defaults to the stronger claim "confirmed guest".)
-  /**
-   * App Gallery's proven canonical Pet/Cat owner id — `personalizedMatchedUserId`
-   * with its `undefined` ("still reconciling") state already collapsed to
-   * `null` by the caller (see App.tsx's `petCatOwnerId`). Used ONLY for
-   * this component's own account-scoped presentation cache (mood/sleep
-   * stats); the personalized-dialogue system above continues to use the
-   * raw `personalizedMatchedUserId` tri-state directly, unchanged.
-   */
-  catCacheOwnerId?: string | null;
-  /** Internal (pushState-based) navigation, used by the profile-reminder action button. Only used when the feature flag is enabled. */
-  onNavigateInternal?: (path: string) => void;
-}
-
-export default function CatMascot({
-  onCatClick,
-  disabled = false,
-  isHidden = false,
-  profileCompletionStatus = 'unknown',
-  personalizedMatchedUserId,
-  catCacheOwnerId = null,
-  onNavigateInternal,
-}: CatMascotProps) {
-  const [isPetSleeping, setIsPetSleeping] = useState(() => readCatStorage(catCacheOwnerId, PET_SLEEPING_KEY) === 'true');
-  const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(readCatStorage(catCacheOwnerId, 'pet_name')));
-
-  const [dialogStep, setDialogStep] = useState(0);
-  const [isDialogActive, setIsDialogActive] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const autoCloseTimerRef = useRef<any>(null);
-  // Driven exclusively by SharedCatMascot's `onEntryWalkComplete` callback
-  // (see the prop wired below) — the true signal that the Cat's entry walk
-  // has reached its final resting position, not a host-side approximation.
-  // Never set true anywhere else (see tryActivateDialog for the gate this
-  // guards).
-  const isEntryWalkComplete = useRef(false);
-  // Which dialog type is currently prepared to show ('intro' | 'welcomeBack' |
-  // 'personalized' | null), and which dialog types have already been dismissed
-  // during this page lifecycle. Tracking dismissal per-type (rather than one
-  // shared flag) means dismissing the Post-Login Intro no longer permanently
-  // blocks the Welcome Back dialog, or vice versa. 'personalized' is the
-  // Phase 1A resolver's own single slot (P0 / profile reminder / fallback);
-  // when the resolver instead picks the legacy intro, it reuses 'intro' as-is.
-  const currentDialogType = useRef<'intro' | 'welcomeBack' | 'personalized' | null>(null);
-  const dismissedDialogs = useRef<Set<'intro' | 'welcomeBack' | 'personalized'>>(new Set());
-  // Holds the winning Phase 1A candidate while it's active, so tryActivateDialog
-  // can decide whether to bypass the entry-walk gate / arm an auto-close timer,
-  // and so the bubble can render its optional action button. Mirrored into
-  // React state (personalizedActiveCandidate below) for render-time reads,
-  // following the same ref+state split already used for isDialogActive.
-  const personalizedCandidateRef = useRef<DialogueCandidate | null>(null);
-  const [personalizedActiveCandidate, setPersonalizedActiveCandidate] = useState<DialogueCandidate | null>(null);
-  // Holds the auto-close duration for a prepared 'welcomeBack' dialog, set when
-  // its content is fetched but only ever consumed by tryActivateDialog() at the
-  // moment it actually shows — see the comment on tryActivateDialog for why.
-  const welcomeBackAutoCloseMsRef = useRef(DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS);
-  // Mirrors isDialogActive synchronously (React state updates aren't immediate).
-  // Without this, tryActivateDialog() can be called again while a dialog is
-  // already showing (e.g. StrictMode's dev double-invoke of the fetch effect,
-  // or the click-to-move handler firing again) and would re-arm the Welcome
-  // Back timer from scratch every time, so it could keep getting reset before
-  // ever completing a full countdown.
-  const isDialogActiveRef = useRef(false);
-
-  const clearWelcomeBackAutoCloseTimer = () => {
-    if (autoCloseTimerRef.current !== null) {
-      clearTimeout(autoCloseTimerRef.current);
-      autoCloseTimerRef.current = null;
-    }
-  };
-
-  // durationOverrideMs lets the Phase 1A fixed welcome fallback reuse this
-  // same timer instead of duplicating it; the legacy 'welcomeBack' call site
-  // below passes no override and keeps its existing DB-configured duration.
-  const startWelcomeBackAutoCloseTimer = (durationOverrideMs?: number) => {
-    clearWelcomeBackAutoCloseTimer();
-
-    const configuredDuration = Number(durationOverrideMs ?? welcomeBackAutoCloseMsRef.current);
-    const duration = Number.isFinite(configuredDuration) && configuredDuration > 0
-      ? configuredDuration
-      : DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS;
-
-    autoCloseTimerRef.current = setTimeout(() => {
-      autoCloseTimerRef.current = null;
-      closeDialog();
-    }, duration);
-  };
-
-  // Marks the Post-Login Intro stage complete for a given user — either because
-  // they actually dismissed a visible Intro, or because a successful query
-  // confirmed there's no Intro configured/usable to show. Takes an explicit
-  // userId (rather than reading currentUserId state) so it's safe to call from
-  // inside initDialog() itself, where the just-fetched userId may not yet be
-  // reflected in currentUserId (state updates aren't synchronous).
-  const markIntroCompleted = (uid: string | null) => {
-    if (!uid) return;
-    localStorage.setItem(`intro_shown_${uid}`, 'true');
-  };
-
-  // persistDismissal defaults to true (Close button, CTA button, and the
-  // auto-close timer all count as this tab actually finishing with the
-  // dialogue, so they write the cross-tab localStorage dismissal). The one
-  // caller that must NOT write again is the cross-tab `storage` event
-  // listener below — the dismissal key is already present in shared
-  // localStorage (that's what triggered the event), so re-writing it here
-  // would be a pointless redundant write, not merely idempotent; passing
-  // persistDismissal: false keeps that handler a pure local-UI suppression.
-  const closeDialog = (options?: { persistDismissal?: boolean }) => {
-    const persistDismissal = options?.persistDismissal ?? true;
-    const dialogType = currentDialogType.current;
-    if (dialogType) {
-      dismissedDialogs.current.add(dialogType);
-    }
-    if (persistDismissal && dialogType === 'personalized') {
-      const candidate = personalizedCandidateRef.current;
-      if (candidate && personalizedUserId) {
-        markDialogueDismissed(personalizedUserId, candidate.dedupeKey);
-      }
-    }
-    isDialogActiveRef.current = false;
-    setIsDialogActive(false);
-    clearWelcomeBackAutoCloseTimer();
-    if (dialogType === 'intro' && !disabled && currentUserId) {
-      markIntroCompleted(currentUserId);
-    }
-  };
-
-  // Single source of truth for showing a prepared dialog: only activates once the
-  // entry walk has finished AND a dialog type has been prepared AND that specific
-  // type hasn't already been dismissed this page lifecycle. Idempotent via
-  // isDialogActiveRef — once active, further calls (StrictMode's dev double-invoke
-  // of the fetch effect, click-to-move, etc.) are no-ops instead of re-arming the
-  // Welcome Back timer from scratch every time.
-  //
-  // Entry-walk position/timing is owned entirely by SharedCatMascot (see the
-  // Phase 9D migration note at the top of this file); `isEntryWalkComplete`
-  // is driven exclusively by its `onEntryWalkComplete` callback (wired on the
-  // <SharedCatMascot> element below), which is the true completion signal —
-  // never a host-side timer/approximation. Calling this again once that
-  // callback fires (see the callback itself) is what lets a candidate that
-  // was already selected/adopted mid-walk still activate the instant the Cat
-  // arrives, without duplicating any of the logic below.
-  const tryActivateDialog = () => {
-    const dialogType = currentDialogType.current;
-    if (!dialogType || dismissedDialogs.current.has(dialogType) || isDialogActiveRef.current) {
-      return;
-    }
-
-    if (!isEntryWalkComplete.current) {
-      return;
-    }
-
-    // Phase 1A candidates must never activate — and therefore must never be
-    // marked "handled" in session dedupe (see markPersonalizedShown below) —
-    // while the mascot wrapper is intentionally hidden (auth routes, or the
-    // Virtual Pet modal — see App.tsx's `isHidden` prop). The legacy Intro /
-    // Welcome Back path never gated on this, so this check is scoped to
-    // 'personalized' only to leave that behaviour unchanged when the feature
-    // flag is disabled. See the effect below that retries once unhidden.
-    if (dialogType === 'personalized' && isHiddenRef.current) {
-      return;
-    }
-
-    isDialogActiveRef.current = true;
-    setIsDialogActive(true);
-
-    if (dialogType === 'welcomeBack') {
-      startWelcomeBackAutoCloseTimer();
-    } else if (dialogType === 'personalized') {
-      const candidate = personalizedCandidateRef.current;
-      if (candidate) {
-        markPersonalizedShown(candidate);
-        if (candidate.autoCloseMs) startWelcomeBackAutoCloseTimer(candidate.autoCloseMs);
-      }
-    }
-  };
-
-  const [dialogSteps, setDialogSteps] = useState<string[]>([]);
-
-  // ─── Phase 1A personalized dialogue resolver (feature-flagged) ─────────────
-  // Computed once per render; the env var is effectively constant for the
-  // lifetime of a build, so this behaves like a compile-time switch between
-  // the legacy code path below and the new resolver-driven one.
-  const personalizedDialogueEnabled = isPersonalizedPetDialogueEnabled();
-  const {
-    lifecycle: personalizedLifecycle,
-    selection: personalizedSelection,
-    userId: personalizedUserId,
-    markShown: markPersonalizedShown,
-    runAction: runPersonalizedAction,
-  } = usePersonalizedPetDialogue({
-    active: personalizedDialogueEnabled && !disabled,
-    matchedUserId: personalizedMatchedUserId,
-    profileStatus: profileCompletionStatus,
-    introAlreadyCompleted: (uid: string) => {
-      try {
-        return localStorage.getItem(`intro_shown_${uid}`) === 'true';
-      } catch {
-        return false;
-      }
-    },
-    onNavigateInternal,
-  });
-
-  // usePersonalizedPetDialogue reactively tracks the authenticated identity
-  // and restarts its own evaluation the instant it changes — including a
-  // cross-tab account switch that doesn't otherwise flip `disabled` (which
-  // only reflects logged-in/guest, not *which* user). But the adoption
-  // effect below deliberately "locks" after its first adoption
-  // (currentDialogType.current already set) so a later same-user resolver
-  // re-run can never replace an already-shown dialogue. Without this reset,
-  // that same lock would also — wrongly — keep a previous user's
-  // already-adopted/pending dialogue on screen (or pending while hidden)
-  // even after the hook has moved on to a fresh, current-user-only
-  // evaluation for someone else. This effect exists solely to detect that
-  // one case and clear it first.
-  const lastPersonalizedUserIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!personalizedDialogueEnabled || disabled) return;
-    if (!personalizedUserId) return;
-
-    const previousUserId = lastPersonalizedUserIdRef.current;
-    lastPersonalizedUserIdRef.current = personalizedUserId;
-
-    if (!previousUserId || previousUserId === personalizedUserId) return;
-
-    // Identity changed under this mount. Only ever tears down state this
-    // same resolver adopted ('personalized' or resolver-driven 'intro') —
-    // never the unrelated legacy 'welcomeBack' path.
-    if (currentDialogType.current === 'personalized' || currentDialogType.current === 'intro') {
-      currentDialogType.current = null;
-      personalizedCandidateRef.current = null;
-      setPersonalizedActiveCandidate(null);
-      isDialogActiveRef.current = false;
-      setIsDialogActive(false);
-      clearWelcomeBackAutoCloseTimer();
-      setDialogSteps([]);
-      setDialogStep(0);
-      // Deliberately not added to dismissedDialogs: the outgoing user's
-      // dismissal state must never suppress the new user's fresh
-      // evaluation once it resolves.
-    }
-  }, [personalizedUserId, personalizedDialogueEnabled, disabled]);
-
-  // Cross-tab dismissal sync: if the SAME dialogue (same userId + dedupeKey)
-  // is dismissed (Close or CTA) in another tab, that tab's write to
-  // localStorage fires the native `storage` event here — but only in THIS
-  // tab, never in the tab that performed the write, so reusing closeDialog()
-  // (which itself re-writes the identical key/value) cannot loop. Only acts
-  // on the 'personalized' dialog type and only while it's actually visible
-  // for the matching candidate; unrelated storage writes (theme, other
-  // dedupeKeys, other users) are ignored.
-  useEffect(() => {
-    if (!personalizedDialogueEnabled) return;
-
-    const handleStorage = (event: StorageEvent) => {
-      if (!event.key || event.newValue === null) return;
-      if (currentDialogType.current !== 'personalized') return;
-      if (!isDialogActiveRef.current) return;
-
-      const candidate = personalizedCandidateRef.current;
-      if (!candidate || !personalizedUserId) return;
-
-      const expectedKey = buildDialogueDismissalKey(personalizedUserId, candidate.dedupeKey);
-      if (event.key === expectedKey) {
-        // Local UI suppression only — the dismissal key is already in
-        // shared localStorage (that's what fired this event), so this must
-        // never write it again.
-        closeDialog({ persistDismissal: false });
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [personalizedDialogueEnabled, personalizedUserId]);
-
-  // Adopts the resolver's selection into the same dialogSteps/currentDialogType
-  // machinery the legacy Intro/Welcome Back paths already use, so rendering,
-  // dismissal, and the entry-walk gate stay a single code path. Locks after
-  // the first adoption (currentDialogType.current already set) so a later
-  // resolver re-run — e.g. profileStatus settling from 'loading' — can never
-  // replace an already-shown dialogue for this mount.
-  useEffect(() => {
-    if (!personalizedDialogueEnabled || disabled) return;
-    if (personalizedLifecycle !== 'ready' && personalizedLifecycle !== 'failed') return;
-    if (!personalizedSelection) return;
-    if (currentDialogType.current) return;
-
-    if (personalizedUserId) setCurrentUserId(personalizedUserId);
-
-    const { candidate, introSteps } = personalizedSelection;
-    personalizedCandidateRef.current = candidate;
-    setPersonalizedActiveCandidate(candidate);
-
-    if (candidate.dialogueId === DIALOGUE_ID.LEGACY_POST_LOGIN_INTRO && introSteps.length > 0) {
-      // Reuse the existing multi-step Intro rendering/dismissal exactly as-is.
-      setDialogSteps(introSteps);
-      setDialogStep(0);
-      currentDialogType.current = 'intro';
-    } else {
-      setDialogSteps([candidate.message]);
-      setDialogStep(0);
-      currentDialogType.current = 'personalized';
-    }
-
-    tryActivateDialog();
-  }, [personalizedDialogueEnabled, disabled, personalizedLifecycle, personalizedSelection, personalizedUserId]);
-
-  // A personalized candidate may have been ready while the mascot wrapper was
-  // hidden (isHiddenRef gate in tryActivateDialog above) — retry activation
-  // once it's visible again. Scoped to the flag being enabled so this is a
-  // guaranteed no-op, and therefore behaviour-preserving, when it's disabled.
-  //
-  // This effect is declared before the isHiddenRef sync effect below, so on
-  // the same render where `isHidden` flips to false, this one would
-  // otherwise run first and call tryActivateDialog() while isHiddenRef.current
-  // is still stale (true) — silently defeating the retry. Updating the ref
-  // synchronously here, right before the call, removes the dependency on
-  // effect declaration order.
-  useEffect(() => {
-    if (!personalizedDialogueEnabled || isHidden) return;
-    isHiddenRef.current = isHidden;
-    tryActivateDialog();
-  }, [personalizedDialogueEnabled, isHidden]);
-
-  const [meowMsg, setMeowMsg] = useState<string | null>(null);
-  const [petStates, setPetStates] = useState(['Normal']);
-
-  // ─── Refs used inside loops to avoid stale closures / dep-array restarts ───
-  const meowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const meowInnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // FIX: track inner timer too
-  const isHiddenRef = useRef(isHidden);
-  // Named distinctly from the manually-managed `isDialogActiveRef` lock above
-  // (pre-existing duplicate-declaration bug fixed while wiring Phase 1A —
-  // see implementation report): this one just mirrors `isDialogActive`
-  // state for the meow loop below so it doesn't need to restart on change.
-  const isDialogActiveMeowRef = useRef(isDialogActive); // FIX: ref so loop doesn't restart on dialog change
-  const petStatesRef = useRef(['Normal']);           // FIX: ref so loop doesn't restart on state change
-
-  useEffect(() => { isHiddenRef.current = isHidden; }, [isHidden]);
-  useEffect(() => { isDialogActiveMeowRef.current = isDialogActive; }, [isDialogActive]);
-
-  // PHASE 9D: replicates the old local `handleGlobalClick`'s
-  // `if (isHiddenRef.current) return;` click-to-move suppression, using
-  // `SharedCatMascot`'s own documented `document.body` convention (confirmed
-  // via `dist/cat.js`: its internal click handler already checks
-  // `document.body.classList.contains('pet-assistant-hidden')` before
-  // moving) — no second click listener is introduced.
-  useEffect(() => {
-    if (isHidden) {
-      document.body.classList.add('pet-assistant-hidden');
-    } else {
-      document.body.classList.remove('pet-assistant-hidden');
-    }
-    return () => { document.body.classList.remove('pet-assistant-hidden'); };
-  }, [isHidden]);
-
-  // Clear message bubble immediately when pet state changes
-  useEffect(() => {
-    setMeowMsg(null);
-    petStatesRef.current = petStates; // keep ref in sync
-  }, [petStates]);
-
-  // ─── Pet stats polling ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (disabled) return;
-
-    const computeStates = (stats, prevStates) => {
-      const HUNGRY_ENTER = 30, HUNGRY_EXIT = 35;
-      const DIRTY_ENTER = 30,  DIRTY_EXIT = 35;
-      const ENERGY_ENTER = 30, ENERGY_EXIT = 35;
-      const HAPPY_ENTER = 40,  HAPPY_EXIT = 45;
-
-      const active = [];
-      if (stats.hunger   < HUNGRY_ENTER || (prevStates.includes('Hungry')     && stats.hunger   < HUNGRY_EXIT)) active.push('Hungry');
-      if (stats.hygiene  < DIRTY_ENTER  || (prevStates.includes('Dirty')      && stats.hygiene  < DIRTY_EXIT))  active.push('Dirty');
-      if (stats.energy   < ENERGY_ENTER || (prevStates.includes('Low Energy') && stats.energy   < ENERGY_EXIT)) active.push('Low Energy');
-      if (stats.happiness< HAPPY_ENTER  || (prevStates.includes('Unhappy')    && stats.happiness< HAPPY_EXIT))  active.push('Unhappy');
-
-      if (active.length === 0) active.push('Normal');
-      return active;
-    };
-
-    const updateStateFromStats = (stats, updatedAt) => {
-      if (!stats) return;
-
-      let finalStats = { ...stats };
-
-      if (updatedAt) {
-        const elapsedSecs = Math.max(0, (Date.now() - new Date(updatedAt).getTime()) / 1000);
-        if (elapsedSecs > 0) {
-          finalStats.hunger    = Math.max(0, (stats.hunger    || 0) - 0.01  * elapsedSecs);
-          finalStats.energy    = Math.max(0, (stats.energy    || 0) - 0.005 * elapsedSecs);
-          finalStats.hygiene   = Math.max(0, (stats.hygiene   || 0) - 0.004 * elapsedSecs);
-          finalStats.happiness = Math.max(0, (stats.happiness || 0) - 0.006 * elapsedSecs);
-        }
-      }
-
-      const newStates = computeStates(finalStats, petStatesRef.current);
-      const isDifferent =
-        newStates.length !== petStatesRef.current.length ||
-        !newStates.every((v, i) => v === petStatesRef.current[i]);
-
-      if (isDifferent) {
-        console.log('[CatMascot] States: ' + petStatesRef.current.join(', ') + ' -> ' + newStates.join(', '));
-        petStatesRef.current = newStates;
-        setPetStates(newStates);
-      }
-    };
-
-    // Initial check from localStorage (5-min freshness)
-    const saved      = readCatStorage(catCacheOwnerId, 'pet_stats');
-    const lastSavedAt = readCatStorage(catCacheOwnerId, 'pet_last_saved_at');
-    const isFresh    = lastSavedAt && (Date.now() - new Date(lastSavedAt).getTime() < 300000);
-    if (saved && isFresh) {
-      try { updateStateFromStats(JSON.parse(saved), lastSavedAt); } catch (e) { /* ignore */ }
-    }
-
-    const readLocalSleepState = () => {
-      const savedSleeping = readCatStorage(catCacheOwnerId, PET_SLEEPING_KEY);
-      if (savedSleeping !== null) {
-        setIsPetSleeping(savedSleeping === 'true');
-      }
-    };
-
-    readLocalSleepState();
-    setSelectedPetId(normalizePetId(readCatStorage(catCacheOwnerId, 'pet_name')));
-
-    const handlePetSleepChange = (event) => {
-      setIsPetSleeping(!!event.detail);
-    };
-
-    const handlePetSelectionChange = (event) => {
-      setSelectedPetId(normalizePetId(event.detail));
-    };
-
-    const handleStorage = (event) => {
-      // Cross-tab sync for THIS owner only — compares against this owner's
-      // own scoped keys, not the bare legacy names, so a stray legacy
-      // write (or another account's tab) can never trigger it.
-      if (event.key === getCatStorageKey(catCacheOwnerId, PET_SLEEPING_KEY)) {
-        setIsPetSleeping(event.newValue === 'true');
-      }
-      if (event.key === getCatStorageKey(catCacheOwnerId, 'pet_name')) {
-        setSelectedPetId(normalizePetId(event.newValue));
-      }
-    };
-
-    window.addEventListener('virtual-pet-sleep-change', handlePetSleepChange);
-    window.addEventListener('virtual-pet-selection-change', handlePetSelectionChange);
-    window.addEventListener('storage', handleStorage);
-
-    // 2. Fetch from Supabase for latest data — uses the proven canonical
-    // owner id passed down from App.tsx, not an independent session lookup.
-    const fetchStats = async () => {
-      if (document.visibilityState !== 'visible') return;
-      if (!catCacheOwnerId) return;
-      try {
-        const { data, error } = await supabase
-          .from('inventory_pet')
-          .select('hunger, hygiene, energy, happiness, is_sleeping, pet_name, updated_at')
-          .eq('user_id', catCacheOwnerId)
-          .maybeSingle();
-
-        if (data && !error) {
-          const nextSleeping = !!data.is_sleeping;
-          setIsPetSleeping(nextSleeping);
-          writeCatStorage(catCacheOwnerId, PET_SLEEPING_KEY, String(nextSleeping));
-          writeCatStorage(catCacheOwnerId, PET_SLEEPING_UPDATED_AT_KEY, data.updated_at || new Date().toISOString());
-          setSelectedPetId(normalizePetId(data.pet_name));
-          updateStateFromStats(data, data.updated_at);
-        }
-      } catch (err) {
-        console.error('Error fetching pet stats:', err);
-      }
-    };
-
-    fetchStats();
-    const interval = setInterval(fetchStats, 120000);
-    // Staggered retries: SSO exchange can take 0.5–4s; the first successful call wins
-    const r1 = setTimeout(fetchStats, 500);
-    const r2 = setTimeout(fetchStats, 2000);
-    const r3 = setTimeout(fetchStats, 5000);
-    return () => {
-      clearInterval(interval);
-      clearTimeout(r1); clearTimeout(r2); clearTimeout(r3);
-      window.removeEventListener('virtual-pet-sleep-change', handlePetSleepChange);
-      window.removeEventListener('virtual-pet-selection-change', handlePetSelectionChange);
-      window.removeEventListener('storage', handleStorage);
-    };
-  }, [disabled, catCacheOwnerId]);
-
-  // ─── Dialog init (legacy Intro / Welcome Back) ──────────────────────────────
-  // When the Phase 1A personalized-dialogue flag is enabled, the effect above
-  // owns dialog selection instead — this entire legacy path is left untouched
-  // so behaviour with the flag disabled is unaffected.
-  useEffect(() => {
-    if (personalizedDialogueEnabled) return;
-
-    const initDialog = async () => {
-      let userId: string | null = null;
-      let userMeta: Record<string, any> | null = null;
-      let userEmail: string | null = null;
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        userId = session?.user?.id || null;
-        userMeta = session?.user?.user_metadata || null;
-        userEmail = session?.user?.email || null;
-        setCurrentUserId(userId);
-      } catch (err) {
-        console.error("Error fetching session in initDialog:", err);
-      }
-
-      // If user is logged in (disabled = false) and has seen the intro, fetch
-      // the configurable Welcome Back message and auto-close after a few seconds.
-      if (!disabled && userId && localStorage.getItem(`intro_shown_${userId}`) === 'true') {
-        try {
-          const { data: config, error } = await supabase
-            .from('aiboard_simulator_configs')
-            .select('welcome_back_text, welcome_back_auto_close_ms')
-            .eq('module_name', 'Snabbb.io')
-            .limit(1)
-            .maybeSingle();
-
-          let welcomeText = !error ? config?.welcome_back_text : null;
-          const autoCloseMs = (!error && config?.welcome_back_auto_close_ms) || 6000;
-
-          if (welcomeText && /\[name\]/i.test(welcomeText)) {
-            let displayName: string | null = null;
-            try {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('name, full_name')
-                .eq('user_id', userId)
-                .maybeSingle();
-              displayName = profile?.name || profile?.full_name || null;
-            } catch (err) {
-              console.error("Error fetching profile for welcome back name:", err);
-            }
-            if (!displayName) displayName = userMeta?.name || null;
-            if (!displayName && userEmail) displayName = userEmail.split('@')[0];
-            // Never show a raw email address, even if it came from profiles.name/full_name.
-            if (displayName && displayName.includes('@')) displayName = displayName.split('@')[0];
-
-            welcomeText = displayName
-              ? welcomeText.replace(/\[name\]/gi, displayName)
-              : welcomeText
-                  .replace(/,\s*\[name\]/gi, '')
-                  .replace(/\[name\],\s*/gi, '')
-                  .replace(/\[name\]/gi, '')
-                  .replace(/\s{2,}/g, ' ')
-                  .trim();
-          }
-
-          if (welcomeText) {
-            setDialogSteps([welcomeText]);
-            setDialogStep(0);
-            currentDialogType.current = 'welcomeBack';
-            welcomeBackAutoCloseMsRef.current = autoCloseMs;
-            tryActivateDialog();
-          }
-        } catch (err) {
-          console.error("Error fetching welcome back message:", err);
-        }
-        return;
-      }
-
-      try {
-        const { data: configs, error: configsError } = await supabase
-          .from('aiboard_simulator_configs')
-          .select('id')
-          .eq('module_name', 'Snabbb.io')
-          .limit(1);
-
-        if (configsError) {
-          // Infrastructure/query failure — do not mark the intro stage
-          // complete; preserve the ability to retry on the next login/reload.
-          return;
-        }
-
-        if (!configs || configs.length === 0) {
-          // Query succeeded and confirmed no simulator config exists at all
-          // for this module — there is no Intro to ever show. Mark the stage
-          // complete so future post-login visits proceed to Welcome Back
-          // instead of retrying the missing Intro forever.
-          if (!disabled) markIntroCompleted(userId);
-          return;
-        }
-
-        const configId = configs[0].id;
-
-        const { data, error } = await supabase
-          .from('aiboard_simulator_dialog_steps')
-          .select('step_text, sort_order')
-          .eq('config_id', configId)
-          .eq('is_post_login', !disabled)
-          .order('sort_order', { ascending: true });
-
-        if (error) {
-          // Infrastructure/query failure — do not mark the intro stage complete.
-          return;
-        }
-
-        const steps = (data || [])
-          .map(d => d.step_text)
-          .filter((text): text is string => typeof text === 'string' && text.trim().length > 0);
-
-        if (steps.length > 0) {
-          setDialogSteps(steps);
-          setDialogStep(0);
-          currentDialogType.current = 'intro';
-          tryActivateDialog();
-          return;
-        }
-
-        // Query succeeded but returned no usable intro content (zero rows, or
-        // every row was empty/whitespace-only) — there is nothing to show.
-        // Mark the stage complete so this doesn't retry forever on every login.
-        if (!disabled) markIntroCompleted(userId);
-      } catch (err) {
-        console.error("Error fetching dialog steps:", err);
-      }
-    };
-
-    initDialog();
-  }, [disabled, personalizedDialogueEnabled]);
-
-  // ─── Meow message loop ────────────────────────────────────────────────────
-  // FIX: dep array is only [disabled] — petStates and isDialogActive are read
-  // via refs so changing them does NOT restart the loop (and cause instant meow).
-  useEffect(() => {
-    if (disabled) return;
-
-    let isSubscribed = true;
-
-    // FIX: helper that clears BOTH timers
-    const clearAllTimers = () => {
-      if (meowTimerRef.current)      { clearTimeout(meowTimerRef.current);      meowTimerRef.current = null; }
-      if (meowInnerTimerRef.current) { clearTimeout(meowInnerTimerRef.current); meowInnerTimerRef.current = null; }
-    };
-
-    const runMeowLoop = async () => {
-      try {
-        const { data: configs } = await supabase.from('aiboard_meow_configs').select('id').limit(1);
-        if (!configs || configs.length === 0) return;
-        const configId = configs[0].id;
-
-        // Read current states from ref — no stale closure
-        const primaryState = petStatesRef.current[0] || 'Normal';
-
-        const { data: timingData, error: timingError } = await supabase
-          .from('aiboard_meow_timing')
-          .select('message_duration_minutes, message_interval_minutes, disabled')
-          .eq('config_id', configId)
-          .eq('state', primaryState)
-          .order('updated_at', { ascending: false })
-          .limit(1);
-
-        let activeTiming = timingData?.[0];
-
-        if (timingError || !activeTiming || activeTiming.disabled) {
-          if (primaryState !== 'Normal') {
-            console.log(`[CatMascot] No active timing for "${primaryState}", falling back to "Normal"`);
-          }
-          const { data: normalTiming, error: nError } = await supabase
-            .from('aiboard_meow_timing')
-            .select('message_duration_minutes, message_interval_minutes, disabled')
-            .eq('config_id', configId)
-            .eq('state', 'Normal')
-            .order('updated_at', { ascending: false })
-            .limit(1);
-
-          if (normalTiming?.[0] && !normalTiming[0].disabled) {
-            activeTiming = normalTiming[0];
-          } else {
-            console.warn("[CatMascot] No active or Normal timing found. Meow loop aborted.", nError);
-            return;
-          }
-        }
-
-        // Fetch messages for ALL active states via ref
-        const { data: msgsData, error: msgsError } = await supabase
-          .from('aiboard_meow_messages')
-          .select('message, state, sort_order')
-          .eq('config_id', configId)
-          .in('state', petStatesRef.current)
-          .eq('is_audio', false)
-          .order('state', { ascending: true })
-          .order('sort_order', { ascending: true });
-
-        if (msgsError) {
-          console.error(`[CatMascot] Error fetching messages:`, msgsError);
-          return;
-        }
-
-        if (!msgsData || msgsData.length === 0) {
-          console.log(`[CatMascot] No messages found for states [${petStatesRef.current.join(', ')}]`);
-          return;
-        }
-
-        const intervalMs = (activeTiming.message_interval_minutes || 0.25) * 60 * 1000;
-        const durationMs  = (activeTiming.message_duration_minutes  || 0.1)  * 60 * 1000;
-
-        console.log(`[CatMascot] Loop started: States=[${petStatesRef.current.join(', ')}], Msgs=${msgsData.length}, Interval=${intervalMs/1000}s, Duration=${durationMs/1000}s`);
-
-        let currentIndex = 0;
-
-        const loop = () => {
-          // FIX: outer timer stored in meowTimerRef
-          meowTimerRef.current = setTimeout(() => {
-            if (!isSubscribed) return;
-
-            // FIX: skip showing message while dialog is open — read via ref
-            if (isDialogActiveMeowRef.current) {
-              loop(); // wait another interval, don't show message
-              return;
-            }
-
-            const seqMsg = msgsData[currentIndex].message;
-            setMeowMsg(seqMsg);
-            currentIndex = (currentIndex + 1) % msgsData.length;
-
-            // FIX: inner timer stored in meowInnerTimerRef so cleanup can cancel it
-            meowInnerTimerRef.current = setTimeout(() => {
-              if (!isSubscribed) return;
-              setMeowMsg(null);
-              loop();
-            }, durationMs);
-          }, intervalMs);
-        };
-
-        loop();
-      } catch (err) {
-        console.error("Error setting up meow loop:", err);
-      }
-    };
-
-    runMeowLoop();
-
-    return () => {
-      isSubscribed = false;
-      clearAllTimers(); // FIX: clears both outer and inner timers
-    };
-  }, [disabled]); // FIX: only [disabled] — petStates/isDialogActive read via refs
-
-  // ─── Audio loop ───────────────────────────────────────────────────────────
-  const audioLoopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (disabled) return;
-
-    let isSubscribed = true;
-
-    const runAudioLoop = async () => {
-      try {
-        const { data: configs } = await supabase.from('aiboard_meow_configs').select('id').limit(1);
-        if (!configs || configs.length === 0) return;
-        const configId = configs[0].id;
-
-        const { data: timingData } = await supabase
-          .from('aiboard_meow_timing')
-          .select('message_interval_minutes, disabled')
-          .eq('config_id', configId)
-          .eq('state', 'Audio')
-          .order('updated_at', { ascending: false })
-          .limit(1);
-
-        const audioTiming = timingData?.[0];
-        if (!audioTiming || audioTiming.disabled) return;
-
-        const { data: msgsData } = await supabase
-          .from('aiboard_meow_messages')
-          .select('message')
-          .eq('config_id', configId)
-          .eq('state', 'Audio')
-          .eq('is_audio', true);
-
-        if (!msgsData || msgsData.length === 0) return;
-
-        const intervalMs = (audioTiming.message_interval_minutes || 0.1) * 60 * 1000;
-
-        const loop = () => {
-          audioLoopTimerRef.current = setTimeout(() => {
-            if (!isSubscribed) return;
-            const randomMsg = msgsData[Math.floor(Math.random() * msgsData.length)].message;
-            if (randomMsg) {
-              const audioObj = new Audio(randomMsg);
-              audioObj.play().catch(e => console.error("Audio playback error:", e));
-            }
-            loop();
-          }, intervalMs);
-        };
-
-        loop();
-      } catch (err) {
-        console.error("Error setting up audio loop:", err);
-      }
-    };
-
-    runAudioLoop();
-
-    return () => {
-      isSubscribed = false;
-      if (audioLoopTimerRef.current) clearTimeout(audioLoopTimerRef.current);
-    };
-  }, [disabled]);
-
-  // ─── PHASE 9D: local dialogue state → shared presentation contract ────────
-  // Pure derivation from the SAME local state the pre-9D JSX rendered from —
-  // no new state, no new persistence, no re-arbitration. Every currently
-  // active App Gallery dialogue (legacy multi-step Intro, legacy single-step
-  // Welcome Back, and every Phase 1A resolver candidate — including the
-  // resolver-selected multi-step Legacy Intro) already renders through
-  // exactly ONE of two visual shapes: `dialogSteps.length === 1` (message +
-  // optional CTA + Close only — `personalizedActiveCandidate.action` is only
-  // ever populated for real Phase 1A candidates, never legacy Intro/Welcome
-  // Back, so the CTA button already only appears where it did before) or
-  // `dialogSteps.length > 1` (multi-step Back/Next/Close, and no CTA is ever
-  // shown for these). Mapping isDialogActive+dialogSteps.length onto
-  // `kind: 'personalized'` vs `kind: 'sequence'` exactly reproduces this
-  // existing behavior with zero visual/semantic loss.
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    audioRef.current = new Audio('/images/cat-meow.mp3');
-  }, []);
-
-  const dialoguePresentation: CatDialoguePresentation = useMemo(() => {
-    if (!isDialogActive || dialogSteps.length === 0) {
-      return { kind: 'none' };
-    }
-    if (dialogSteps.length === 1) {
-      return {
-        kind: 'personalized',
-        message: dialogSteps[0],
-        action: personalizedActiveCandidate?.action
-          ? {
-              label: personalizedActiveCandidate.action.label,
-              onClick: () => {
-                // Exact pre-9D CTA order: run the frozen candidate's action
-                // first, then close/persist dismissal — never a live re-read
-                // of the candidate.
-                runPersonalizedAction(personalizedActiveCandidate);
-                closeDialog();
-              },
-            }
-          : undefined,
-        onClose: () => closeDialog(),
-      };
-    }
-    return {
-      kind: 'sequence',
-      steps: dialogSteps,
-      stepIndex: dialogStep,
-      onBack: () => setDialogStep((p) => Math.max(0, p - 1)),
-      onNext: () => setDialogStep((p) => Math.min(dialogSteps.length - 1, p + 1)),
-      onClose: () => closeDialog(),
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDialogActive, dialogSteps, dialogStep, personalizedActiveCandidate]);
-
-  // ─── Cat click handler ────────────────────────────────────────────────────
-  // SharedCatMascot owns the generic click-meow visual animation internally
-  // (gated on its own `isSleeping` prop) and calls this with no arguments
-  // only when the click target isn't ignored and `!disabled`. Host remains
-  // owner of: dismissing whatever dialogue is active, playing the actual
-  // click sound (unconditionally — the pre-9D source never gated audio on
-  // isPetSleeping, only the now-shared-owned visual animation had no such
-  // gate either, so this preserves that exact ungated behavior), and the
-  // parent's Cat → Virtual Pet callback.
-  const handleCatClick = () => {
-    if (!disabled) closeDialog();
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
-    }
-    if (!disabled && onCatClick) onCatClick();
-  };
-
-  // SharedCatMascot's own internal entry-walk effect captures this prop
-  // once, at mount, and fires it exactly once when the Cat reaches its
-  // final resting position (see its `onEntryWalkComplete` doc). This is the
-  // sole setter for `isEntryWalkComplete` — flipping it here and
-  // immediately re-running tryActivateDialog() is what lets a candidate
-  // already selected/adopted mid-walk (see the adoption effects above,
-  // which call tryActivateDialog() as soon as they resolve) activate the
-  // instant arrival happens, rather than waiting on some unrelated future
-  // render/effect to notice the ref changed.
-  const handleEntryWalkComplete = () => {
-    isEntryWalkComplete.current = true;
-    tryActivateDialog();
-  };
-
-  return (
-    <SharedCatMascot
-      disabled={disabled}
-      petId={selectedPetId}
-      isSleeping={isPetSleeping}
-      dialogue={dialoguePresentation}
-      meowMessage={meowMsg}
-      onCatClick={handleCatClick}
-      spriteSheetUrls={CAT_SPRITE_SHEET_URLS}
-      onEntryWalkComplete={handleEntryWalkComplete}
-    />
-  );
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "import { useEffect, useMemo, useRef, useState } from 'react';"
+// legacy-line: "import { SharedCatMascot } from '@mrburdeveloperteam/pet-function/cat';"
+// legacy-line: "import type { CatDialoguePresentation } from '@mrburdeveloperteam/pet-function/cat';"
+// legacy-line: "import { supabase } from '../services/supabaseClient';"
+// legacy-line: "import { normalizePetId } from '../VirtualPet/petOptions';"
+// legacy-line: "import { isPersonalizedPetDialogueEnabled } from '../features/petDialogue/dialogueFlag';"
+// legacy-line: "import { usePersonalizedPetDialogue } from '../features/petDialogue/usePersonalizedPetDialogue';"
+// legacy-line: "import { markDialogueDismissed, buildDialogueDismissalKey } from '../features/petDialogue/sessionDedupe';"
+// legacy-line: "import { DIALOGUE_ID, type DialogueCandidate, type ProfileCompletionStatus } from '../features/petDialogue/types';"
+// legacy-line: "import { CAT_SPRITE_SHEET_URLS } from '../aiExperience/molarExperienceAssets';"
+// legacy-line: ""
+// legacy-line: "// PHASE 9D (Cat Presentation migration): the local App Gallery dialogue"
+// legacy-line: "// resolver/arbitration below is UNCHANGED — every effect, ref, and storage"
+// legacy-line: "// call in this file is a byte-identical carry-over from the pre-9D source."
+// legacy-line: "// Only the generic sprite/movement/bubble PRESENTATION is now delegated to"
+// legacy-line: "// `SharedCatMascot` (confirmed byte-identical entry-walk/click-to-move"
+// legacy-line: "// formulas via `dist/cat.js`). The local dialogue state"
+// legacy-line: "// (dialogSteps/dialogStep/isDialogActive/personalizedActiveCandidate) is"
+// legacy-line: "// transformed into the published `CatDialoguePresentation` shape purely for"
+// legacy-line: "// rendering — see `dialoguePresentation` below — never fed into"
+// legacy-line: "// `useSharedCatDialogueRuntime`, which this app does NOT adopt (see the"
+// legacy-line: "// Phase 9A audit's documented Dialogue semantic gap: sessionStorage"
+// legacy-line: "// shown-at-display/F5 behavior, logout dismissal cleanup, and the flat"
+// legacy-line: "// P0/P1/PROFILE/P2/LEGACY_INTRO/FALLBACK priority model — where urgent"
+// legacy-line: "// candidates can preempt Intro — are all incompatible with the shared"
+// legacy-line: "// runtime's hard-gated 3-slot design)."
+// legacy-line: "const PET_SLEEPING_KEY = 'pet_is_sleeping';"
+// legacy-line: "const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';"
+// legacy-line: "const DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS = 6000;"
+// legacy-line: ""
+// legacy-line: "// PHASE APPGALLERY-HOST-1: this Cat presentation cache (pet mood/sleep"
+// legacy-line: "// stats used for the ambient meow bubble/sleep icon) is host-owned and"
+// legacy-line: "// account-sensitive, so it must never bleed across accounts on a shared"
+// legacy-line: "// browser profile. Own namespace — `snabbb_cat:<userId>:<key>` —"
+// legacy-line: "// deliberately distinct from Shared's own `snabbb_pet:<userId>:<key>` (no"
+// legacy-line: "// shared contract for reusing that one). `userId` absent -> no-op/null:"
+// legacy-line: "// presentation optimization only, never a guest-mode persistent store."
+// legacy-line: "const CAT_CACHE_PREFIX = 'snabbb_cat';"
+// legacy-line: "const getCatStorageKey = (userId: string | null, key: string) => (userId ? `${CAT_CACHE_PREFIX}:${userId}:${key}` : null);"
+// legacy-line: "const readCatStorage = (userId: string | null, key: string): string | null => {"
+// legacy-line: "  const storageKey = getCatStorageKey(userId, key);"
+// legacy-line: "  if (!storageKey) return null;"
+// legacy-line: "  try { return localStorage.getItem(storageKey); } catch { return null; }"
+// legacy-line: "};"
+// legacy-line: "const writeCatStorage = (userId: string | null, key: string, value: string) => {"
+// legacy-line: "  const storageKey = getCatStorageKey(userId, key);"
+// legacy-line: "  if (!storageKey) return;"
+// legacy-line: "  try { localStorage.setItem(storageKey, value); } catch { /* ignore */ }"
+// legacy-line: "};"
+// legacy-line: ""
+// legacy-line: "interface CatMascotProps {"
+// legacy-line: "  onCatClick?: () => void;"
+// legacy-line: "  disabled?: boolean;"
+// legacy-line: "  isHidden?: boolean;"
+// legacy-line: "  /** Odoo-derived profile-completeness signal, resolved by the caller (see App.tsx). Only read when the personalized-dialogue feature flag is enabled. */"
+// legacy-line: "  profileCompletionStatus?: ProfileCompletionStatus;"
+// legacy-line: "  /**"
+// legacy-line: "   * The Supabase Auth user id App.tsx has confirmed (via"
+// legacy-line: "   * reconcileSupabaseIdentity) belongs to the same account as the currently"
+// legacy-line: "   * Odoo-verified user. Three states: `undefined` = reconciliation still in"
+// legacy-line: "   * progress / not yet attempted (stay neutral, don't guess); `null` ="
+// legacy-line: "   * confirmed guest, or a failed/mismatched reconciliation; a string = the"
+// legacy-line: "   * confirmed-matched Supabase user id. This is the sole authority"
+// legacy-line: "   * usePersonalizedPetDialogue uses for \"which identity, if any,"
+// legacy-line: "   * personalized providers may run against\" — CatMascot never independently"
+// legacy-line: "   * re-derives or double-guesses identity matching."
+// legacy-line: "   */"
+// legacy-line: "  personalizedMatchedUserId?: string | null;"
+// legacy-line: "  // (component-level default below narrows the \"not passed at all\" case to"
+// legacy-line: "  // `undefined`, i.e. treated the same as \"still reconciling\" — never"
+// legacy-line: "  // defaults to the stronger claim \"confirmed guest\".)"
+// legacy-line: "  /**"
+// legacy-line: "   * App Gallery's proven canonical Pet/Cat owner id — `personalizedMatchedUserId`"
+// legacy-line: "   * with its `undefined` (\"still reconciling\") state already collapsed to"
+// legacy-line: "   * `null` by the caller (see App.tsx's `petCatOwnerId`). Used ONLY for"
+// legacy-line: "   * this component's own account-scoped presentation cache (mood/sleep"
+// legacy-line: "   * stats); the personalized-dialogue system above continues to use the"
+// legacy-line: "   * raw `personalizedMatchedUserId` tri-state directly, unchanged."
+// legacy-line: "   */"
+// legacy-line: "  catCacheOwnerId?: string | null;"
+// legacy-line: "  /** Internal (pushState-based) navigation, used by the profile-reminder action button. Only used when the feature flag is enabled. */"
+// legacy-line: "  onNavigateInternal?: (path: string) => void;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export default function CatMascot({"
+// legacy-line: "  onCatClick,"
+// legacy-line: "  disabled = false,"
+// legacy-line: "  isHidden = false,"
+// legacy-line: "  profileCompletionStatus = 'unknown',"
+// legacy-line: "  personalizedMatchedUserId,"
+// legacy-line: "  catCacheOwnerId = null,"
+// legacy-line: "  onNavigateInternal,"
+// legacy-line: "}: CatMascotProps) {"
+// legacy-line: "  const [isPetSleeping, setIsPetSleeping] = useState(() => readCatStorage(catCacheOwnerId, PET_SLEEPING_KEY) === 'true');"
+// legacy-line: "  const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(readCatStorage(catCacheOwnerId, 'pet_name')));"
+// legacy-line: ""
+// legacy-line: "  const [dialogStep, setDialogStep] = useState(0);"
+// legacy-line: "  const [isDialogActive, setIsDialogActive] = useState(false);"
+// legacy-line: "  const [currentUserId, setCurrentUserId] = useState<string | null>(null);"
+// legacy-line: "  const autoCloseTimerRef = useRef<any>(null);"
+// legacy-line: "  // Driven exclusively by SharedCatMascot's `onEntryWalkComplete` callback"
+// legacy-line: "  // (see the prop wired below) — the true signal that the Cat's entry walk"
+// legacy-line: "  // has reached its final resting position, not a host-side approximation."
+// legacy-line: "  // Never set true anywhere else (see tryActivateDialog for the gate this"
+// legacy-line: "  // guards)."
+// legacy-line: "  const isEntryWalkComplete = useRef(false);"
+// legacy-line: "  // Which dialog type is currently prepared to show ('intro' | 'welcomeBack' |"
+// legacy-line: "  // 'personalized' | null), and which dialog types have already been dismissed"
+// legacy-line: "  // during this page lifecycle. Tracking dismissal per-type (rather than one"
+// legacy-line: "  // shared flag) means dismissing the Post-Login Intro no longer permanently"
+// legacy-line: "  // blocks the Welcome Back dialog, or vice versa. 'personalized' is the"
+// legacy-line: "  // Phase 1A resolver's own single slot (P0 / profile reminder / fallback);"
+// legacy-line: "  // when the resolver instead picks the legacy intro, it reuses 'intro' as-is."
+// legacy-line: "  const currentDialogType = useRef<'intro' | 'welcomeBack' | 'personalized' | null>(null);"
+// legacy-line: "  const dismissedDialogs = useRef<Set<'intro' | 'welcomeBack' | 'personalized'>>(new Set());"
+// legacy-line: "  // Holds the winning Phase 1A candidate while it's active, so tryActivateDialog"
+// legacy-line: "  // can decide whether to bypass the entry-walk gate / arm an auto-close timer,"
+// legacy-line: "  // and so the bubble can render its optional action button. Mirrored into"
+// legacy-line: "  // React state (personalizedActiveCandidate below) for render-time reads,"
+// legacy-line: "  // following the same ref+state split already used for isDialogActive."
+// legacy-line: "  const personalizedCandidateRef = useRef<DialogueCandidate | null>(null);"
+// legacy-line: "  const [personalizedActiveCandidate, setPersonalizedActiveCandidate] = useState<DialogueCandidate | null>(null);"
+// legacy-line: "  // Holds the auto-close duration for a prepared 'welcomeBack' dialog, set when"
+// legacy-line: "  // its content is fetched but only ever consumed by tryActivateDialog() at the"
+// legacy-line: "  // moment it actually shows — see the comment on tryActivateDialog for why."
+// legacy-line: "  const welcomeBackAutoCloseMsRef = useRef(DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS);"
+// legacy-line: "  // Mirrors isDialogActive synchronously (React state updates aren't immediate)."
+// legacy-line: "  // Without this, tryActivateDialog() can be called again while a dialog is"
+// legacy-line: "  // already showing (e.g. StrictMode's dev double-invoke of the fetch effect,"
+// legacy-line: "  // or the click-to-move handler firing again) and would re-arm the Welcome"
+// legacy-line: "  // Back timer from scratch every time, so it could keep getting reset before"
+// legacy-line: "  // ever completing a full countdown."
+// legacy-line: "  const isDialogActiveRef = useRef(false);"
+// legacy-line: ""
+// legacy-line: "  const clearWelcomeBackAutoCloseTimer = () => {"
+// legacy-line: "    if (autoCloseTimerRef.current !== null) {"
+// legacy-line: "      clearTimeout(autoCloseTimerRef.current);"
+// legacy-line: "      autoCloseTimerRef.current = null;"
+// legacy-line: "    }"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  // durationOverrideMs lets the Phase 1A fixed welcome fallback reuse this"
+// legacy-line: "  // same timer instead of duplicating it; the legacy 'welcomeBack' call site"
+// legacy-line: "  // below passes no override and keeps its existing DB-configured duration."
+// legacy-line: "  const startWelcomeBackAutoCloseTimer = (durationOverrideMs?: number) => {"
+// legacy-line: "    clearWelcomeBackAutoCloseTimer();"
+// legacy-line: ""
+// legacy-line: "    const configuredDuration = Number(durationOverrideMs ?? welcomeBackAutoCloseMsRef.current);"
+// legacy-line: "    const duration = Number.isFinite(configuredDuration) && configuredDuration > 0"
+// legacy-line: "      ? configuredDuration"
+// legacy-line: "      : DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS;"
+// legacy-line: ""
+// legacy-line: "    autoCloseTimerRef.current = setTimeout(() => {"
+// legacy-line: "      autoCloseTimerRef.current = null;"
+// legacy-line: "      closeDialog();"
+// legacy-line: "    }, duration);"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  // Marks the Post-Login Intro stage complete for a given user — either because"
+// legacy-line: "  // they actually dismissed a visible Intro, or because a successful query"
+// legacy-line: "  // confirmed there's no Intro configured/usable to show. Takes an explicit"
+// legacy-line: "  // userId (rather than reading currentUserId state) so it's safe to call from"
+// legacy-line: "  // inside initDialog() itself, where the just-fetched userId may not yet be"
+// legacy-line: "  // reflected in currentUserId (state updates aren't synchronous)."
+// legacy-line: "  const markIntroCompleted = (uid: string | null) => {"
+// legacy-line: "    if (!uid) return;"
+// legacy-line: "    localStorage.setItem(`intro_shown_${uid}`, 'true');"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  // persistDismissal defaults to true (Close button, CTA button, and the"
+// legacy-line: "  // auto-close timer all count as this tab actually finishing with the"
+// legacy-line: "  // dialogue, so they write the cross-tab localStorage dismissal). The one"
+// legacy-line: "  // caller that must NOT write again is the cross-tab `storage` event"
+// legacy-line: "  // listener below — the dismissal key is already present in shared"
+// legacy-line: "  // localStorage (that's what triggered the event), so re-writing it here"
+// legacy-line: "  // would be a pointless redundant write, not merely idempotent; passing"
+// legacy-line: "  // persistDismissal: false keeps that handler a pure local-UI suppression."
+// legacy-line: "  const closeDialog = (options?: { persistDismissal?: boolean }) => {"
+// legacy-line: "    const persistDismissal = options?.persistDismissal ?? true;"
+// legacy-line: "    const dialogType = currentDialogType.current;"
+// legacy-line: "    if (dialogType) {"
+// legacy-line: "      dismissedDialogs.current.add(dialogType);"
+// legacy-line: "    }"
+// legacy-line: "    if (persistDismissal && dialogType === 'personalized') {"
+// legacy-line: "      const candidate = personalizedCandidateRef.current;"
+// legacy-line: "      if (candidate && personalizedUserId) {"
+// legacy-line: "        markDialogueDismissed(personalizedUserId, candidate.dedupeKey);"
+// legacy-line: "      }"
+// legacy-line: "    }"
+// legacy-line: "    isDialogActiveRef.current = false;"
+// legacy-line: "    setIsDialogActive(false);"
+// legacy-line: "    clearWelcomeBackAutoCloseTimer();"
+// legacy-line: "    if (dialogType === 'intro' && !disabled && currentUserId) {"
+// legacy-line: "      markIntroCompleted(currentUserId);"
+// legacy-line: "    }"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  // Single source of truth for showing a prepared dialog: only activates once the"
+// legacy-line: "  // entry walk has finished AND a dialog type has been prepared AND that specific"
+// legacy-line: "  // type hasn't already been dismissed this page lifecycle. Idempotent via"
+// legacy-line: "  // isDialogActiveRef — once active, further calls (StrictMode's dev double-invoke"
+// legacy-line: "  // of the fetch effect, click-to-move, etc.) are no-ops instead of re-arming the"
+// legacy-line: "  // Welcome Back timer from scratch every time."
+// legacy-line: "  //"
+// legacy-line: "  // Entry-walk position/timing is owned entirely by SharedCatMascot (see the"
+// legacy-line: "  // Phase 9D migration note at the top of this file); `isEntryWalkComplete`"
+// legacy-line: "  // is driven exclusively by its `onEntryWalkComplete` callback (wired on the"
+// legacy-line: "  // <SharedCatMascot> element below), which is the true completion signal —"
+// legacy-line: "  // never a host-side timer/approximation. Calling this again once that"
+// legacy-line: "  // callback fires (see the callback itself) is what lets a candidate that"
+// legacy-line: "  // was already selected/adopted mid-walk still activate the instant the Cat"
+// legacy-line: "  // arrives, without duplicating any of the logic below."
+// legacy-line: "  const tryActivateDialog = () => {"
+// legacy-line: "    const dialogType = currentDialogType.current;"
+// legacy-line: "    if (!dialogType || dismissedDialogs.current.has(dialogType) || isDialogActiveRef.current) {"
+// legacy-line: "      return;"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    if (!isEntryWalkComplete.current) {"
+// legacy-line: "      return;"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    // Phase 1A candidates must never activate — and therefore must never be"
+// legacy-line: "    // marked \"handled\" in session dedupe (see markPersonalizedShown below) —"
+// legacy-line: "    // while the mascot wrapper is intentionally hidden (auth routes, or the"
+// legacy-line: "    // Virtual Pet modal — see App.tsx's `isHidden` prop). The legacy Intro /"
+// legacy-line: "    // Welcome Back path never gated on this, so this check is scoped to"
+// legacy-line: "    // 'personalized' only to leave that behaviour unchanged when the feature"
+// legacy-line: "    // flag is disabled. See the effect below that retries once unhidden."
+// legacy-line: "    if (dialogType === 'personalized' && isHiddenRef.current) {"
+// legacy-line: "      return;"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    isDialogActiveRef.current = true;"
+// legacy-line: "    setIsDialogActive(true);"
+// legacy-line: ""
+// legacy-line: "    if (dialogType === 'welcomeBack') {"
+// legacy-line: "      startWelcomeBackAutoCloseTimer();"
+// legacy-line: "    } else if (dialogType === 'personalized') {"
+// legacy-line: "      const candidate = personalizedCandidateRef.current;"
+// legacy-line: "      if (candidate) {"
+// legacy-line: "        markPersonalizedShown(candidate);"
+// legacy-line: "        if (candidate.autoCloseMs) startWelcomeBackAutoCloseTimer(candidate.autoCloseMs);"
+// legacy-line: "      }"
+// legacy-line: "    }"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  const [dialogSteps, setDialogSteps] = useState<string[]>([]);"
+// legacy-line: ""
+// legacy-line: "  // ─── Phase 1A personalized dialogue resolver (feature-flagged) ─────────────"
+// legacy-line: "  // Computed once per render; the env var is effectively constant for the"
+// legacy-line: "  // lifetime of a build, so this behaves like a compile-time switch between"
+// legacy-line: "  // the legacy code path below and the new resolver-driven one."
+// legacy-line: "  const personalizedDialogueEnabled = isPersonalizedPetDialogueEnabled();"
+// legacy-line: "  const {"
+// legacy-line: "    lifecycle: personalizedLifecycle,"
+// legacy-line: "    selection: personalizedSelection,"
+// legacy-line: "    userId: personalizedUserId,"
+// legacy-line: "    markShown: markPersonalizedShown,"
+// legacy-line: "    runAction: runPersonalizedAction,"
+// legacy-line: "  } = usePersonalizedPetDialogue({"
+// legacy-line: "    active: personalizedDialogueEnabled && !disabled,"
+// legacy-line: "    matchedUserId: personalizedMatchedUserId,"
+// legacy-line: "    profileStatus: profileCompletionStatus,"
+// legacy-line: "    introAlreadyCompleted: (uid: string) => {"
+// legacy-line: "      try {"
+// legacy-line: "        return localStorage.getItem(`intro_shown_${uid}`) === 'true';"
+// legacy-line: "      } catch {"
+// legacy-line: "        return false;"
+// legacy-line: "      }"
+// legacy-line: "    },"
+// legacy-line: "    onNavigateInternal,"
+// legacy-line: "  });"
+// legacy-line: ""
+// legacy-line: "  // usePersonalizedPetDialogue reactively tracks the authenticated identity"
+// legacy-line: "  // and restarts its own evaluation the instant it changes — including a"
+// legacy-line: "  // cross-tab account switch that doesn't otherwise flip `disabled` (which"
+// legacy-line: "  // only reflects logged-in/guest, not *which* user). But the adoption"
+// legacy-line: "  // effect below deliberately \"locks\" after its first adoption"
+// legacy-line: "  // (currentDialogType.current already set) so a later same-user resolver"
+// legacy-line: "  // re-run can never replace an already-shown dialogue. Without this reset,"
+// legacy-line: "  // that same lock would also — wrongly — keep a previous user's"
+// legacy-line: "  // already-adopted/pending dialogue on screen (or pending while hidden)"
+// legacy-line: "  // even after the hook has moved on to a fresh, current-user-only"
+// legacy-line: "  // evaluation for someone else. This effect exists solely to detect that"
+// legacy-line: "  // one case and clear it first."
+// legacy-line: "  const lastPersonalizedUserIdRef = useRef<string | null>(null);"
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (!personalizedDialogueEnabled || disabled) return;"
+// legacy-line: "    if (!personalizedUserId) return;"
+// legacy-line: ""
+// legacy-line: "    const previousUserId = lastPersonalizedUserIdRef.current;"
+// legacy-line: "    lastPersonalizedUserIdRef.current = personalizedUserId;"
+// legacy-line: ""
+// legacy-line: "    if (!previousUserId || previousUserId === personalizedUserId) return;"
+// legacy-line: ""
+// legacy-line: "    // Identity changed under this mount. Only ever tears down state this"
+// legacy-line: "    // same resolver adopted ('personalized' or resolver-driven 'intro') —"
+// legacy-line: "    // never the unrelated legacy 'welcomeBack' path."
+// legacy-line: "    if (currentDialogType.current === 'personalized' || currentDialogType.current === 'intro') {"
+// legacy-line: "      currentDialogType.current = null;"
+// legacy-line: "      personalizedCandidateRef.current = null;"
+// legacy-line: "      setPersonalizedActiveCandidate(null);"
+// legacy-line: "      isDialogActiveRef.current = false;"
+// legacy-line: "      setIsDialogActive(false);"
+// legacy-line: "      clearWelcomeBackAutoCloseTimer();"
+// legacy-line: "      setDialogSteps([]);"
+// legacy-line: "      setDialogStep(0);"
+// legacy-line: "      // Deliberately not added to dismissedDialogs: the outgoing user's"
+// legacy-line: "      // dismissal state must never suppress the new user's fresh"
+// legacy-line: "      // evaluation once it resolves."
+// legacy-line: "    }"
+// legacy-line: "  }, [personalizedUserId, personalizedDialogueEnabled, disabled]);"
+// legacy-line: ""
+// legacy-line: "  // Cross-tab dismissal sync: if the SAME dialogue (same userId + dedupeKey)"
+// legacy-line: "  // is dismissed (Close or CTA) in another tab, that tab's write to"
+// legacy-line: "  // localStorage fires the native `storage` event here — but only in THIS"
+// legacy-line: "  // tab, never in the tab that performed the write, so reusing closeDialog()"
+// legacy-line: "  // (which itself re-writes the identical key/value) cannot loop. Only acts"
+// legacy-line: "  // on the 'personalized' dialog type and only while it's actually visible"
+// legacy-line: "  // for the matching candidate; unrelated storage writes (theme, other"
+// legacy-line: "  // dedupeKeys, other users) are ignored."
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (!personalizedDialogueEnabled) return;"
+// legacy-line: ""
+// legacy-line: "    const handleStorage = (event: StorageEvent) => {"
+// legacy-line: "      if (!event.key || event.newValue === null) return;"
+// legacy-line: "      if (currentDialogType.current !== 'personalized') return;"
+// legacy-line: "      if (!isDialogActiveRef.current) return;"
+// legacy-line: ""
+// legacy-line: "      const candidate = personalizedCandidateRef.current;"
+// legacy-line: "      if (!candidate || !personalizedUserId) return;"
+// legacy-line: ""
+// legacy-line: "      const expectedKey = buildDialogueDismissalKey(personalizedUserId, candidate.dedupeKey);"
+// legacy-line: "      if (event.key === expectedKey) {"
+// legacy-line: "        // Local UI suppression only — the dismissal key is already in"
+// legacy-line: "        // shared localStorage (that's what fired this event), so this must"
+// legacy-line: "        // never write it again."
+// legacy-line: "        closeDialog({ persistDismissal: false });"
+// legacy-line: "      }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    window.addEventListener('storage', handleStorage);"
+// legacy-line: "    return () => window.removeEventListener('storage', handleStorage);"
+// legacy-line: "  }, [personalizedDialogueEnabled, personalizedUserId]);"
+// legacy-line: ""
+// legacy-line: "  // Adopts the resolver's selection into the same dialogSteps/currentDialogType"
+// legacy-line: "  // machinery the legacy Intro/Welcome Back paths already use, so rendering,"
+// legacy-line: "  // dismissal, and the entry-walk gate stay a single code path. Locks after"
+// legacy-line: "  // the first adoption (currentDialogType.current already set) so a later"
+// legacy-line: "  // resolver re-run — e.g. profileStatus settling from 'loading' — can never"
+// legacy-line: "  // replace an already-shown dialogue for this mount."
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (!personalizedDialogueEnabled || disabled) return;"
+// legacy-line: "    if (personalizedLifecycle !== 'ready' && personalizedLifecycle !== 'failed') return;"
+// legacy-line: "    if (!personalizedSelection) return;"
+// legacy-line: "    if (currentDialogType.current) return;"
+// legacy-line: ""
+// legacy-line: "    if (personalizedUserId) setCurrentUserId(personalizedUserId);"
+// legacy-line: ""
+// legacy-line: "    const { candidate, introSteps } = personalizedSelection;"
+// legacy-line: "    personalizedCandidateRef.current = candidate;"
+// legacy-line: "    setPersonalizedActiveCandidate(candidate);"
+// legacy-line: ""
+// legacy-line: "    if (candidate.dialogueId === DIALOGUE_ID.LEGACY_POST_LOGIN_INTRO && introSteps.length > 0) {"
+// legacy-line: "      // Reuse the existing multi-step Intro rendering/dismissal exactly as-is."
+// legacy-line: "      setDialogSteps(introSteps);"
+// legacy-line: "      setDialogStep(0);"
+// legacy-line: "      currentDialogType.current = 'intro';"
+// legacy-line: "    } else {"
+// legacy-line: "      setDialogSteps([candidate.message]);"
+// legacy-line: "      setDialogStep(0);"
+// legacy-line: "      currentDialogType.current = 'personalized';"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    tryActivateDialog();"
+// legacy-line: "  }, [personalizedDialogueEnabled, disabled, personalizedLifecycle, personalizedSelection, personalizedUserId]);"
+// legacy-line: ""
+// legacy-line: "  // A personalized candidate may have been ready while the mascot wrapper was"
+// legacy-line: "  // hidden (isHiddenRef gate in tryActivateDialog above) — retry activation"
+// legacy-line: "  // once it's visible again. Scoped to the flag being enabled so this is a"
+// legacy-line: "  // guaranteed no-op, and therefore behaviour-preserving, when it's disabled."
+// legacy-line: "  //"
+// legacy-line: "  // This effect is declared before the isHiddenRef sync effect below, so on"
+// legacy-line: "  // the same render where `isHidden` flips to false, this one would"
+// legacy-line: "  // otherwise run first and call tryActivateDialog() while isHiddenRef.current"
+// legacy-line: "  // is still stale (true) — silently defeating the retry. Updating the ref"
+// legacy-line: "  // synchronously here, right before the call, removes the dependency on"
+// legacy-line: "  // effect declaration order."
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (!personalizedDialogueEnabled || isHidden) return;"
+// legacy-line: "    isHiddenRef.current = isHidden;"
+// legacy-line: "    tryActivateDialog();"
+// legacy-line: "  }, [personalizedDialogueEnabled, isHidden]);"
+// legacy-line: ""
+// legacy-line: "  const [meowMsg, setMeowMsg] = useState<string | null>(null);"
+// legacy-line: "  const [petStates, setPetStates] = useState(['Normal']);"
+// legacy-line: ""
+// legacy-line: "  // ─── Refs used inside loops to avoid stale closures / dep-array restarts ───"
+// legacy-line: "  const meowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);"
+// legacy-line: "  const meowInnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // FIX: track inner timer too"
+// legacy-line: "  const isHiddenRef = useRef(isHidden);"
+// legacy-line: "  // Named distinctly from the manually-managed `isDialogActiveRef` lock above"
+// legacy-line: "  // (pre-existing duplicate-declaration bug fixed while wiring Phase 1A —"
+// legacy-line: "  // see implementation report): this one just mirrors `isDialogActive`"
+// legacy-line: "  // state for the meow loop below so it doesn't need to restart on change."
+// legacy-line: "  const isDialogActiveMeowRef = useRef(isDialogActive); // FIX: ref so loop doesn't restart on dialog change"
+// legacy-line: "  const petStatesRef = useRef(['Normal']);           // FIX: ref so loop doesn't restart on state change"
+// legacy-line: ""
+// legacy-line: "  useEffect(() => { isHiddenRef.current = isHidden; }, [isHidden]);"
+// legacy-line: "  useEffect(() => { isDialogActiveMeowRef.current = isDialogActive; }, [isDialogActive]);"
+// legacy-line: ""
+// legacy-line: "  // PHASE 9D: replicates the old local `handleGlobalClick`'s"
+// legacy-line: "  // `if (isHiddenRef.current) return;` click-to-move suppression, using"
+// legacy-line: "  // `SharedCatMascot`'s own documented `document.body` convention (confirmed"
+// legacy-line: "  // via `dist/cat.js`: its internal click handler already checks"
+// legacy-line: "  // `document.body.classList.contains('pet-assistant-hidden')` before"
+// legacy-line: "  // moving) — no second click listener is introduced."
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (isHidden) {"
+// legacy-line: "      document.body.classList.add('pet-assistant-hidden');"
+// legacy-line: "    } else {"
+// legacy-line: "      document.body.classList.remove('pet-assistant-hidden');"
+// legacy-line: "    }"
+// legacy-line: "    return () => { document.body.classList.remove('pet-assistant-hidden'); };"
+// legacy-line: "  }, [isHidden]);"
+// legacy-line: ""
+// legacy-line: "  // Clear message bubble immediately when pet state changes"
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    setMeowMsg(null);"
+// legacy-line: "    petStatesRef.current = petStates; // keep ref in sync"
+// legacy-line: "  }, [petStates]);"
+// legacy-line: ""
+// legacy-line: "  // ─── Pet stats polling ────────────────────────────────────────────────────"
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (disabled) return;"
+// legacy-line: ""
+// legacy-line: "    const computeStates = (stats, prevStates) => {"
+// legacy-line: "      const HUNGRY_ENTER = 30, HUNGRY_EXIT = 35;"
+// legacy-line: "      const DIRTY_ENTER = 30,  DIRTY_EXIT = 35;"
+// legacy-line: "      const ENERGY_ENTER = 30, ENERGY_EXIT = 35;"
+// legacy-line: "      const HAPPY_ENTER = 40,  HAPPY_EXIT = 45;"
+// legacy-line: ""
+// legacy-line: "      const active = [];"
+// legacy-line: "      if (stats.hunger   < HUNGRY_ENTER || (prevStates.includes('Hungry')     && stats.hunger   < HUNGRY_EXIT)) active.push('Hungry');"
+// legacy-line: "      if (stats.hygiene  < DIRTY_ENTER  || (prevStates.includes('Dirty')      && stats.hygiene  < DIRTY_EXIT))  active.push('Dirty');"
+// legacy-line: "      if (stats.energy   < ENERGY_ENTER || (prevStates.includes('Low Energy') && stats.energy   < ENERGY_EXIT)) active.push('Low Energy');"
+// legacy-line: "      if (stats.happiness< HAPPY_ENTER  || (prevStates.includes('Unhappy')    && stats.happiness< HAPPY_EXIT))  active.push('Unhappy');"
+// legacy-line: ""
+// legacy-line: "      if (active.length === 0) active.push('Normal');"
+// legacy-line: "      return active;"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    const updateStateFromStats = (stats, updatedAt) => {"
+// legacy-line: "      if (!stats) return;"
+// legacy-line: ""
+// legacy-line: "      let finalStats = { ...stats };"
+// legacy-line: ""
+// legacy-line: "      if (updatedAt) {"
+// legacy-line: "        const elapsedSecs = Math.max(0, (Date.now() - new Date(updatedAt).getTime()) / 1000);"
+// legacy-line: "        if (elapsedSecs > 0) {"
+// legacy-line: "          finalStats.hunger    = Math.max(0, (stats.hunger    || 0) - 0.01  * elapsedSecs);"
+// legacy-line: "          finalStats.energy    = Math.max(0, (stats.energy    || 0) - 0.005 * elapsedSecs);"
+// legacy-line: "          finalStats.hygiene   = Math.max(0, (stats.hygiene   || 0) - 0.004 * elapsedSecs);"
+// legacy-line: "          finalStats.happiness = Math.max(0, (stats.happiness || 0) - 0.006 * elapsedSecs);"
+// legacy-line: "        }"
+// legacy-line: "      }"
+// legacy-line: ""
+// legacy-line: "      const newStates = computeStates(finalStats, petStatesRef.current);"
+// legacy-line: "      const isDifferent ="
+// legacy-line: "        newStates.length !== petStatesRef.current.length ||"
+// legacy-line: "        !newStates.every((v, i) => v === petStatesRef.current[i]);"
+// legacy-line: ""
+// legacy-line: "      if (isDifferent) {"
+// legacy-line: "        console.log('[CatMascot] States: ' + petStatesRef.current.join(', ') + ' -> ' + newStates.join(', '));"
+// legacy-line: "        petStatesRef.current = newStates;"
+// legacy-line: "        setPetStates(newStates);"
+// legacy-line: "      }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    // Initial check from localStorage (5-min freshness)"
+// legacy-line: "    const saved      = readCatStorage(catCacheOwnerId, 'pet_stats');"
+// legacy-line: "    const lastSavedAt = readCatStorage(catCacheOwnerId, 'pet_last_saved_at');"
+// legacy-line: "    const isFresh    = lastSavedAt && (Date.now() - new Date(lastSavedAt).getTime() < 300000);"
+// legacy-line: "    if (saved && isFresh) {"
+// legacy-line: "      try { updateStateFromStats(JSON.parse(saved), lastSavedAt); } catch (e) { /* ignore */ }"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    const readLocalSleepState = () => {"
+// legacy-line: "      const savedSleeping = readCatStorage(catCacheOwnerId, PET_SLEEPING_KEY);"
+// legacy-line: "      if (savedSleeping !== null) {"
+// legacy-line: "        setIsPetSleeping(savedSleeping === 'true');"
+// legacy-line: "      }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    readLocalSleepState();"
+// legacy-line: "    setSelectedPetId(normalizePetId(readCatStorage(catCacheOwnerId, 'pet_name')));"
+// legacy-line: ""
+// legacy-line: "    const handlePetSleepChange = (event) => {"
+// legacy-line: "      setIsPetSleeping(!!event.detail);"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    const handlePetSelectionChange = (event) => {"
+// legacy-line: "      setSelectedPetId(normalizePetId(event.detail));"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    const handleStorage = (event) => {"
+// legacy-line: "      // Cross-tab sync for THIS owner only — compares against this owner's"
+// legacy-line: "      // own scoped keys, not the bare legacy names, so a stray legacy"
+// legacy-line: "      // write (or another account's tab) can never trigger it."
+// legacy-line: "      if (event.key === getCatStorageKey(catCacheOwnerId, PET_SLEEPING_KEY)) {"
+// legacy-line: "        setIsPetSleeping(event.newValue === 'true');"
+// legacy-line: "      }"
+// legacy-line: "      if (event.key === getCatStorageKey(catCacheOwnerId, 'pet_name')) {"
+// legacy-line: "        setSelectedPetId(normalizePetId(event.newValue));"
+// legacy-line: "      }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    window.addEventListener('virtual-pet-sleep-change', handlePetSleepChange);"
+// legacy-line: "    window.addEventListener('virtual-pet-selection-change', handlePetSelectionChange);"
+// legacy-line: "    window.addEventListener('storage', handleStorage);"
+// legacy-line: ""
+// legacy-line: "    // 2. Fetch from Supabase for latest data — uses the proven canonical"
+// legacy-line: "    // owner id passed down from App.tsx, not an independent session lookup."
+// legacy-line: "    const fetchStats = async () => {"
+// legacy-line: "      if (document.visibilityState !== 'visible') return;"
+// legacy-line: "      if (!catCacheOwnerId) return;"
+// legacy-line: "      try {"
+// legacy-line: "        const { data, error } = await supabase"
+// legacy-line: "          .from('inventory_pet')"
+// legacy-line: "          .select('hunger, hygiene, energy, happiness, is_sleeping, pet_name, updated_at')"
+// legacy-line: "          .eq('user_id', catCacheOwnerId)"
+// legacy-line: "          .maybeSingle();"
+// legacy-line: ""
+// legacy-line: "        if (data && !error) {"
+// legacy-line: "          const nextSleeping = !!data.is_sleeping;"
+// legacy-line: "          setIsPetSleeping(nextSleeping);"
+// legacy-line: "          writeCatStorage(catCacheOwnerId, PET_SLEEPING_KEY, String(nextSleeping));"
+// legacy-line: "          writeCatStorage(catCacheOwnerId, PET_SLEEPING_UPDATED_AT_KEY, data.updated_at || new Date().toISOString());"
+// legacy-line: "          setSelectedPetId(normalizePetId(data.pet_name));"
+// legacy-line: "          updateStateFromStats(data, data.updated_at);"
+// legacy-line: "        }"
+// legacy-line: "      } catch (err) {"
+// legacy-line: "        console.error('Error fetching pet stats:', err);"
+// legacy-line: "      }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    fetchStats();"
+// legacy-line: "    const interval = setInterval(fetchStats, 120000);"
+// legacy-line: "    // Staggered retries: SSO exchange can take 0.5–4s; the first successful call wins"
+// legacy-line: "    const r1 = setTimeout(fetchStats, 500);"
+// legacy-line: "    const r2 = setTimeout(fetchStats, 2000);"
+// legacy-line: "    const r3 = setTimeout(fetchStats, 5000);"
+// legacy-line: "    return () => {"
+// legacy-line: "      clearInterval(interval);"
+// legacy-line: "      clearTimeout(r1); clearTimeout(r2); clearTimeout(r3);"
+// legacy-line: "      window.removeEventListener('virtual-pet-sleep-change', handlePetSleepChange);"
+// legacy-line: "      window.removeEventListener('virtual-pet-selection-change', handlePetSelectionChange);"
+// legacy-line: "      window.removeEventListener('storage', handleStorage);"
+// legacy-line: "    };"
+// legacy-line: "  }, [disabled, catCacheOwnerId]);"
+// legacy-line: ""
+// legacy-line: "  // ─── Dialog init (legacy Intro / Welcome Back) ──────────────────────────────"
+// legacy-line: "  // When the Phase 1A personalized-dialogue flag is enabled, the effect above"
+// legacy-line: "  // owns dialog selection instead — this entire legacy path is left untouched"
+// legacy-line: "  // so behaviour with the flag disabled is unaffected."
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (personalizedDialogueEnabled) return;"
+// legacy-line: ""
+// legacy-line: "    const initDialog = async () => {"
+// legacy-line: "      let userId: string | null = null;"
+// legacy-line: "      let userMeta: Record<string, any> | null = null;"
+// legacy-line: "      let userEmail: string | null = null;"
+// legacy-line: "      try {"
+// legacy-line: "        const { data: { session } } = await supabase.auth.getSession();"
+// legacy-line: "        userId = session?.user?.id || null;"
+// legacy-line: "        userMeta = session?.user?.user_metadata || null;"
+// legacy-line: "        userEmail = session?.user?.email || null;"
+// legacy-line: "        setCurrentUserId(userId);"
+// legacy-line: "      } catch (err) {"
+// legacy-line: "        console.error(\"Error fetching session in initDialog:\", err);"
+// legacy-line: "      }"
+// legacy-line: ""
+// legacy-line: "      // If user is logged in (disabled = false) and has seen the intro, fetch"
+// legacy-line: "      // the configurable Welcome Back message and auto-close after a few seconds."
+// legacy-line: "      if (!disabled && userId && localStorage.getItem(`intro_shown_${userId}`) === 'true') {"
+// legacy-line: "        try {"
+// legacy-line: "          const { data: config, error } = await supabase"
+// legacy-line: "            .from('aiboard_simulator_configs')"
+// legacy-line: "            .select('welcome_back_text, welcome_back_auto_close_ms')"
+// legacy-line: "            .eq('module_name', 'Snabbb.io')"
+// legacy-line: "            .limit(1)"
+// legacy-line: "            .maybeSingle();"
+// legacy-line: ""
+// legacy-line: "          let welcomeText = !error ? config?.welcome_back_text : null;"
+// legacy-line: "          const autoCloseMs = (!error && config?.welcome_back_auto_close_ms) || 6000;"
+// legacy-line: ""
+// legacy-line: "          if (welcomeText && /\\[name\\]/i.test(welcomeText)) {"
+// legacy-line: "            let displayName: string | null = null;"
+// legacy-line: "            try {"
+// legacy-line: "              const { data: profile } = await supabase"
+// legacy-line: "                .from('profiles')"
+// legacy-line: "                .select('name, full_name')"
+// legacy-line: "                .eq('user_id', userId)"
+// legacy-line: "                .maybeSingle();"
+// legacy-line: "              displayName = profile?.name || profile?.full_name || null;"
+// legacy-line: "            } catch (err) {"
+// legacy-line: "              console.error(\"Error fetching profile for welcome back name:\", err);"
+// legacy-line: "            }"
+// legacy-line: "            if (!displayName) displayName = userMeta?.name || null;"
+// legacy-line: "            if (!displayName && userEmail) displayName = userEmail.split('@')[0];"
+// legacy-line: "            // Never show a raw email address, even if it came from profiles.name/full_name."
+// legacy-line: "            if (displayName && displayName.includes('@')) displayName = displayName.split('@')[0];"
+// legacy-line: ""
+// legacy-line: "            welcomeText = displayName"
+// legacy-line: "              ? welcomeText.replace(/\\[name\\]/gi, displayName)"
+// legacy-line: "              : welcomeText"
+// legacy-line: "                  .replace(/,\\s*\\[name\\]/gi, '')"
+// legacy-line: "                  .replace(/\\[name\\],\\s*/gi, '')"
+// legacy-line: "                  .replace(/\\[name\\]/gi, '')"
+// legacy-line: "                  .replace(/\\s{2,}/g, ' ')"
+// legacy-line: "                  .trim();"
+// legacy-line: "          }"
+// legacy-line: ""
+// legacy-line: "          if (welcomeText) {"
+// legacy-line: "            setDialogSteps([welcomeText]);"
+// legacy-line: "            setDialogStep(0);"
+// legacy-line: "            currentDialogType.current = 'welcomeBack';"
+// legacy-line: "            welcomeBackAutoCloseMsRef.current = autoCloseMs;"
+// legacy-line: "            tryActivateDialog();"
+// legacy-line: "          }"
+// legacy-line: "        } catch (err) {"
+// legacy-line: "          console.error(\"Error fetching welcome back message:\", err);"
+// legacy-line: "        }"
+// legacy-line: "        return;"
+// legacy-line: "      }"
+// legacy-line: ""
+// legacy-line: "      try {"
+// legacy-line: "        const { data: configs, error: configsError } = await supabase"
+// legacy-line: "          .from('aiboard_simulator_configs')"
+// legacy-line: "          .select('id')"
+// legacy-line: "          .eq('module_name', 'Snabbb.io')"
+// legacy-line: "          .limit(1);"
+// legacy-line: ""
+// legacy-line: "        if (configsError) {"
+// legacy-line: "          // Infrastructure/query failure — do not mark the intro stage"
+// legacy-line: "          // complete; preserve the ability to retry on the next login/reload."
+// legacy-line: "          return;"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        if (!configs || configs.length === 0) {"
+// legacy-line: "          // Query succeeded and confirmed no simulator config exists at all"
+// legacy-line: "          // for this module — there is no Intro to ever show. Mark the stage"
+// legacy-line: "          // complete so future post-login visits proceed to Welcome Back"
+// legacy-line: "          // instead of retrying the missing Intro forever."
+// legacy-line: "          if (!disabled) markIntroCompleted(userId);"
+// legacy-line: "          return;"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        const configId = configs[0].id;"
+// legacy-line: ""
+// legacy-line: "        const { data, error } = await supabase"
+// legacy-line: "          .from('aiboard_simulator_dialog_steps')"
+// legacy-line: "          .select('step_text, sort_order')"
+// legacy-line: "          .eq('config_id', configId)"
+// legacy-line: "          .eq('is_post_login', !disabled)"
+// legacy-line: "          .order('sort_order', { ascending: true });"
+// legacy-line: ""
+// legacy-line: "        if (error) {"
+// legacy-line: "          // Infrastructure/query failure — do not mark the intro stage complete."
+// legacy-line: "          return;"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        const steps = (data || [])"
+// legacy-line: "          .map(d => d.step_text)"
+// legacy-line: "          .filter((text): text is string => typeof text === 'string' && text.trim().length > 0);"
+// legacy-line: ""
+// legacy-line: "        if (steps.length > 0) {"
+// legacy-line: "          setDialogSteps(steps);"
+// legacy-line: "          setDialogStep(0);"
+// legacy-line: "          currentDialogType.current = 'intro';"
+// legacy-line: "          tryActivateDialog();"
+// legacy-line: "          return;"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        // Query succeeded but returned no usable intro content (zero rows, or"
+// legacy-line: "        // every row was empty/whitespace-only) — there is nothing to show."
+// legacy-line: "        // Mark the stage complete so this doesn't retry forever on every login."
+// legacy-line: "        if (!disabled) markIntroCompleted(userId);"
+// legacy-line: "      } catch (err) {"
+// legacy-line: "        console.error(\"Error fetching dialog steps:\", err);"
+// legacy-line: "      }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    initDialog();"
+// legacy-line: "  }, [disabled, personalizedDialogueEnabled]);"
+// legacy-line: ""
+// legacy-line: "  // ─── Meow message loop ────────────────────────────────────────────────────"
+// legacy-line: "  // FIX: dep array is only [disabled] — petStates and isDialogActive are read"
+// legacy-line: "  // via refs so changing them does NOT restart the loop (and cause instant meow)."
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (disabled) return;"
+// legacy-line: ""
+// legacy-line: "    let isSubscribed = true;"
+// legacy-line: ""
+// legacy-line: "    // FIX: helper that clears BOTH timers"
+// legacy-line: "    const clearAllTimers = () => {"
+// legacy-line: "      if (meowTimerRef.current)      { clearTimeout(meowTimerRef.current);      meowTimerRef.current = null; }"
+// legacy-line: "      if (meowInnerTimerRef.current) { clearTimeout(meowInnerTimerRef.current); meowInnerTimerRef.current = null; }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    const runMeowLoop = async () => {"
+// legacy-line: "      try {"
+// legacy-line: "        const { data: configs } = await supabase.from('aiboard_meow_configs').select('id').limit(1);"
+// legacy-line: "        if (!configs || configs.length === 0) return;"
+// legacy-line: "        const configId = configs[0].id;"
+// legacy-line: ""
+// legacy-line: "        // Read current states from ref — no stale closure"
+// legacy-line: "        const primaryState = petStatesRef.current[0] || 'Normal';"
+// legacy-line: ""
+// legacy-line: "        const { data: timingData, error: timingError } = await supabase"
+// legacy-line: "          .from('aiboard_meow_timing')"
+// legacy-line: "          .select('message_duration_minutes, message_interval_minutes, disabled')"
+// legacy-line: "          .eq('config_id', configId)"
+// legacy-line: "          .eq('state', primaryState)"
+// legacy-line: "          .order('updated_at', { ascending: false })"
+// legacy-line: "          .limit(1);"
+// legacy-line: ""
+// legacy-line: "        let activeTiming = timingData?.[0];"
+// legacy-line: ""
+// legacy-line: "        if (timingError || !activeTiming || activeTiming.disabled) {"
+// legacy-line: "          if (primaryState !== 'Normal') {"
+// legacy-line: "            console.log(`[CatMascot] No active timing for \"${primaryState}\", falling back to \"Normal\"`);"
+// legacy-line: "          }"
+// legacy-line: "          const { data: normalTiming, error: nError } = await supabase"
+// legacy-line: "            .from('aiboard_meow_timing')"
+// legacy-line: "            .select('message_duration_minutes, message_interval_minutes, disabled')"
+// legacy-line: "            .eq('config_id', configId)"
+// legacy-line: "            .eq('state', 'Normal')"
+// legacy-line: "            .order('updated_at', { ascending: false })"
+// legacy-line: "            .limit(1);"
+// legacy-line: ""
+// legacy-line: "          if (normalTiming?.[0] && !normalTiming[0].disabled) {"
+// legacy-line: "            activeTiming = normalTiming[0];"
+// legacy-line: "          } else {"
+// legacy-line: "            console.warn(\"[CatMascot] No active or Normal timing found. Meow loop aborted.\", nError);"
+// legacy-line: "            return;"
+// legacy-line: "          }"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        // Fetch messages for ALL active states via ref"
+// legacy-line: "        const { data: msgsData, error: msgsError } = await supabase"
+// legacy-line: "          .from('aiboard_meow_messages')"
+// legacy-line: "          .select('message, state, sort_order')"
+// legacy-line: "          .eq('config_id', configId)"
+// legacy-line: "          .in('state', petStatesRef.current)"
+// legacy-line: "          .eq('is_audio', false)"
+// legacy-line: "          .order('state', { ascending: true })"
+// legacy-line: "          .order('sort_order', { ascending: true });"
+// legacy-line: ""
+// legacy-line: "        if (msgsError) {"
+// legacy-line: "          console.error(`[CatMascot] Error fetching messages:`, msgsError);"
+// legacy-line: "          return;"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        if (!msgsData || msgsData.length === 0) {"
+// legacy-line: "          console.log(`[CatMascot] No messages found for states [${petStatesRef.current.join(', ')}]`);"
+// legacy-line: "          return;"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        const intervalMs = (activeTiming.message_interval_minutes || 0.25) * 60 * 1000;"
+// legacy-line: "        const durationMs  = (activeTiming.message_duration_minutes  || 0.1)  * 60 * 1000;"
+// legacy-line: ""
+// legacy-line: "        console.log(`[CatMascot] Loop started: States=[${petStatesRef.current.join(', ')}], Msgs=${msgsData.length}, Interval=${intervalMs/1000}s, Duration=${durationMs/1000}s`);"
+// legacy-line: ""
+// legacy-line: "        let currentIndex = 0;"
+// legacy-line: ""
+// legacy-line: "        const loop = () => {"
+// legacy-line: "          // FIX: outer timer stored in meowTimerRef"
+// legacy-line: "          meowTimerRef.current = setTimeout(() => {"
+// legacy-line: "            if (!isSubscribed) return;"
+// legacy-line: ""
+// legacy-line: "            // FIX: skip showing message while dialog is open — read via ref"
+// legacy-line: "            if (isDialogActiveMeowRef.current) {"
+// legacy-line: "              loop(); // wait another interval, don't show message"
+// legacy-line: "              return;"
+// legacy-line: "            }"
+// legacy-line: ""
+// legacy-line: "            const seqMsg = msgsData[currentIndex].message;"
+// legacy-line: "            setMeowMsg(seqMsg);"
+// legacy-line: "            currentIndex = (currentIndex + 1) % msgsData.length;"
+// legacy-line: ""
+// legacy-line: "            // FIX: inner timer stored in meowInnerTimerRef so cleanup can cancel it"
+// legacy-line: "            meowInnerTimerRef.current = setTimeout(() => {"
+// legacy-line: "              if (!isSubscribed) return;"
+// legacy-line: "              setMeowMsg(null);"
+// legacy-line: "              loop();"
+// legacy-line: "            }, durationMs);"
+// legacy-line: "          }, intervalMs);"
+// legacy-line: "        };"
+// legacy-line: ""
+// legacy-line: "        loop();"
+// legacy-line: "      } catch (err) {"
+// legacy-line: "        console.error(\"Error setting up meow loop:\", err);"
+// legacy-line: "      }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    runMeowLoop();"
+// legacy-line: ""
+// legacy-line: "    return () => {"
+// legacy-line: "      isSubscribed = false;"
+// legacy-line: "      clearAllTimers(); // FIX: clears both outer and inner timers"
+// legacy-line: "    };"
+// legacy-line: "  }, [disabled]); // FIX: only [disabled] — petStates/isDialogActive read via refs"
+// legacy-line: ""
+// legacy-line: "  // ─── Audio loop ───────────────────────────────────────────────────────────"
+// legacy-line: "  const audioLoopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);"
+// legacy-line: ""
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    if (disabled) return;"
+// legacy-line: ""
+// legacy-line: "    let isSubscribed = true;"
+// legacy-line: ""
+// legacy-line: "    const runAudioLoop = async () => {"
+// legacy-line: "      try {"
+// legacy-line: "        const { data: configs } = await supabase.from('aiboard_meow_configs').select('id').limit(1);"
+// legacy-line: "        if (!configs || configs.length === 0) return;"
+// legacy-line: "        const configId = configs[0].id;"
+// legacy-line: ""
+// legacy-line: "        const { data: timingData } = await supabase"
+// legacy-line: "          .from('aiboard_meow_timing')"
+// legacy-line: "          .select('message_interval_minutes, disabled')"
+// legacy-line: "          .eq('config_id', configId)"
+// legacy-line: "          .eq('state', 'Audio')"
+// legacy-line: "          .order('updated_at', { ascending: false })"
+// legacy-line: "          .limit(1);"
+// legacy-line: ""
+// legacy-line: "        const audioTiming = timingData?.[0];"
+// legacy-line: "        if (!audioTiming || audioTiming.disabled) return;"
+// legacy-line: ""
+// legacy-line: "        const { data: msgsData } = await supabase"
+// legacy-line: "          .from('aiboard_meow_messages')"
+// legacy-line: "          .select('message')"
+// legacy-line: "          .eq('config_id', configId)"
+// legacy-line: "          .eq('state', 'Audio')"
+// legacy-line: "          .eq('is_audio', true);"
+// legacy-line: ""
+// legacy-line: "        if (!msgsData || msgsData.length === 0) return;"
+// legacy-line: ""
+// legacy-line: "        const intervalMs = (audioTiming.message_interval_minutes || 0.1) * 60 * 1000;"
+// legacy-line: ""
+// legacy-line: "        const loop = () => {"
+// legacy-line: "          audioLoopTimerRef.current = setTimeout(() => {"
+// legacy-line: "            if (!isSubscribed) return;"
+// legacy-line: "            const randomMsg = msgsData[Math.floor(Math.random() * msgsData.length)].message;"
+// legacy-line: "            if (randomMsg) {"
+// legacy-line: "              const audioObj = new Audio(randomMsg);"
+// legacy-line: "              audioObj.play().catch(e => console.error(\"Audio playback error:\", e));"
+// legacy-line: "            }"
+// legacy-line: "            loop();"
+// legacy-line: "          }, intervalMs);"
+// legacy-line: "        };"
+// legacy-line: ""
+// legacy-line: "        loop();"
+// legacy-line: "      } catch (err) {"
+// legacy-line: "        console.error(\"Error setting up audio loop:\", err);"
+// legacy-line: "      }"
+// legacy-line: "    };"
+// legacy-line: ""
+// legacy-line: "    runAudioLoop();"
+// legacy-line: ""
+// legacy-line: "    return () => {"
+// legacy-line: "      isSubscribed = false;"
+// legacy-line: "      if (audioLoopTimerRef.current) clearTimeout(audioLoopTimerRef.current);"
+// legacy-line: "    };"
+// legacy-line: "  }, [disabled]);"
+// legacy-line: ""
+// legacy-line: "  // ─── PHASE 9D: local dialogue state → shared presentation contract ────────"
+// legacy-line: "  // Pure derivation from the SAME local state the pre-9D JSX rendered from —"
+// legacy-line: "  // no new state, no new persistence, no re-arbitration. Every currently"
+// legacy-line: "  // active App Gallery dialogue (legacy multi-step Intro, legacy single-step"
+// legacy-line: "  // Welcome Back, and every Phase 1A resolver candidate — including the"
+// legacy-line: "  // resolver-selected multi-step Legacy Intro) already renders through"
+// legacy-line: "  // exactly ONE of two visual shapes: `dialogSteps.length === 1` (message +"
+// legacy-line: "  // optional CTA + Close only — `personalizedActiveCandidate.action` is only"
+// legacy-line: "  // ever populated for real Phase 1A candidates, never legacy Intro/Welcome"
+// legacy-line: "  // Back, so the CTA button already only appears where it did before) or"
+// legacy-line: "  // `dialogSteps.length > 1` (multi-step Back/Next/Close, and no CTA is ever"
+// legacy-line: "  // shown for these). Mapping isDialogActive+dialogSteps.length onto"
+// legacy-line: "  // `kind: 'personalized'` vs `kind: 'sequence'` exactly reproduces this"
+// legacy-line: "  // existing behavior with zero visual/semantic loss."
+// legacy-line: "  const audioRef = useRef<HTMLAudioElement | null>(null);"
+// legacy-line: "  useEffect(() => {"
+// legacy-line: "    audioRef.current = new Audio('/images/cat-meow.mp3');"
+// legacy-line: "  }, []);"
+// legacy-line: ""
+// legacy-line: "  const dialoguePresentation: CatDialoguePresentation = useMemo(() => {"
+// legacy-line: "    if (!isDialogActive || dialogSteps.length === 0) {"
+// legacy-line: "      return { kind: 'none' };"
+// legacy-line: "    }"
+// legacy-line: "    if (dialogSteps.length === 1) {"
+// legacy-line: "      return {"
+// legacy-line: "        kind: 'personalized',"
+// legacy-line: "        message: dialogSteps[0],"
+// legacy-line: "        action: personalizedActiveCandidate?.action"
+// legacy-line: "          ? {"
+// legacy-line: "              label: personalizedActiveCandidate.action.label,"
+// legacy-line: "              onClick: () => {"
+// legacy-line: "                // Exact pre-9D CTA order: run the frozen candidate's action"
+// legacy-line: "                // first, then close/persist dismissal — never a live re-read"
+// legacy-line: "                // of the candidate."
+// legacy-line: "                runPersonalizedAction(personalizedActiveCandidate);"
+// legacy-line: "                closeDialog();"
+// legacy-line: "              },"
+// legacy-line: "            }"
+// legacy-line: "          : undefined,"
+// legacy-line: "        onClose: () => closeDialog(),"
+// legacy-line: "      };"
+// legacy-line: "    }"
+// legacy-line: "    return {"
+// legacy-line: "      kind: 'sequence',"
+// legacy-line: "      steps: dialogSteps,"
+// legacy-line: "      stepIndex: dialogStep,"
+// legacy-line: "      onBack: () => setDialogStep((p) => Math.max(0, p - 1)),"
+// legacy-line: "      onNext: () => setDialogStep((p) => Math.min(dialogSteps.length - 1, p + 1)),"
+// legacy-line: "      onClose: () => closeDialog(),"
+// legacy-line: "    };"
+// legacy-line: "    // eslint-disable-next-line react-hooks/exhaustive-deps"
+// legacy-line: "  }, [isDialogActive, dialogSteps, dialogStep, personalizedActiveCandidate]);"
+// legacy-line: ""
+// legacy-line: "  // ─── Cat click handler ────────────────────────────────────────────────────"
+// legacy-line: "  // SharedCatMascot owns the generic click-meow visual animation internally"
+// legacy-line: "  // (gated on its own `isSleeping` prop) and calls this with no arguments"
+// legacy-line: "  // only when the click target isn't ignored and `!disabled`. Host remains"
+// legacy-line: "  // owner of: dismissing whatever dialogue is active, playing the actual"
+// legacy-line: "  // click sound (unconditionally — the pre-9D source never gated audio on"
+// legacy-line: "  // isPetSleeping, only the now-shared-owned visual animation had no such"
+// legacy-line: "  // gate either, so this preserves that exact ungated behavior), and the"
+// legacy-line: "  // parent's Cat → Virtual Pet callback."
+// legacy-line: "  const handleCatClick = () => {"
+// legacy-line: "    if (!disabled) closeDialog();"
+// legacy-line: "    if (audioRef.current) {"
+// legacy-line: "      audioRef.current.currentTime = 0;"
+// legacy-line: "      audioRef.current.play().catch(() => {});"
+// legacy-line: "    }"
+// legacy-line: "    if (!disabled && onCatClick) onCatClick();"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  // SharedCatMascot's own internal entry-walk effect captures this prop"
+// legacy-line: "  // once, at mount, and fires it exactly once when the Cat reaches its"
+// legacy-line: "  // final resting position (see its `onEntryWalkComplete` doc). This is the"
+// legacy-line: "  // sole setter for `isEntryWalkComplete` — flipping it here and"
+// legacy-line: "  // immediately re-running tryActivateDialog() is what lets a candidate"
+// legacy-line: "  // already selected/adopted mid-walk (see the adoption effects above,"
+// legacy-line: "  // which call tryActivateDialog() as soon as they resolve) activate the"
+// legacy-line: "  // instant arrival happens, rather than waiting on some unrelated future"
+// legacy-line: "  // render/effect to notice the ref changed."
+// legacy-line: "  const handleEntryWalkComplete = () => {"
+// legacy-line: "    isEntryWalkComplete.current = true;"
+// legacy-line: "    tryActivateDialog();"
+// legacy-line: "  };"
+// legacy-line: ""
+// legacy-line: "  return ("
+// legacy-line: "    <SharedCatMascot"
+// legacy-line: "      disabled={disabled}"
+// legacy-line: "      petId={selectedPetId}"
+// legacy-line: "      isSleeping={isPetSleeping}"
+// legacy-line: "      dialogue={dialoguePresentation}"
+// legacy-line: "      meowMessage={meowMsg}"
+// legacy-line: "      onCatClick={handleCatClick}"
+// legacy-line: "      spriteSheetUrls={CAT_SPRITE_SHEET_URLS}"
+// legacy-line: "      onEntryWalkComplete={handleEntryWalkComplete}"
+// legacy-line: "    />"
+// legacy-line: "  );"
+// legacy-line: "}"
+// legacy-line: ""

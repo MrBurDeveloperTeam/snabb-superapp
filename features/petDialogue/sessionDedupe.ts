@@ -1,146 +1,149 @@
-// Phase 1A de-duplication: TWO separate, intentionally non-merged
-// persistence concepts.
-//
-// 1. SAME-TAB/SESSION "seen" state — sessionStorage, per tab. Written the
-//    instant a candidate is actually shown (see markDialogueSeenThisSession,
-//    called from CatMascot.tsx's tryActivateDialog via markShown below).
-//    Purpose: don't show the same candidate again and again within one tab
-//    once it's already been surfaced there. Never visible to other tabs —
-//    sessionStorage is strictly per-tab by spec.
-//
-// 2. CROSS-TAB "dismissed" state — localStorage, shared across all tabs.
-//    Written ONLY on an explicit user action: clicking Close or a dialogue's
-//    CTA (see markDialogueDismissed, called from CatMascot.tsx's
-//    closeDialog() and from this hook's own runAction). Purpose: once the
-//    user has actually acted on a dialogue in any one tab, no other
-//    already-open tab or later-opened tab may show that same instance again.
-//
-// These must never collapse into a single write: merely DISPLAYING a
-// dialogue must never suppress it cross-tab — only an explicit Close/CTA may
-// do that. See isDialogueIneligible below, which composes both checks for
-// callers that just need "should this candidate be considered at all" while
-// keeping the two storages and their write paths fully independent.
-//
-// Both are always namespaced by BOTH authenticated user id AND dedupeKey:
-//   - user id: so account switching can never reuse another user's seen/
-//     dismissal state (see clearPersonalizedDialogueSession, which only
-//     ever clears the outgoing user's own keys).
-//   - dedupeKey: so handling one candidate INSTANCE never suppresses a
-//     different instance of the same category — e.g. dismissing
-//     `expired:item-123` must not block `expired:item-456` from later
-//     becoming eligible and appearing.
-//
-// CROSS-TAB PROPAGATION (dismissal only): same-tab code that calls
-// `markDialogueDismissed` writes localStorage synchronously and can read it
-// back immediately via `isDialogueDismissed` in that same tab. OTHER
-// already-open tabs are notified via the browser's native `storage` event
-// (window-level, fired automatically whenever another document with access
-// to the same localStorage changes it) — see CatMascot.tsx's own `storage`
-// listener, which uses `buildDialogueDismissalKey` below to recognize when
-// the event is for the exact dialogue instance currently visible in that
-// tab, and suppresses it locally WITHOUT writing localStorage again (the
-// browser does not fire `storage` in the tab that performed the write, only
-// in every other tab, so there is no loop risk either way — but the
-// listener still performs a local-only close, never a second persistence
-// write, since the key is already present in shared storage). A brand-new
-// tab opened later simply calls isDialogueDismissed (via
-// isDialogueIneligible) before ever showing a candidate, which already
-// reads the current localStorage state — no separate "new tab" code path is
-// required.
-
-const DISMISSAL_STORAGE_PREFIX = 'snabbb_pet_dialogue';
-const SEEN_STORAGE_PREFIX = 'snabbb_pet_dialogue_seen';
-const DISMISSED_VALUE = 'handled';
-const SEEN_VALUE = 'seen';
-
-/** Exported so CatMascot.tsx's cross-tab `storage` listener can compare
- *  `event.key` against the exact key for the dialogue instance currently
- *  visible in that tab, without duplicating the key format in two places. */
-export function buildDialogueDismissalKey(userId: string, dedupeKey: string): string {
-  return `${DISMISSAL_STORAGE_PREFIX}:${userId}:${dedupeKey}`;
-}
-
-function buildDialogueSeenKey(userId: string, dedupeKey: string): string {
-  return `${SEEN_STORAGE_PREFIX}:${userId}:${dedupeKey}`;
-}
-
-/** Cross-tab: true once Close/CTA has been explicitly clicked for this exact
- *  userId + dedupeKey, in this tab or any other. */
-export function isDialogueDismissed(userId: string, dedupeKey: string): boolean {
-  if (!userId || !dedupeKey) return false;
-  try {
-    return localStorage.getItem(buildDialogueDismissalKey(userId, dedupeKey)) === DISMISSED_VALUE;
-  } catch {
-    // localStorage can throw in some privacy modes — treat as "not yet
-    // dismissed", the safe default (worst case: the dialogue shows again).
-    return false;
-  }
-}
-
-/** Cross-tab: call ONLY from an explicit Close or CTA action — never at
- *  show-time. See markDialogueSeenThisSession for the show-time mark. */
-export function markDialogueDismissed(userId: string, dedupeKey: string): void {
-  if (!userId || !dedupeKey) return;
-  try {
-    localStorage.setItem(buildDialogueDismissalKey(userId, dedupeKey), DISMISSED_VALUE);
-  } catch (err) {
-    console.warn('[petDialogue] could not persist dialogue dismissal state:', err);
-  }
-}
-
-/** Same-tab only: true once this candidate has already been shown once in
- *  this tab's session. */
-export function isDialogueSeenThisSession(userId: string, dedupeKey: string): boolean {
-  if (!userId || !dedupeKey) return false;
-  try {
-    return sessionStorage.getItem(buildDialogueSeenKey(userId, dedupeKey)) === SEEN_VALUE;
-  } catch {
-    return false;
-  }
-}
-
-/** Same-tab only: call at show-time. Never propagates cross-tab. */
-export function markDialogueSeenThisSession(userId: string, dedupeKey: string): void {
-  if (!userId || !dedupeKey) return;
-  try {
-    sessionStorage.setItem(buildDialogueSeenKey(userId, dedupeKey), SEEN_VALUE);
-  } catch (err) {
-    console.warn('[petDialogue] could not persist dialogue seen-this-session state:', err);
-  }
-}
-
-/** Composes both checks for eligibility callers: a candidate already seen
- *  this tab-session, OR explicitly dismissed cross-tab, is not eligible to
- *  be (re-)selected. Keeps both underlying storages and their write paths
- *  fully separate — this is a read-only composition, not a merged record. */
-export function isDialogueIneligible(userId: string, dedupeKey: string): boolean {
-  return isDialogueSeenThisSession(userId, dedupeKey) || isDialogueDismissed(userId, dedupeKey);
-}
-
-/**
- * Explicit, user-scoped clear for logout: removes only this feature's own
- * `snabbb_pet_dialogue:{userId}:*` (localStorage) keys, never anything
- * else. Deliberately does not call `localStorage.clear()` — that would also
- * wipe unrelated Snabbb local state (SSO sync flags, `intro_shown_{userId}`,
- * pet stats, theme, etc.) that this feature has no business touching. This
- * is also the only mechanism that clears this feature's state on the
- * cross-tab `SSO_LOGOUT` path in App.tsx, which does not go through the
- * app's broader logout/sign-out flow. sessionStorage "seen" keys are
- * deliberately left untouched here — they're already tab-scoped and expire
- * with the tab/session on their own; logout does not need to (and
- * previously did not) reach into sessionStorage for this feature.
- */
-export function clearPersonalizedDialogueSession(userId: string): void {
-  if (!userId) return;
-  try {
-    const prefix = `${DISMISSAL_STORAGE_PREFIX}:${userId}:`;
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(prefix)) keysToRemove.push(key);
-    }
-    keysToRemove.forEach((key) => localStorage.removeItem(key));
-  } catch (err) {
-    console.warn('[petDialogue] could not clear dialogue dismissal state on logout:', err);
-  }
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "// Phase 1A de-duplication: TWO separate, intentionally non-merged"
+// legacy-line: "// persistence concepts."
+// legacy-line: "//"
+// legacy-line: "// 1. SAME-TAB/SESSION \"seen\" state — sessionStorage, per tab. Written the"
+// legacy-line: "//    instant a candidate is actually shown (see markDialogueSeenThisSession,"
+// legacy-line: "//    called from CatMascot.tsx's tryActivateDialog via markShown below)."
+// legacy-line: "//    Purpose: don't show the same candidate again and again within one tab"
+// legacy-line: "//    once it's already been surfaced there. Never visible to other tabs —"
+// legacy-line: "//    sessionStorage is strictly per-tab by spec."
+// legacy-line: "//"
+// legacy-line: "// 2. CROSS-TAB \"dismissed\" state — localStorage, shared across all tabs."
+// legacy-line: "//    Written ONLY on an explicit user action: clicking Close or a dialogue's"
+// legacy-line: "//    CTA (see markDialogueDismissed, called from CatMascot.tsx's"
+// legacy-line: "//    closeDialog() and from this hook's own runAction). Purpose: once the"
+// legacy-line: "//    user has actually acted on a dialogue in any one tab, no other"
+// legacy-line: "//    already-open tab or later-opened tab may show that same instance again."
+// legacy-line: "//"
+// legacy-line: "// These must never collapse into a single write: merely DISPLAYING a"
+// legacy-line: "// dialogue must never suppress it cross-tab — only an explicit Close/CTA may"
+// legacy-line: "// do that. See isDialogueIneligible below, which composes both checks for"
+// legacy-line: "// callers that just need \"should this candidate be considered at all\" while"
+// legacy-line: "// keeping the two storages and their write paths fully independent."
+// legacy-line: "//"
+// legacy-line: "// Both are always namespaced by BOTH authenticated user id AND dedupeKey:"
+// legacy-line: "//   - user id: so account switching can never reuse another user's seen/"
+// legacy-line: "//     dismissal state (see clearPersonalizedDialogueSession, which only"
+// legacy-line: "//     ever clears the outgoing user's own keys)."
+// legacy-line: "//   - dedupeKey: so handling one candidate INSTANCE never suppresses a"
+// legacy-line: "//     different instance of the same category — e.g. dismissing"
+// legacy-line: "//     `expired:item-123` must not block `expired:item-456` from later"
+// legacy-line: "//     becoming eligible and appearing."
+// legacy-line: "//"
+// legacy-line: "// CROSS-TAB PROPAGATION (dismissal only): same-tab code that calls"
+// legacy-line: "// `markDialogueDismissed` writes localStorage synchronously and can read it"
+// legacy-line: "// back immediately via `isDialogueDismissed` in that same tab. OTHER"
+// legacy-line: "// already-open tabs are notified via the browser's native `storage` event"
+// legacy-line: "// (window-level, fired automatically whenever another document with access"
+// legacy-line: "// to the same localStorage changes it) — see CatMascot.tsx's own `storage`"
+// legacy-line: "// listener, which uses `buildDialogueDismissalKey` below to recognize when"
+// legacy-line: "// the event is for the exact dialogue instance currently visible in that"
+// legacy-line: "// tab, and suppresses it locally WITHOUT writing localStorage again (the"
+// legacy-line: "// browser does not fire `storage` in the tab that performed the write, only"
+// legacy-line: "// in every other tab, so there is no loop risk either way — but the"
+// legacy-line: "// listener still performs a local-only close, never a second persistence"
+// legacy-line: "// write, since the key is already present in shared storage). A brand-new"
+// legacy-line: "// tab opened later simply calls isDialogueDismissed (via"
+// legacy-line: "// isDialogueIneligible) before ever showing a candidate, which already"
+// legacy-line: "// reads the current localStorage state — no separate \"new tab\" code path is"
+// legacy-line: "// required."
+// legacy-line: ""
+// legacy-line: "const DISMISSAL_STORAGE_PREFIX = 'snabbb_pet_dialogue';"
+// legacy-line: "const SEEN_STORAGE_PREFIX = 'snabbb_pet_dialogue_seen';"
+// legacy-line: "const DISMISSED_VALUE = 'handled';"
+// legacy-line: "const SEEN_VALUE = 'seen';"
+// legacy-line: ""
+// legacy-line: "/** Exported so CatMascot.tsx's cross-tab `storage` listener can compare"
+// legacy-line: " *  `event.key` against the exact key for the dialogue instance currently"
+// legacy-line: " *  visible in that tab, without duplicating the key format in two places. */"
+// legacy-line: "export function buildDialogueDismissalKey(userId: string, dedupeKey: string): string {"
+// legacy-line: "  return `${DISMISSAL_STORAGE_PREFIX}:${userId}:${dedupeKey}`;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function buildDialogueSeenKey(userId: string, dedupeKey: string): string {"
+// legacy-line: "  return `${SEEN_STORAGE_PREFIX}:${userId}:${dedupeKey}`;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/** Cross-tab: true once Close/CTA has been explicitly clicked for this exact"
+// legacy-line: " *  userId + dedupeKey, in this tab or any other. */"
+// legacy-line: "export function isDialogueDismissed(userId: string, dedupeKey: string): boolean {"
+// legacy-line: "  if (!userId || !dedupeKey) return false;"
+// legacy-line: "  try {"
+// legacy-line: "    return localStorage.getItem(buildDialogueDismissalKey(userId, dedupeKey)) === DISMISSED_VALUE;"
+// legacy-line: "  } catch {"
+// legacy-line: "    // localStorage can throw in some privacy modes — treat as \"not yet"
+// legacy-line: "    // dismissed\", the safe default (worst case: the dialogue shows again)."
+// legacy-line: "    return false;"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/** Cross-tab: call ONLY from an explicit Close or CTA action — never at"
+// legacy-line: " *  show-time. See markDialogueSeenThisSession for the show-time mark. */"
+// legacy-line: "export function markDialogueDismissed(userId: string, dedupeKey: string): void {"
+// legacy-line: "  if (!userId || !dedupeKey) return;"
+// legacy-line: "  try {"
+// legacy-line: "    localStorage.setItem(buildDialogueDismissalKey(userId, dedupeKey), DISMISSED_VALUE);"
+// legacy-line: "  } catch (err) {"
+// legacy-line: "    console.warn('[petDialogue] could not persist dialogue dismissal state:', err);"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/** Same-tab only: true once this candidate has already been shown once in"
+// legacy-line: " *  this tab's session. */"
+// legacy-line: "export function isDialogueSeenThisSession(userId: string, dedupeKey: string): boolean {"
+// legacy-line: "  if (!userId || !dedupeKey) return false;"
+// legacy-line: "  try {"
+// legacy-line: "    return sessionStorage.getItem(buildDialogueSeenKey(userId, dedupeKey)) === SEEN_VALUE;"
+// legacy-line: "  } catch {"
+// legacy-line: "    return false;"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/** Same-tab only: call at show-time. Never propagates cross-tab. */"
+// legacy-line: "export function markDialogueSeenThisSession(userId: string, dedupeKey: string): void {"
+// legacy-line: "  if (!userId || !dedupeKey) return;"
+// legacy-line: "  try {"
+// legacy-line: "    sessionStorage.setItem(buildDialogueSeenKey(userId, dedupeKey), SEEN_VALUE);"
+// legacy-line: "  } catch (err) {"
+// legacy-line: "    console.warn('[petDialogue] could not persist dialogue seen-this-session state:', err);"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/** Composes both checks for eligibility callers: a candidate already seen"
+// legacy-line: " *  this tab-session, OR explicitly dismissed cross-tab, is not eligible to"
+// legacy-line: " *  be (re-)selected. Keeps both underlying storages and their write paths"
+// legacy-line: " *  fully separate — this is a read-only composition, not a merged record. */"
+// legacy-line: "export function isDialogueIneligible(userId: string, dedupeKey: string): boolean {"
+// legacy-line: "  return isDialogueSeenThisSession(userId, dedupeKey) || isDialogueDismissed(userId, dedupeKey);"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Explicit, user-scoped clear for logout: removes only this feature's own"
+// legacy-line: " * `snabbb_pet_dialogue:{userId}:*` (localStorage) keys, never anything"
+// legacy-line: " * else. Deliberately does not call `localStorage.clear()` — that would also"
+// legacy-line: " * wipe unrelated Snabbb local state (SSO sync flags, `intro_shown_{userId}`,"
+// legacy-line: " * pet stats, theme, etc.) that this feature has no business touching. This"
+// legacy-line: " * is also the only mechanism that clears this feature's state on the"
+// legacy-line: " * cross-tab `SSO_LOGOUT` path in App.tsx, which does not go through the"
+// legacy-line: " * app's broader logout/sign-out flow. sessionStorage \"seen\" keys are"
+// legacy-line: " * deliberately left untouched here — they're already tab-scoped and expire"
+// legacy-line: " * with the tab/session on their own; logout does not need to (and"
+// legacy-line: " * previously did not) reach into sessionStorage for this feature."
+// legacy-line: " */"
+// legacy-line: "export function clearPersonalizedDialogueSession(userId: string): void {"
+// legacy-line: "  if (!userId) return;"
+// legacy-line: "  try {"
+// legacy-line: "    const prefix = `${DISMISSAL_STORAGE_PREFIX}:${userId}:`;"
+// legacy-line: "    const keysToRemove: string[] = [];"
+// legacy-line: "    for (let i = 0; i < localStorage.length; i++) {"
+// legacy-line: "      const key = localStorage.key(i);"
+// legacy-line: "      if (key && key.startsWith(prefix)) keysToRemove.push(key);"
+// legacy-line: "    }"
+// legacy-line: "    keysToRemove.forEach((key) => localStorage.removeItem(key));"
+// legacy-line: "  } catch (err) {"
+// legacy-line: "    console.warn('[petDialogue] could not clear dialogue dismissal state on logout:', err);"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""

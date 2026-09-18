@@ -1,116 +1,119 @@
-// PHASE 9C (Molar AI migration): thin host `AIAdapter` implementation for
-// `@mrburdeveloperteam/pet-function/ai`'s `<SharedMolarAI>`.
-//
-// This file is a MECHANICAL relocation of App.tsx's pre-9C `handleSendMessage`
-// body — every branch, message string, and query is preserved verbatim.
-// Nothing here is a redesign.
-//
-// FRESH ACTION-SURFACE AUDIT (this phase): a repo-wide search for
-// window.__MOLAR_ACTIONS__, `<ACTION>` tags, fenced ```json action blocks,
-// and any postMessage-based AI mutation bridge found ZERO matches anywhere
-// in App Gallery. The Gemini system prompt (services/geminiService.ts)
-// explicitly restricts the model to answering only "what is App.Snabbb" /
-// "what does each app do" questions and instructs it never to execute
-// actions. App Gallery has NO Data Chat pipeline either (no intent
-// classifier, no resolver, no grounded-facts provider) — General Chat only.
-// This adapter therefore has no action parser/dispatcher to relocate.
-import type { AIAdapter, AIMessage } from '@mrburdeveloperteam/pet-function/contracts';
-import { supabase } from '../services/supabaseClient';
-import { chatWithGemini, type ChatHistory } from '../services/geminiService';
-
-// Maps the shared package's normalized `{role, text}` history entries back
-// to the `{role, parts:[{text}]}` shape `chatWithGemini` expects — this
-// mapping stays local to the adapter, never leaking a Gemini-shaped type
-// into the shared package (see AIRequest/AIMessage in
-// @mrburdeveloperteam/pet-function/contracts).
-function toGeminiHistory(history: AIMessage[]): ChatHistory[] {
-  return history.map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
-}
-
-// ROOT CAUSE (APP-GALLERY-AUTH-REFRESH-LOOP-AND-MOLAR-AI-RUNTIME-FIX):
-// the AIBoard keyword lookup below previously matched via plain
-// `message.includes(keyword)` — a raw substring check, not a whole-word
-// match. The `aiboard_response_keywords` table has "hi" mapped to the
-// canned response "Hello! How can I assist you today?" (a legitimate
-// short greeting synonym on its own), but `.includes("hi")` also matches
-// ANY message merely containing that substring inside an unrelated
-// word — including "which" (w-HI-ch). Every one of "Which app should I
-// use for stock?" / "Which app is for profit calculation?" therefore hit
-// this canned greeting and never reached Gemini at all; the greeting was
-// never Gemini-generated. Word-boundary matching (`\b...\b`) preserves
-// exact/short-greeting matches ("hi", "hey") while no longer matching a
-// keyword that merely happens to appear as a substring inside a longer,
-// unrelated word.
-function matchesKeyword(message: string, keyword: string): boolean {
-  const trimmed = keyword.trim();
-  if (!trimmed) return false;
-  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\b${escaped}\\b`, 'i').test(message);
-}
-
-interface AppGalleryMolarAdapterDeps {
-  userChatContext: string;
-}
-
-export function createAppGalleryMolarAdapter({ userChatContext }: AppGalleryMolarAdapterDeps): AIAdapter {
-  return {
-    async sendMessage({ text, history }) {
-      const userMsg = text.trim();
-
-      try {
-        let response: string | null = null;
-
-        // 1. Check custom responses first
-        const { data: apps } = await supabase
-          .from('aiboard_response_target_apps')
-          .select('response_id')
-          .in('app_name', ['App.Snabbb', 'All']);
-
-        if (apps && apps.length > 0) {
-          const responseIds = apps.map((a) => a.response_id);
-          const { data: keywords } = await supabase
-            .from('aiboard_response_keywords')
-            .select('keyword, response_id')
-            .in('response_id', responseIds);
-
-          if (keywords && keywords.length > 0) {
-            const matchedKeyword = keywords.find((k) => matchesKeyword(userMsg, k.keyword));
-
-            if (matchedKeyword) {
-              const { data: respData } = await supabase
-                .from('aiboard_responses')
-                .select('response')
-                .eq('id', matchedKeyword.response_id)
-                .single();
-
-              if (respData) {
-                response = respData.response;
-              }
-            }
-          }
-        }
-
-        // 2. Fallback to Gemini
-        if (!response) {
-          response = await chatWithGemini(
-            toGeminiHistory(history),
-            userMsg,
-            'SuperApp Gallery context.',
-            '',
-            '',
-            userChatContext || undefined
-          );
-        }
-
-        return { text: response as string, meta: { source: 'general' } };
-      } catch (error) {
-        console.error(error);
-        // Matches SharedMolarAI's own generic catch string exactly (see
-        // dist/ai.js's `ERROR_TEXT`) — returned here rather than thrown so
-        // this adapter's behavior stays identical regardless of the shared
-        // package's own catch handling.
-        return { text: 'SNAI Error: Unable to process request.', meta: { source: 'fallback' } };
-      }
-    },
-  };
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "// PHASE 9C (Molar AI migration): thin host `AIAdapter` implementation for"
+// legacy-line: "// `@mrburdeveloperteam/pet-function/ai`'s `<SharedMolarAI>`."
+// legacy-line: "//"
+// legacy-line: "// This file is a MECHANICAL relocation of App.tsx's pre-9C `handleSendMessage`"
+// legacy-line: "// body — every branch, message string, and query is preserved verbatim."
+// legacy-line: "// Nothing here is a redesign."
+// legacy-line: "//"
+// legacy-line: "// FRESH ACTION-SURFACE AUDIT (this phase): a repo-wide search for"
+// legacy-line: "// window.__MOLAR_ACTIONS__, `<ACTION>` tags, fenced ```json action blocks,"
+// legacy-line: "// and any postMessage-based AI mutation bridge found ZERO matches anywhere"
+// legacy-line: "// in App Gallery. The Gemini system prompt (services/geminiService.ts)"
+// legacy-line: "// explicitly restricts the model to answering only \"what is App.Snabbb\" /"
+// legacy-line: "// \"what does each app do\" questions and instructs it never to execute"
+// legacy-line: "// actions. App Gallery has NO Data Chat pipeline either (no intent"
+// legacy-line: "// classifier, no resolver, no grounded-facts provider) — General Chat only."
+// legacy-line: "// This adapter therefore has no action parser/dispatcher to relocate."
+// legacy-line: "import type { AIAdapter, AIMessage } from '@mrburdeveloperteam/pet-function/contracts';"
+// legacy-line: "import { supabase } from '../services/supabaseClient';"
+// legacy-line: "import { chatWithGemini, type ChatHistory } from '../services/geminiService';"
+// legacy-line: ""
+// legacy-line: "// Maps the shared package's normalized `{role, text}` history entries back"
+// legacy-line: "// to the `{role, parts:[{text}]}` shape `chatWithGemini` expects — this"
+// legacy-line: "// mapping stays local to the adapter, never leaking a Gemini-shaped type"
+// legacy-line: "// into the shared package (see AIRequest/AIMessage in"
+// legacy-line: "// @mrburdeveloperteam/pet-function/contracts)."
+// legacy-line: "function toGeminiHistory(history: AIMessage[]): ChatHistory[] {"
+// legacy-line: "  return history.map((m) => ({ role: m.role, parts: [{ text: m.text }] }));"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "// ROOT CAUSE (APP-GALLERY-AUTH-REFRESH-LOOP-AND-MOLAR-AI-RUNTIME-FIX):"
+// legacy-line: "// the AIBoard keyword lookup below previously matched via plain"
+// legacy-line: "// `message.includes(keyword)` — a raw substring check, not a whole-word"
+// legacy-line: "// match. The `aiboard_response_keywords` table has \"hi\" mapped to the"
+// legacy-line: "// canned response \"Hello! How can I assist you today?\" (a legitimate"
+// legacy-line: "// short greeting synonym on its own), but `.includes(\"hi\")` also matches"
+// legacy-line: "// ANY message merely containing that substring inside an unrelated"
+// legacy-line: "// word — including \"which\" (w-HI-ch). Every one of \"Which app should I"
+// legacy-line: "// use for stock?\" / \"Which app is for profit calculation?\" therefore hit"
+// legacy-line: "// this canned greeting and never reached Gemini at all; the greeting was"
+// legacy-line: "// never Gemini-generated. Word-boundary matching (`\\b...\\b`) preserves"
+// legacy-line: "// exact/short-greeting matches (\"hi\", \"hey\") while no longer matching a"
+// legacy-line: "// keyword that merely happens to appear as a substring inside a longer,"
+// legacy-line: "// unrelated word."
+// legacy-line: "function matchesKeyword(message: string, keyword: string): boolean {"
+// legacy-line: "  const trimmed = keyword.trim();"
+// legacy-line: "  if (!trimmed) return false;"
+// legacy-line: "  const escaped = trimmed.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');"
+// legacy-line: "  return new RegExp(`\\\\b${escaped}\\\\b`, 'i').test(message);"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "interface AppGalleryMolarAdapterDeps {"
+// legacy-line: "  userChatContext: string;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export function createAppGalleryMolarAdapter({ userChatContext }: AppGalleryMolarAdapterDeps): AIAdapter {"
+// legacy-line: "  return {"
+// legacy-line: "    async sendMessage({ text, history }) {"
+// legacy-line: "      const userMsg = text.trim();"
+// legacy-line: ""
+// legacy-line: "      try {"
+// legacy-line: "        let response: string | null = null;"
+// legacy-line: ""
+// legacy-line: "        // 1. Check custom responses first"
+// legacy-line: "        const { data: apps } = await supabase"
+// legacy-line: "          .from('aiboard_response_target_apps')"
+// legacy-line: "          .select('response_id')"
+// legacy-line: "          .in('app_name', ['App.Snabbb', 'All']);"
+// legacy-line: ""
+// legacy-line: "        if (apps && apps.length > 0) {"
+// legacy-line: "          const responseIds = apps.map((a) => a.response_id);"
+// legacy-line: "          const { data: keywords } = await supabase"
+// legacy-line: "            .from('aiboard_response_keywords')"
+// legacy-line: "            .select('keyword, response_id')"
+// legacy-line: "            .in('response_id', responseIds);"
+// legacy-line: ""
+// legacy-line: "          if (keywords && keywords.length > 0) {"
+// legacy-line: "            const matchedKeyword = keywords.find((k) => matchesKeyword(userMsg, k.keyword));"
+// legacy-line: ""
+// legacy-line: "            if (matchedKeyword) {"
+// legacy-line: "              const { data: respData } = await supabase"
+// legacy-line: "                .from('aiboard_responses')"
+// legacy-line: "                .select('response')"
+// legacy-line: "                .eq('id', matchedKeyword.response_id)"
+// legacy-line: "                .single();"
+// legacy-line: ""
+// legacy-line: "              if (respData) {"
+// legacy-line: "                response = respData.response;"
+// legacy-line: "              }"
+// legacy-line: "            }"
+// legacy-line: "          }"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        // 2. Fallback to Gemini"
+// legacy-line: "        if (!response) {"
+// legacy-line: "          response = await chatWithGemini("
+// legacy-line: "            toGeminiHistory(history),"
+// legacy-line: "            userMsg,"
+// legacy-line: "            'SuperApp Gallery context.',"
+// legacy-line: "            '',"
+// legacy-line: "            '',"
+// legacy-line: "            userChatContext || undefined"
+// legacy-line: "          );"
+// legacy-line: "        }"
+// legacy-line: ""
+// legacy-line: "        return { text: response as string, meta: { source: 'general' } };"
+// legacy-line: "      } catch (error) {"
+// legacy-line: "        console.error(error);"
+// legacy-line: "        // Matches SharedMolarAI's own generic catch string exactly (see"
+// legacy-line: "        // dist/ai.js's `ERROR_TEXT`) — returned here rather than thrown so"
+// legacy-line: "        // this adapter's behavior stays identical regardless of the shared"
+// legacy-line: "        // package's own catch handling."
+// legacy-line: "        return { text: 'SNAI Error: Unable to process request.', meta: { source: 'fallback' } };"
+// legacy-line: "      }"
+// legacy-line: "    },"
+// legacy-line: "  };"
+// legacy-line: "}"
+// legacy-line: ""
