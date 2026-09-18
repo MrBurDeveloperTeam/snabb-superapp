@@ -465,6 +465,32 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
             <span className="block text-[15px] font-bold text-slate-900 dark:text-white">Order summary</span>
 
             <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+              {(state?.lines ?? []).length > 0 && (
+                <div className="mb-2 flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+                  {(state?.lines ?? []).map((line) => (
+                    <div key={line.id} className="flex items-center gap-3">
+                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
+                        {line.image_url && (
+                          <img
+                            src={line.image_url}
+                            alt={line.name}
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">
+                          {line.qty} x {line.name}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-[12px] font-bold text-slate-900 dark:text-white">
+                        {formatPrice(line.price_subtotal, currency)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex items-center justify-between text-[13px]">
                 <span className="text-slate-500 dark:text-slate-400">Delivery</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-100">

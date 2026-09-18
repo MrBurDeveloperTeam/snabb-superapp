@@ -387,6 +387,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
         <div>
           <OrderSummary
             itemCount={(data.lines ?? []).reduce((sum, l) => sum + l.qty, 0)}
+            lines={data.lines ?? []}
             currency={currency}
             amountSubtotal={data.amount_subtotal ?? 0}
             amountDelivery={data.amount_delivery ?? 0}
