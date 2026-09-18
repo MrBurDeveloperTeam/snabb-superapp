@@ -136,3 +136,16 @@ export const checkCompanyInvitationEmail = (
       name: string;
     } | null;
   }>("check-email", { email });
+  
+export type CompanyWorkspace = {
+  ownerUserId: string;
+  name: string;
+  role: string;
+  status: string;
+};
+
+export const getMyCompanyWorkspaces = () =>
+  sendCompanyInvitations<{
+    ok: true;
+    workspaces: CompanyWorkspace[];
+  }>('list-my-workspaces');
