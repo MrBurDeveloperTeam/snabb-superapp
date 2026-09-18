@@ -4,8 +4,6 @@ import { Pencil, Plus } from 'lucide-react';
 import { useUnifiedCartStore } from '../../store/unifiedCartStore';
 import { useCheckoutActions, useCheckoutState } from '../../hooks/useCheckoutState';
 import { buildLinesParam } from '../../api/checkoutApi';
-import { handOffToOdooPayment, CheckoutHandoffError } from '../../api/checkoutHandoff';
-import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 import { CART_TOAST_STYLE } from '../cartToastStyle';
 import AddressFormModal from './AddressFormModal';
 import DeliveryMethodList from './DeliveryMethodList';
@@ -15,6 +13,15 @@ import type { AddressFormValues, CheckoutAddress } from '../../types';
 interface CheckoutPageProps {
   /** Returns to the product grid (see UnifiedShopApp's `view` state). */
   onBackToShop: () => void;
+  /**
+   * Advances to the native Payment step (components/checkout/PaymentPage.tsx)
+   * once /confirm has validated the order is ready. As of 2026-09-18 this
+   * stays on app.snabbb.com instead of the SSO hand-off to Odoo's own
+   * /shop/payment that used to live here — see PaymentPage.tsx's doc
+   * comment for why (and for the one case, non-Stripe providers, that
+   * still ends up using that same hand-off one screen later).
+   */
+  onProceedToPayment: () => void;
 }
 
 type AddressModalState =
@@ -32,11 +39,11 @@ type AddressModalState =
  * order summary (subtotal/delivery/tax/total, reward claim card, Snabbb
  * Credit toggle, Confirm) all mirror mrbur.odoo.com/shop/checkout's own
  * layout — just backed by /api/unified-shop/checkout/* JSON instead of
- * Odoo's server-rendered template. Only the final Confirm step still
- * leaves this app: it hands off to Odoo's own /shop/payment for the
- * actual payment step (out of scope to rebuild natively here).
+ * Odoo's server-rendered template. Confirm now advances to this app's own
+ * native Payment step (see onProceedToPayment / PaymentPage.tsx) instead
+ * of hopping off to Odoo's /shop/payment the way it used to.
  */
-const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop }) => {
+const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPayment }) => {
   const lines = useUnifiedCartStore((s) => s.lines);
 
   // Computed once, at mount — the backend applies it idempotently, but
@@ -48,14 +55,12 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop }) => {
 
   const { data, isLoading, isError, error } = useCheckoutState(linesParam);
   const actions = useCheckoutActions();
-  const { mutateAsync: createAppLink } = useCreateAppLink();
 
   const [addressModal, setAddressModal] = useState<AddressModalState>({ open: false });
   const [addressError, setAddressError] = useState<string | null>(null);
   const [claimingRewardId, setClaimingRewardId] = useState<number | null>(null);
   const [rewardError, setRewardError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [isHandingOff, setIsHandingOff] = useState(false);
 
   // Turning the toggle OFF is purely a local UI reveal (show the billing
   // address form) — there's nothing to tell the backend yet, since no
@@ -141,16 +146,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop }) => {
       setConfirmError(err instanceof Error ? err.message : 'Please finish the steps above before continuing.');
       return;
     }
-    setIsHandingOff(true);
-    try {
-      await handOffToOdooPayment(createAppLink);
-      // On success the browser navigates away — nothing left to do here.
-    } catch (err) {
-      const message =
-        err instanceof CheckoutHandoffError ? err.message : 'Could not reach payment. Please try again.';
-      setConfirmError(message);
-      setIsHandingOff(false);
-    }
+    // Order's ready — hand off to the native Payment step, still on
+    // app.snabbb.com (see UnifiedShopApp's `view` state).
+    onProceedToPayment();
   };
 
   if (isLoading) {
@@ -406,10 +404,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop }) => {
             confirmDisabled={
               !deliveryAddress ||
               !(billingSame || billingAddress) ||
-              !data.selected_carrier_id ||
-              isHandingOff
+              !data.selected_carrier_id
             }
-            confirming={actions.confirm.isPending || isHandingOff}
+            confirming={actions.confirm.isPending}
             confirmError={confirmError}
             onConfirm={handleConfirm}
             onBackToCart={onBackToShop}

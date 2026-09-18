@@ -40,11 +40,12 @@ types.ts                                shared types (product + checkout)
 data/mockProducts.ts                    demo data (real Kaneiko product names, placeholder MR.BUR ones)
 api/unifiedShopApi.ts                   fetchProducts() — see "Backend contract" below
 api/checkoutApi.ts                      /api/unified-shop/checkout/* client — see "Checkout" below
-api/checkoutHandoff.ts                  handOffToOdooPayment() — final SSO hop to Odoo's /shop/payment
+api/paymentApi.ts                       /api/unified-shop/checkout/payment/* client — see "Payment" below
+api/checkoutHandoff.ts                  handOffToOdooPayment() — SSO hop to Odoo's /shop/payment, now only used for non-Stripe providers
 store/unifiedCartStore.ts               Zustand cart (persisted to localStorage, same pattern as themeStore.ts)
 hooks/useUnifiedProducts.ts             react-query wrapper around fetchProducts()
 hooks/useCheckoutState.ts               react-query wrapper around checkoutApi.ts
-components/UnifiedShopApp.tsx           top-level screen — 'shop' vs 'checkout' view state
+components/UnifiedShopApp.tsx           top-level screen — 'shop' / 'checkout' / 'payment' view state
 components/ProductGrid.tsx              search box, sort, brand filter, product grid
 components/ProductCard.tsx              single product tile
 components/CartDrawer.tsx               slide-over cart + checkout button (switches UnifiedShopApp's view)
@@ -54,6 +55,7 @@ components/checkout/CheckoutPage.tsx    native Delivery step — address, delive
 components/checkout/AddressFormModal.tsx  add/edit delivery or billing address
 components/checkout/DeliveryMethodList.tsx  radio list of rated carriers
 components/checkout/OrderSummary.tsx    totals, reward claim card, Snabbb Credit toggle, Confirm
+components/checkout/PaymentPage.tsx     native Payment step — provider picker, Stripe Elements card form, earn-credits banner, Pay now
 ```
 
 It's already wired into `App.tsx` / `AppCard.tsx` / `constants.ts` (the
@@ -137,38 +139,101 @@ logic — `unified_shop_api/controllers/checkout.py`'s `reward-claim` and
 redirecting a full page. See that controller's module docstring for the
 full reasoning.
 
-**Only the final Confirm button still leaves this app.** Building a native
-payment step (the actual acquirer integrations — 2c2p, Stripe, etc.) is out
-of scope here; by the time Confirm is clicked the order already has its
-lines, delivery address, billing address and delivery method set via
-`/api/unified-shop/checkout/*`, so `api/checkoutHandoff.ts`'s
-`handOffToOdooPayment()`:
+Confirm now advances to this app's own native **Payment** step (see below)
+instead of leaving `app.snabbb.com` — see git history / the old
+`handOffToOdooPayment()`-right-after-Confirm behavior in
+`api/checkoutHandoff.ts` for what this replaced.
 
-1. Reuses the same SSO exchange `AppCard.tsx`/the old `handOffToOdooCheckout`
-   already used (`useCreateAppLink` → `/v1/sso/app_link` →
-   `app.snabbb.com/api/sso/odoo-exchange`), asking it to land on
-   `/unified-shop/checkout-confirm` instead of the storefront homepage.
-2. Full-page-navigates the browser there (`window.location.href`, not a new
-   tab — this *is* the thing the shopper is trying to do).
+**Caveat worth knowing**: `delivery.carrier.rate_shipment` / `set_delivery_line`
+(used by `checkout.py`'s delivery-method routes) and the `website_published`
++ `company_id` carrier domain are the stock `delivery` module APIs this
+relies on — worth a quick sanity check against however
+`mrbur_hide_free_shipping` already filters carriers elsewhere in this
+repo, in case mrbur.shop scopes carriers by something this domain doesn't
+account for.
 
-`unified_shop_api/controllers/main.py`'s `checkout_confirm_handoff` route
-(Odoo side, `auth='user'`) does **not** rebuild the cart from a `lines`
-param the way the old `checkout_handoff` route does — the order's already
-right, from the same Odoo session, via the JSON calls above — it just
-redirects to `/shop/payment`. (`checkout_handoff` itself is left in place
-for backward compatibility, but nothing in this feature calls it anymore;
-calling it after the new flow has already built the order would double
-every line's quantity, since it's additive-only.)
+## Payment
 
-**Two caveats worth knowing**, same as before: whether the Cloudflare
-Worker behind `/api/sso/odoo-exchange` forwards the `next` param all the
-way through to Odoo hasn't been independently confirmed (the Worker's
-source isn't available from this repo) — if it doesn't, the shopper still
-lands fully logged in on their regional mrbur.shop storefront, just its
-homepage rather than `/shop/payment`. And `delivery.carrier.rate_shipment`
-/ `set_delivery_line` (used by `checkout.py`'s delivery-method routes) and
-the `website_published` + `company_id` carrier domain are the stock
-`delivery` module APIs this relies on — worth a quick sanity check against
-however `mrbur_hide_free_shipping` already filters carriers elsewhere in
-this repo, in case mrbur.shop scopes carriers by something this domain
-doesn't account for.
+As of 2026-09-18, Payment is also a native step (`components/checkout/
+PaymentPage.tsx`), reached from CheckoutPage's Confirm button — matching
+mrbur.odoo.com's own `/shop/payment` (provider picker, inline Card fields
+with "Secured by Stripe", order summary, an earn-credits banner, "Pay with
+Snabbb Credit", Pay now), rendered by this app instead of Odoo's
+server-side template, backed by `api/paymentApi.ts` calling
+`/api/unified-shop/checkout/payment/*` (same forwarded-session-cookie auth
+as everything else in this folder).
+
+**Only Card (Stripe) is genuinely native.** Every other enabled provider
+(2c2p, doku, ...) is an inherently hosted, redirect-only page in Odoo no
+matter who renders the picker in front of it — so selecting one of those
+and clicking Pay now still uses the existing SSO hand-off,
+`api/checkoutHandoff.ts`'s `handOffToOdooPayment()` (same mechanism
+described in the old version of this section — SSO exchange via
+`useCreateAppLink` → `/api/sso/odoo-exchange` → Odoo's `/shop/payment`,
+landing on a real first-party Odoo-domain session so that provider's own
+integration can run). This is genuinely unavoidable for a redirect-based
+provider, not a shortcut — there's no card data to keep on this domain in
+the first place for those.
+
+**Card handling never touches this codebase.** `PaymentPage.tsx` loads
+Stripe.js directly from `js.stripe.com` at runtime (a plain `<script>` tag,
+not an npm dependency — bundling/self-hosting Stripe.js isn't allowed under
+Stripe's own PCI SAQ-A eligibility rules) and mounts Stripe's own Payment
+Element. Card numbers are typed into Stripe's iframe and never reach this
+frontend's state, this backend, or the wire between them — only a
+`payment_intent`/`client_secret` pair does, which is meaningless without
+Stripe's own key to act on it.
+
+Backend-side, `unified_shop_api/controllers/checkout.py` gained three
+routes:
+
+```
+GET  /api/unified-shop/checkout/payment/methods
+  -> { providers: [{id, code, name, image_url, state, inline}],
+       earn_credits, earn_game_credits, amount_total, currency }
+
+POST /api/unified-shop/checkout/payment/init
+  body: { provider_id, tokenize?: bool }
+  -> { reference, provider_code, processing_values: {...} }
+
+GET  /api/unified-shop/checkout/payment/status?reference=<tx reference>
+  -> { state, is_done, is_error, state_message, sale_order_state, sale_order_name }
+```
+
+None of these reimplement payment logic — `payment/init` calls Odoo's own
+documented, stable `payment.transaction.create()` + `_get_processing_values()`
+entry point (the same one `/shop/payment/transaction/<order_id>` uses
+internally) rather than hand-rolling transaction creation, and
+`payment/status` only *reads* `payment.transaction.state` — confirming a
+payment (webhook handling, SO re-confirmation, Snabbb credit awarding) is
+still entirely `payment.transaction._set_done()`/`_set_error()`, i.e.
+`snabbb_credit/models/payment_transaction.py`'s existing override, firing
+from Stripe's webhook exactly as it does today. See `checkout.py`'s own
+module docstring above these routes for the full reasoning, including the
+one honestly-flagged caveat: the exact required `payment.transaction.create()`
+vals are the stable public API, but this instance's installed
+`payment`/`payment_stripe` module version wasn't visible from this repo to
+verify byte-for-byte — worth a real sandbox test (a Stripe test card
+through `/payment/init`) before relying on it, and if it 500s the Odoo
+error log will name the exact field to adjust.
+
+**3DS / bank-authentication redirects** are handled with
+`stripe.confirmPayment({ redirect: 'if_required' })`, so most cards never
+leave `app.snabbb.com` at all; when a bank truly requires an extra
+authentication step, Stripe does a full-page redirect and back via a
+`return_url` pointing at this same page with `?stripe_return=1&
+tx_ref=<reference>` — `UnifiedShopApp.tsx`'s `readStripeResume()` picks
+that back up on mount (component state doesn't survive a full navigation)
+and resumes straight into the `payment` view's "confirming your payment…"
+polling instead of losing the shopper back at the product grid or starting
+a second transaction.
+
+**Two caveats worth knowing**, same flavor as the Delivery step's own:
+whether the Cloudflare Worker forwards `/api/unified-shop/checkout/payment/*`
+the same way it forwards `/api/unified-shop/checkout/*` hasn't been
+independently confirmed — if it allowlists exact paths rather than a
+prefix, these three new routes need adding the same way the original
+Delivery-step routes did (see `api/paymentApi.ts`'s own doc comment). And
+whether `/api/sso/odoo-exchange` forwards `next` all the way through to
+Odoo still isn't independently confirmed either — relevant only to the
+non-Stripe-provider fallback above, same as before.

@@ -213,3 +213,52 @@ export interface AddressFormValues {
   phone?: string;
   email?: string;
 }
+
+// ---------------------------------------------------------------------
+// Native "Payment" step (components/checkout/PaymentPage.tsx) — see that
+// file's doc comment and api/paymentApi.ts for how these are used.
+// ---------------------------------------------------------------------
+
+/** One payment.provider available for this order (GET /payment/methods). */
+export interface PaymentProvider {
+  id: number;
+  code: string;
+  name: string;
+  image_url: string | false;
+  state: string;
+  /** Only true for Stripe today — the only provider with a native inline
+   *  form here (Stripe Elements). Every other provider is a hosted
+   *  redirect page regardless, so the frontend falls back to the existing
+   *  SSO hand-off for those. */
+  inline: boolean;
+}
+
+export interface PaymentMethodsResponse {
+  ok: boolean;
+  providers: PaymentProvider[];
+  earn_credits: number;
+  earn_game_credits: number;
+  amount_total: number;
+  currency: string;
+}
+
+/** processing_values is Odoo's own payment.transaction._get_processing_values()
+ *  output (provider-specific: `client_secret` + `publishable_key` for
+ *  Stripe, `webPaymentUrl` for 2c2p, etc) — deliberately untyped beyond
+ *  that since its shape is entirely provider-defined. */
+export interface PaymentInitResponse {
+  ok: boolean;
+  reference: string;
+  provider_code: string;
+  processing_values: Record<string, string | number | boolean | null>;
+}
+
+export interface PaymentStatusResponse {
+  ok: boolean;
+  state: string;
+  is_done: boolean;
+  is_error: boolean;
+  state_message: string;
+  sale_order_state: string | false;
+  sale_order_name: string | false;
+}

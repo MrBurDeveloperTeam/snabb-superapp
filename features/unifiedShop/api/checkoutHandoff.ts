@@ -128,11 +128,18 @@ export async function handOffToOdooCheckout(
 }
 
 /**
- * Final step of the native Delivery page: the order (lines, delivery
- * address, billing address, delivery method) is already built server-side
- * via /api/unified-shop/checkout/* by this point (see
- * components/checkout/CheckoutPage.tsx's handleConfirm) — this just needs
- * to land the browser on Odoo's own domain, with a real session, at
+ * As of 2026-09-18 this is no longer called right after Confirm —
+ * CheckoutPage's Confirm now advances in-app to
+ * components/checkout/PaymentPage.tsx (a native Payment step) instead of
+ * hopping off to Odoo's own /shop/payment immediately. This function is
+ * still used, just one screen later: PaymentPage calls it when the
+ * shopper picks any payment provider other than Card/Stripe (2c2p, doku,
+ * ...) — those are inherently hosted, redirect-only pages in Odoo no
+ * matter who renders the picker in front of them, so there's no native
+ * version of this hand-off to build for them. By the time it's called, the
+ * order (lines, delivery address, billing address, delivery method) is
+ * already built server-side via /api/unified-shop/checkout/*, so this just
+ * needs to land the browser on Odoo's own domain, with a real session, at
  * /shop/payment.
  */
 export async function handOffToOdooPayment(createAppLink: CreateAppLinkFn): Promise<void> {

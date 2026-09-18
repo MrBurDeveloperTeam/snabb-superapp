@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ProductGrid from './ProductGrid';
 import CartDrawer from './CartDrawer';
 import CheckoutPage from './checkout/CheckoutPage';
+import PaymentPage from './checkout/PaymentPage';
 
 export interface UnifiedShopAppProps {
   /**
@@ -14,20 +15,47 @@ export interface UnifiedShopAppProps {
   onBack?: () => void;
 }
 
-type UnifiedShopView = 'shop' | 'checkout';
+type UnifiedShopView = 'shop' | 'checkout' | 'payment';
+
+/**
+ * Stripe's own 3DS/bank-authentication redirect (see PaymentPage.tsx's
+ * `stripe.confirmPayment` call) is a full-page navigation away and back —
+ * component state doesn't survive that, only the URL does. `return_url` is
+ * set to this same page with `?stripe_return=1&tx_ref=<reference>`, so this
+ * reads that back off the URL on mount and jumps straight into the
+ * `payment` view with the reference to resume, instead of losing the
+ * shopper back at the product grid or making them start payment over (and
+ * create a second transaction).
+ */
+function readStripeResume(): { view: UnifiedShopView; reference: string | null } {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stripe_return') === '1') {
+      return { view: 'payment', reference: params.get('tx_ref') };
+    }
+  } catch {
+    // window.location unavailable in some edge environment — fall through
+  }
+  return { view: 'shop', reference: null };
+}
 
 /**
  * Top-level Unified Shop screen: browse + search + filter across brands,
  * with a persistent cart, plus (since checkoutHandoff.ts stopped being the
- * first thing the Checkout button does) an in-app "Delivery" checkout step.
+ * first thing the Checkout button does) in-app "Delivery" and "Payment"
+ * checkout steps.
  *
  * `view` is local, component-level state rather than another branch of
  * App.tsx's own path-state router — CartDrawer's Checkout button just
- * flips it to 'checkout' and CheckoutPage's "Back to cart"/breadcrumb
- * flips it back, all without leaving the `/unified-shop` route or
- * touching App.tsx. That keeps this feature exactly as self-contained as
- * the rest of it (see this folder's README) — App.tsx still only ever
- * mounts <UnifiedShopApp />, nothing about this view change reaches it.
+ * flips it to 'checkout', CheckoutPage's Confirm flips it to 'payment', and
+ * each step's own back link/breadcrumb flips it back, all without leaving
+ * the `/unified-shop` route or touching App.tsx. That keeps this feature
+ * exactly as self-contained as the rest of it (see this folder's README) —
+ * App.tsx still only ever mounts <UnifiedShopApp />, nothing about this
+ * view change reaches it. The one exception is Stripe's own redirect for
+ * 3DS/bank authentication (see readStripeResume above), which is a real
+ * full-page navigation this component has to detect on mount rather than
+ * a `view` transition triggered by a click.
  *
  * Rendered by App.tsx as a real page at the `/unified-shop` route (its own
  * lightweight `path`-state router — see the `isUnifiedShopRoute` wiring
@@ -39,7 +67,8 @@ type UnifiedShopView = 'shop' | 'checkout';
  * just its own in-flow page space, not a `fixed inset-0` overlay.
  */
 const UnifiedShopApp: React.FC<UnifiedShopAppProps> = () => {
-  const [view, setView] = useState<UnifiedShopView>('shop');
+  const [resume] = useState(readStripeResume);
+  const [view, setView] = useState<UnifiedShopView>(resume.view);
 
   return (
     <div
@@ -52,7 +81,15 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = () => {
     >
       {view === 'checkout' ? (
         <main className="py-4">
-          <CheckoutPage onBackToShop={() => setView('shop')} />
+          <CheckoutPage onBackToShop={() => setView('shop')} onProceedToPayment={() => setView('payment')} />
+        </main>
+      ) : view === 'payment' ? (
+        <main className="py-4">
+          <PaymentPage
+            onBack={() => setView('checkout')}
+            onBackToShop={() => setView('shop')}
+            resumeReference={resume.view === 'payment' ? resume.reference : null}
+          />
         </main>
       ) : (
         <>
