@@ -44,6 +44,8 @@ import { useThemeStore } from './store/themeStore';
 import LoadingOverlay from './components/LoadingOverlay';
 import UserManagementPage from './subuser/components/UserManagementPage';
 import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
+import WorkspaceSwitcher from './subuser/components/WorkspaceSwitcher';
+import { acceptCompanyInvitation } from './subuser/services/subuserService';
 import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
 import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
 import { BookOpenText, ShoppingBag, ArrowLeft } from 'lucide-react';
@@ -269,6 +271,7 @@ const App: React.FC = () => {
   const [accountType, setAccountType] = useState<string | null>(null);
   const [accountTypeOwnerId, setAccountTypeOwnerId] = useState<string | null>(null);
   const [isCheckingAccountType, setIsCheckingAccountType] = useState(true);
+  const acceptingInvitationRef = useRef<string | null>(null);
   // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const { profileImageUrl } = useProfileImage(isLoggedIn);
   const isAccountTypeReady =
@@ -760,6 +763,7 @@ useEffect(() => {
     verifySessionGenerationRef.current += 1;
     setMatchedSupabaseUserId(null);
     lastVerifiedEmailRef.current = null;
+    localStorage.removeItem('snabbb.activeWorkspaceOwnerUserId');
   }, []);
 
   // Cross-tab SSO_LOGOUT never calls the Odoo server logout endpoint again
@@ -1314,6 +1318,33 @@ useEffect(() => {
     []
   );
 
+  useEffect(() => {
+    if (!isLoggedIn || typeof matchedSupabaseUserId !== 'string') return;
+
+    const token = sessionStorage.getItem('pendingCompanyInvitation');
+    if (!token || acceptingInvitationRef.current === token) return;
+
+    acceptingInvitationRef.current = token;
+
+    acceptCompanyInvitation(token)
+      .then(() => {
+        sessionStorage.removeItem('pendingCompanyInvitation');
+        window.dispatchEvent(new CustomEvent('snabbb:memberships-changed'));
+        toastMessage('Your company membership has been activated.', {
+          type: 'success',
+        });
+      })
+      .catch((error: any) => {
+        toastMessage(
+          error?.message || 'Unable to activate your company membership.',
+          { type: 'error' }
+        );
+      })
+      .finally(() => {
+        acceptingInvitationRef.current = null;
+      });
+  }, [isLoggedIn, matchedSupabaseUserId, toastMessage]);
+
   if(path === '/sso/check') {
     return <SsoCheck />;
   }
@@ -1412,6 +1443,9 @@ useEffect(() => {
                   </span>
                 )}
               </button>
+            )}
+            {isLoggedIn && typeof matchedSupabaseUserId === 'string' && (
+              <WorkspaceSwitcher userId={matchedSupabaseUserId} />
             )}
             <ThemeToggle />
             {isLoggedIn === null ? (

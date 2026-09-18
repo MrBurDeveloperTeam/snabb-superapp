@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { authOdoo } from '@/services/authOdoo';
 import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
-import { acceptCompanyInvitation, getCompanyInvitation } from '../services/subuserService';
+import { getCompanyInvitation } from '../services/subuserService';
 import type { InvitationDetails } from '../types';
 import { SnabbbIcon } from '@/public/icons/SnabbbIcon';
 import { EmailVerificationToast } from '@/features/auth/components/EmailVerificationToast';
@@ -83,7 +83,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
 
     try {
       const response = await authOdoo({
-        account_type: 'company_member',
+        account_type: 'individual',
         companyName: invitation.companyName,
         login: invitation.email,
         firstName: form.firstName.trim(),
@@ -107,7 +107,10 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
 
       accountWasCreated = true;
 
-      await acceptCompanyInvitation(token);
+      // The Worker accepts an invitation only for an authenticated user.
+      // Keep the token until this newly created account has verified its
+      // email and successfully signed in.
+      sessionStorage.setItem('pendingCompanyInvitation', token);
 
       if (setToastMsg) {
         setToastMsg(
@@ -116,7 +119,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
         );
       } else {
         toast.success(
-          'Your company member account has been created successfully.'
+          'Your Snabbb account has been created. Verify your email and sign in to activate the company membership.'
         );
       }
 
@@ -145,6 +148,30 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
 
   if (loading) return <div className="min-h-screen grid place-items-center bg-slate-100 text-slate-500">Opening invitation...</div>;
   if (!invitation) return <div className="min-h-screen grid place-items-center bg-slate-100 px-6"><div className="rounded-3xl bg-white p-10 text-center shadow-xl"><h1 className="text-2xl font-black">Invitation unavailable</h1><p className="mt-3 text-slate-500">This link is invalid, expired, or has already been used.</p></div></div>;
+
+  if (invitation.accountExists) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-slate-100 px-6">
+        <div className="w-full max-w-lg rounded-3xl bg-white p-10 text-center shadow-xl">
+          <h1 className="text-2xl font-black text-slate-950">Your Snabbb account already exists</h1>
+          <p className="mt-3 text-slate-500">
+            Sign in as <span className="font-bold text-slate-700">{invitation.email}</span> to join{' '}
+            <span className="font-bold text-tiffany-700">{invitation.companyName}</span>.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.setItem('pendingCompanyInvitation', token);
+              onComplete();
+            }}
+            className="mt-8 w-full rounded-2xl bg-tiffany-600 py-4 font-black text-white hover:bg-tiffany-700"
+          >
+            Sign in to accept invitation
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const fieldClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/10';
   const labelClass = 'mb-2 block text-xs font-black uppercase tracking-widest text-slate-400';
@@ -196,7 +223,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
           <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={fieldClass} /></div>
         </div>
         <label className="mt-7 flex items-start gap-3 text-sm text-slate-600"><input required type="checkbox" checked={form.agreed} onChange={update('agreed')} className="mt-1" />I agree to the Terms of Service, Privacy Policy and Disclaimer.</label>
-        <button disabled={submitting} className="mt-8 w-full rounded-2xl bg-slate-900 py-4 font-black text-white disabled:opacity-50">{submitting ? 'Creating account...' : 'Sign Up as Company Member'}</button>
+        <button disabled={submitting} className="mt-8 w-full rounded-2xl bg-slate-900 py-4 font-black text-white disabled:opacity-50">{submitting ? 'Creating account...' : 'Create Snabbb Account'}</button>
       </form>
     </div>
   );
