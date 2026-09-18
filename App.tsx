@@ -14,10 +14,8 @@ import api from './services/api';
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
 import CatMascot from './sharedPet/CatMascot';
-import { SharedMolarAI } from '@mrburdeveloperteam/pet-function/ai';
-import type { MolarChatEmptyState } from '@mrburdeveloperteam/pet-function/ai';
-import { createAppGalleryMolarAdapter } from './sharedPet/appGalleryMolarAdapter';
-import { MOLAR_LOGO_URL } from './aiExperience/molarExperienceAssets';
+import './sharedPet/runtime';
+import { SuperappMolarAIFloat } from '@mrburdeveloperteam/pet-function/apps/superapp';
 import AppGalleryVirtualPet from './sharedPet/AppGalleryVirtualPet';
 import MeowdokuLauncher from './petExperience/MeowdokuLauncher';
 import { isPersonalizedPetDialogueEnabled } from '@mrburdeveloperteam/pet-function/apps/superapp';
@@ -156,7 +154,6 @@ const readSignupInviteFromUrl =
     };
   };
 
-const SUPPORT_MAILTO_URL = 'https://mail.google.com/mail/?view=cm&fs=1&to=support%40snabbb.com&su=Customer%20Inquiry';
 
 /** Suite-standard Email Support affordance rendered inside the Molar panel
  *  via molar-experience 0.9.6's `footerContent` prop — same pattern already
@@ -164,25 +161,6 @@ const SUPPORT_MAILTO_URL = 'https://mail.google.com/mail/?view=cm&fs=1&to=suppor
  *  new dependency); App Gallery's own Tailwind utility classes only — no
  *  E-learning-specific `elearning-support-*` class names, which this host
  *  does not own any CSS rules for. */
-function AppGallerySupportCard() {
-  return (
-    <a
-      href={SUPPORT_MAILTO_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Email support at support@snabbb.com"
-      className="flex w-full items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/90 px-3 py-2.5 text-left text-slate-700 transition-all duration-200 hover:border-emerald-200 hover:bg-emerald-50/50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-200 dark:hover:border-emerald-800"
-    >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400">
-        <i className="fa-solid fa-envelope text-[15px]" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">Email Support</span>
-        <span className="block truncate text-xs opacity-70">Contact support@snabbb.com</span>
-      </span>
-    </a>
-  );
-}
 
 const App: React.FC = () => {
   const { 
@@ -658,62 +636,6 @@ useEffect(() => {
   // that behavior rather than introducing new UX. The Supabase fetch below
   // remains authoritative and overrides these defaults field-by-field the
   // instant real AIBoard content exists.
-  const DEFAULT_MOLAR_EMPTY_STATE: MolarChatEmptyState = {
-    title: 'App.Snabbb Assistant',
-    subtitle: 'Ready to assist with questions about App.Snabbb and its supported applications.',
-    prompts: [
-      { label: 'What is App.Snabbb?', iconName: 'Sparkles' },
-      { label: 'What apps are available?', iconName: 'LayoutGrid' },
-      { label: 'Tell me about the Inventory app', iconName: 'Package' },
-      { label: 'Tell me about the Appointment app', iconName: 'CalendarClock' },
-    ],
-  };
-
-  const [molarEmptyState, setMolarEmptyState] = useState<MolarChatEmptyState>(DEFAULT_MOLAR_EMPTY_STATE);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchSimConfig = async () => {
-      try {
-        const { data: configs } = await supabase
-          .from('aiboard_simulator_configs')
-          .select('id, title, subtitle')
-          .eq('module_name', 'App.Snabbb')
-          .limit(1);
-
-        if (configs && configs.length > 0) {
-          const title = configs[0].title || DEFAULT_MOLAR_EMPTY_STATE.title;
-          const subtitle = configs[0].subtitle || DEFAULT_MOLAR_EMPTY_STATE.subtitle;
-
-          const { data: promptData } = await supabase
-            .from('aiboard_simulator_prompts')
-            .select('text, icon_name, sort_order')
-            .eq('config_id', configs[0].id)
-            .order('sort_order', { ascending: true });
-
-          const prompts = promptData && promptData.length > 0
-            ? promptData.map((p) => ({ label: p.text, iconName: p.icon_name }))
-            : DEFAULT_MOLAR_EMPTY_STATE.prompts;
-
-          if (!cancelled) setMolarEmptyState({ title, subtitle, prompts });
-        }
-        // No config row at all: keep the defaults already set at
-        // initialization — no state write needed.
-      } catch (err) {
-        console.error('Error fetching sim configs:', err);
-        // Query error: keep the defaults already set at initialization.
-      }
-    };
-
-    fetchSimConfig();
-    return () => { cancelled = true; };
-  }, []);
-
-  const molarAdapter = useMemo(
-    () => createAppGalleryMolarAdapter({ userChatContext: safeUserChatContext }),
-    [safeUserChatContext]
-  );
-
   const getAvatarColor = (name: string) => {
     const colors = [
       'bg-blue-500',
@@ -1779,14 +1701,11 @@ useEffect(() => {
             just context-starved — while a logged-in identity is still
             unreconciled, so no chat can start under an unconfirmed owner. */}
         <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute ? 'hidden' : 'contents'}>
-          <SharedMolarAI
+          <SuperappMolarAIFloat
             key={!isLoggedIn ? 'guest' : typeof matchedSupabaseUserId === 'string' ? matchedSupabaseUserId : 'reconciling'}
-            adapter={molarAdapter}
+            userContext={safeUserChatContext}
             disabled={!isLoggedIn || typeof matchedSupabaseUserId !== 'string'}
             onPetToggle={() => setIsVirtualPetOpen(true)}
-            emptyState={molarEmptyState}
-            logoUrl={MOLAR_LOGO_URL}
-            footerContent={<AppGallerySupportCard />}
           />
         </div>
 

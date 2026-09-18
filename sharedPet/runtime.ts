@@ -3,13 +3,11 @@ import { supabase } from '../services/supabaseClient';
 import { useCreateAppLink } from '../mutation/useCreateAppLink';
 import { getAuthUser } from '../utils/authStorage';
 import { MINI_APPS } from '../constants';
-import { chatWithGemini } from '../services/geminiService';
 
 configureSuperappHostDependencies({
   supabase,
   useCreateAppLink,
   getAuthUser,
   miniApps: MINI_APPS,
-  chatWithGemini,
   personalizedDialogueEnabled: import.meta.env.VITE_ENABLE_PERSONALIZED_PET_DIALOGUE === 'true',
 });
