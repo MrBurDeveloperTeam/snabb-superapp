@@ -1321,14 +1321,14 @@ useEffect(() => {
   useEffect(() => {
     if (!isLoggedIn || typeof matchedSupabaseUserId !== 'string') return;
 
-    const token = sessionStorage.getItem('pendingCompanyInvitation');
+    const token = localStorage.getItem('pendingCompanyInvitation');
     if (!token || acceptingInvitationRef.current === token) return;
 
     acceptingInvitationRef.current = token;
 
     acceptCompanyInvitation(token)
       .then(() => {
-        sessionStorage.removeItem('pendingCompanyInvitation');
+        localStorage.removeItem('pendingCompanyInvitation');
         window.dispatchEvent(new CustomEvent('snabbb:memberships-changed'));
         toastMessage('Your company membership has been activated.', {
           type: 'success',

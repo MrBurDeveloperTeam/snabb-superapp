@@ -110,7 +110,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
       // The Worker accepts an invitation only for an authenticated user.
       // Keep the token until this newly created account has verified its
       // email and successfully signed in.
-      sessionStorage.setItem('pendingCompanyInvitation', token);
+      localStorage.setItem('pendingCompanyInvitation', token);
 
       if (setToastMsg) {
         setToastMsg(
@@ -161,7 +161,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
           <button
             type="button"
             onClick={() => {
-              sessionStorage.setItem('pendingCompanyInvitation', token);
+              localStorage.setItem('pendingCompanyInvitation', token);
               onComplete();
             }}
             className="mt-8 w-full rounded-2xl bg-tiffany-600 py-4 font-black text-white hover:bg-tiffany-700"
