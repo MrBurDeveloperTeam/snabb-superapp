@@ -1,6 +1,8 @@
 import { SharedMeowdokuLauncher } from '@mrburdeveloperteam/pet-function/pet';
+import { createAppGalleryPetRepository } from '@mrburdeveloperteam/pet-function/apps';
 import { supabase } from '../services/supabaseClient';
-import { appGalleryPetRepository } from './appGalleryPetRepository';
+
+const appGalleryPetRepository = createAppGalleryPetRepository(supabase);
 
 interface MeowdokuLauncherProps {
   isOpen: boolean;

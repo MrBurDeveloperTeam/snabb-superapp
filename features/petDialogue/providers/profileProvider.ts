@@ -1,43 +1,46 @@
-import { getProfileSettingsRoute } from '../knownRoutes';
-import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';
-import type { DialogueCandidate, InsightCandidate, ProfileCompletionStatus } from '../types';
-
-/** See expiredInventoryProvider.ts's ExpiredInventoryFacts for the same
- *  design intent. Minimal: this candidate has no database record beyond
- *  the user id itself. */
-export interface ProfileIncompleteFacts {
-  userId: string;
-  status: 'incomplete';
-}
-
-/**
- * Pure — reuses the profile-completeness signal the gallery already resolves
- * via Odoo's `/partner/profile` endpoint (see App.tsx `verifySession`). Does
- * not duplicate or infer the required-field list, and never treats a
- * loading/failed lookup as "incomplete" (only an explicit `'incomplete'`
- * status produces a candidate).
- */
-export function buildProfileCandidate(status: ProfileCompletionStatus, userId: string): InsightCandidate<ProfileIncompleteFacts> | null {
-  if (status !== 'incomplete' || !userId) return null;
-
-  const evaluatedAt = new Date().toISOString();
-  const facts: ProfileIncompleteFacts = { userId, status: 'incomplete' };
-
-  return {
-    app: 'profile',
-    triggerId: DIALOGUE_ID.PROFILE_INCOMPLETE,
-    facts,
-    messageTemplate: "You haven't finished your profile yet. Complete it to unlock the full Snabbb experience.",
-    sourceRecordId: userId,
-    evaluatedAt,
-    userState: 'NEW_USER_INCOMPLETE_PROFILE',
-    dialogueId: DIALOGUE_ID.PROFILE_INCOMPLETE,
-    priority: 'PROFILE',
-    message: "You haven't finished your profile yet. Complete it to unlock the full Snabbb experience.",
-    action: { label: 'Complete Profile', route: getProfileSettingsRoute() },
-    source: { app: 'profile', evaluatedAt },
-    dedupeKey: `profile_incomplete:${userId}`,
-    ruleVersion: PET_DIALOGUE_RULE_VERSION,
-    recordId: userId,
-  };
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "import { getProfileSettingsRoute } from '../knownRoutes';"
+// legacy-line: "import { DIALOGUE_ID, PET_DIALOGUE_RULE_VERSION } from '../types';"
+// legacy-line: "import type { DialogueCandidate, InsightCandidate, ProfileCompletionStatus } from '../types';"
+// legacy-line: ""
+// legacy-line: "/** See expiredInventoryProvider.ts's ExpiredInventoryFacts for the same"
+// legacy-line: " *  design intent. Minimal: this candidate has no database record beyond"
+// legacy-line: " *  the user id itself. */"
+// legacy-line: "export interface ProfileIncompleteFacts {"
+// legacy-line: "  userId: string;"
+// legacy-line: "  status: 'incomplete';"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Pure — reuses the profile-completeness signal the gallery already resolves"
+// legacy-line: " * via Odoo's `/partner/profile` endpoint (see App.tsx `verifySession`). Does"
+// legacy-line: " * not duplicate or infer the required-field list, and never treats a"
+// legacy-line: " * loading/failed lookup as \"incomplete\" (only an explicit `'incomplete'`"
+// legacy-line: " * status produces a candidate)."
+// legacy-line: " */"
+// legacy-line: "export function buildProfileCandidate(status: ProfileCompletionStatus, userId: string): InsightCandidate<ProfileIncompleteFacts> | null {"
+// legacy-line: "  if (status !== 'incomplete' || !userId) return null;"
+// legacy-line: ""
+// legacy-line: "  const evaluatedAt = new Date().toISOString();"
+// legacy-line: "  const facts: ProfileIncompleteFacts = { userId, status: 'incomplete' };"
+// legacy-line: ""
+// legacy-line: "  return {"
+// legacy-line: "    app: 'profile',"
+// legacy-line: "    triggerId: DIALOGUE_ID.PROFILE_INCOMPLETE,"
+// legacy-line: "    facts,"
+// legacy-line: "    messageTemplate: \"You haven't finished your profile yet. Complete it to unlock the full Snabbb experience.\","
+// legacy-line: "    sourceRecordId: userId,"
+// legacy-line: "    evaluatedAt,"
+// legacy-line: "    userState: 'NEW_USER_INCOMPLETE_PROFILE',"
+// legacy-line: "    dialogueId: DIALOGUE_ID.PROFILE_INCOMPLETE,"
+// legacy-line: "    priority: 'PROFILE',"
+// legacy-line: "    message: \"You haven't finished your profile yet. Complete it to unlock the full Snabbb experience.\","
+// legacy-line: "    action: { label: 'Complete Profile', route: getProfileSettingsRoute() },"
+// legacy-line: "    source: { app: 'profile', evaluatedAt },"
+// legacy-line: "    dedupeKey: `profile_incomplete:${userId}`,"
+// legacy-line: "    ruleVersion: PET_DIALOGUE_RULE_VERSION,"
+// legacy-line: "    recordId: userId,"
+// legacy-line: "  };"
+// legacy-line: "}"
+// legacy-line: ""

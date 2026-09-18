@@ -1,108 +1,111 @@
-// Phase 1A/1C/1D/1E dialogue candidate contract.
-//
-// Shape follows the AI-Personalized Pet Dialogue System engineering
-// reference. Priority order (approved 1E revision): P0 > P1 > incomplete
-// profile > P2 > legacy post-login intro > fallback — see PRIORITY_RANK in
-// resolveDialogue.ts for the authoritative numeric ranking.
-//
-// AI Experience Phase 1: `DialogueCandidate` below is now a direct alias of
-// the canonical `InsightCandidate` contract (see
-// features/aiExperience/contracts/insightCandidate.ts) rather than its own
-// interface. This is a type-only, additive change — every field this file
-// used to declare directly is still present, verbatim, on `InsightCandidate`
-// under its "legacy-compatible fields" heading, so resolveDialogue.ts,
-// usePersonalizedPetDialogue.ts, and CatMascot.tsx all keep compiling and
-// behaving identically. Only the candidate-building code in
-// features/petDialogue/providers/*.ts was touched, to additionally populate
-// the new canonical fields (`app`, `triggerId`, `facts`, `messageTemplate`,
-// `sourceRecordId`, `evaluatedAt`).
-
-export type { InsightCandidate, InsightApp, InsightTriggerId } from '@/features/aiExperience/contracts/insightCandidate';
-import type { InsightCandidate } from '@/features/aiExperience/contracts/insightCandidate';
-
-export type DialoguePriority = 'P0' | 'P1' | 'PROFILE' | 'P2' | 'LEGACY_INTRO' | 'FALLBACK';
-
-export type DialogueUserState =
-  | 'ACTIVE_USER_URGENT'
-  | 'NEW_USER_INCOMPLETE_PROFILE'
-  | 'LEGACY_POST_LOGIN_INTRO'
-  | 'GENERAL_USER_NO_URGENT';
-
-export interface DialogueAction {
-  label: string;
-  route: string;
-}
-
-export interface DialogueSource {
-  app: string;
-  recordId?: string;
-  evaluatedAt: string;
-  /** Optional batch-level provenance (e.g. Phase 1B batch-authoritative expiry). Internal metadata only — never rendered in the UI. */
-  batchId?: string;
-}
-
-/**
- * Backward-compatible alias: every consumer that imports `DialogueCandidate`
- * from this file continues to get the exact same field set it always did
- * (see InsightCandidate's "legacy-compatible fields") — plus the new
- * canonical fields, which every provider in ./providers now populates.
- */
-export type DialogueCandidate = InsightCandidate;
-
-/**
- * Controlled set of dialogue ids. The action-execution layer switches on
- * these (not on `action.route` as a free-form URL) so only known, reviewed
- * destinations can ever be navigated to.
- */
-export const DIALOGUE_ID = {
-  EXPIRED_INVENTORY: 'expired_inventory',
-  OVERDUE_HIGH_TASK: 'overdue_high_task',
-  APPOINTMENT_SOON: 'appointment_soon',
-  INVENTORY_EXPIRING_SOON: 'inventory_expiring_soon',
-  INVENTORY_LOW_STOCK: 'inventory_low_stock',
-  HIGH_TASK_TODAY: 'high_task_today',
-  PROFILE_INCOMPLETE: 'profile_incomplete',
-  LEGACY_POST_LOGIN_INTRO: 'legacy_post_login_intro',
-  WELCOME_FALLBACK: 'welcome_fallback',
-} as const;
-
-export type DialogueId = (typeof DIALOGUE_ID)[keyof typeof DIALOGUE_ID];
-
-/** Centralized rule version for every Phase 1A candidate. */
-export const PET_DIALOGUE_RULE_VERSION = 'pet-dialogue-phase-1a-v1';
-
-/**
- * Mirrors the Odoo-derived `profileComplete` signal already resolved in
- * App.tsx. 'loading' and 'unknown' are distinct on purpose: a request that's
- * still in flight must be waited on, while a request that failed must never
- * be treated as "incomplete".
- */
-export type ProfileCompletionStatus = 'loading' | 'complete' | 'incomplete' | 'unknown';
-
-export type PersonalizedDialogueLifecycle = 'idle' | 'loading' | 'ready' | 'failed';
-
-/**
- * Reasons a candidate provider can fail an evaluation outright (as opposed
- * to completing and legitimately finding nothing). Distinct from `null`
- * candidates: a `null` candidate means "evaluation completed and there is
- * genuinely nothing to show"; a `failed` result means "evaluation could not
- * be trusted" and must never be read as "nothing urgent exists".
- */
-export type CandidateProviderFailureReason =
-  | 'item_query_failed'
-  | 'batch_query_failed'
-  | 'pagination_incomplete'
-  | 'unexpected_data'
-  | 'timeout';
-
-/**
- * Explicit result contract for candidate providers that need to distinguish
- * a trustworthy "no candidate" outcome from an untrustworthy failure or a
- * cancelled evaluation. `aborted` covers unmount, user change, logout, and
- * superseded (stale-generation) evaluations — callers must apply no result
- * for it, not fall back to anything.
- */
-export type CandidateProviderResult<T> =
-  | { status: 'success'; candidate: T | null }
-  | { status: 'failed'; reason: CandidateProviderFailureReason }
-  | { status: 'aborted' };
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "// Phase 1A/1C/1D/1E dialogue candidate contract."
+// legacy-line: "//"
+// legacy-line: "// Shape follows the AI-Personalized Pet Dialogue System engineering"
+// legacy-line: "// reference. Priority order (approved 1E revision): P0 > P1 > incomplete"
+// legacy-line: "// profile > P2 > legacy post-login intro > fallback — see PRIORITY_RANK in"
+// legacy-line: "// resolveDialogue.ts for the authoritative numeric ranking."
+// legacy-line: "//"
+// legacy-line: "// AI Experience Phase 1: `DialogueCandidate` below is now a direct alias of"
+// legacy-line: "// the canonical `InsightCandidate` contract (see"
+// legacy-line: "// features/aiExperience/contracts/insightCandidate.ts) rather than its own"
+// legacy-line: "// interface. This is a type-only, additive change — every field this file"
+// legacy-line: "// used to declare directly is still present, verbatim, on `InsightCandidate`"
+// legacy-line: "// under its \"legacy-compatible fields\" heading, so resolveDialogue.ts,"
+// legacy-line: "// usePersonalizedPetDialogue.ts, and CatMascot.tsx all keep compiling and"
+// legacy-line: "// behaving identically. Only the candidate-building code in"
+// legacy-line: "// features/petDialogue/providers/*.ts was touched, to additionally populate"
+// legacy-line: "// the new canonical fields (`app`, `triggerId`, `facts`, `messageTemplate`,"
+// legacy-line: "// `sourceRecordId`, `evaluatedAt`)."
+// legacy-line: ""
+// legacy-line: "export type { InsightCandidate, InsightApp, InsightTriggerId } from '@/features/aiExperience/contracts/insightCandidate';"
+// legacy-line: "import type { InsightCandidate } from '@/features/aiExperience/contracts/insightCandidate';"
+// legacy-line: ""
+// legacy-line: "export type DialoguePriority = 'P0' | 'P1' | 'PROFILE' | 'P2' | 'LEGACY_INTRO' | 'FALLBACK';"
+// legacy-line: ""
+// legacy-line: "export type DialogueUserState ="
+// legacy-line: "  | 'ACTIVE_USER_URGENT'"
+// legacy-line: "  | 'NEW_USER_INCOMPLETE_PROFILE'"
+// legacy-line: "  | 'LEGACY_POST_LOGIN_INTRO'"
+// legacy-line: "  | 'GENERAL_USER_NO_URGENT';"
+// legacy-line: ""
+// legacy-line: "export interface DialogueAction {"
+// legacy-line: "  label: string;"
+// legacy-line: "  route: string;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export interface DialogueSource {"
+// legacy-line: "  app: string;"
+// legacy-line: "  recordId?: string;"
+// legacy-line: "  evaluatedAt: string;"
+// legacy-line: "  /** Optional batch-level provenance (e.g. Phase 1B batch-authoritative expiry). Internal metadata only — never rendered in the UI. */"
+// legacy-line: "  batchId?: string;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Backward-compatible alias: every consumer that imports `DialogueCandidate`"
+// legacy-line: " * from this file continues to get the exact same field set it always did"
+// legacy-line: " * (see InsightCandidate's \"legacy-compatible fields\") — plus the new"
+// legacy-line: " * canonical fields, which every provider in ./providers now populates."
+// legacy-line: " */"
+// legacy-line: "export type DialogueCandidate = InsightCandidate;"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Controlled set of dialogue ids. The action-execution layer switches on"
+// legacy-line: " * these (not on `action.route` as a free-form URL) so only known, reviewed"
+// legacy-line: " * destinations can ever be navigated to."
+// legacy-line: " */"
+// legacy-line: "export const DIALOGUE_ID = {"
+// legacy-line: "  EXPIRED_INVENTORY: 'expired_inventory',"
+// legacy-line: "  OVERDUE_HIGH_TASK: 'overdue_high_task',"
+// legacy-line: "  APPOINTMENT_SOON: 'appointment_soon',"
+// legacy-line: "  INVENTORY_EXPIRING_SOON: 'inventory_expiring_soon',"
+// legacy-line: "  INVENTORY_LOW_STOCK: 'inventory_low_stock',"
+// legacy-line: "  HIGH_TASK_TODAY: 'high_task_today',"
+// legacy-line: "  PROFILE_INCOMPLETE: 'profile_incomplete',"
+// legacy-line: "  LEGACY_POST_LOGIN_INTRO: 'legacy_post_login_intro',"
+// legacy-line: "  WELCOME_FALLBACK: 'welcome_fallback',"
+// legacy-line: "} as const;"
+// legacy-line: ""
+// legacy-line: "export type DialogueId = (typeof DIALOGUE_ID)[keyof typeof DIALOGUE_ID];"
+// legacy-line: ""
+// legacy-line: "/** Centralized rule version for every Phase 1A candidate. */"
+// legacy-line: "export const PET_DIALOGUE_RULE_VERSION = 'pet-dialogue-phase-1a-v1';"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Mirrors the Odoo-derived `profileComplete` signal already resolved in"
+// legacy-line: " * App.tsx. 'loading' and 'unknown' are distinct on purpose: a request that's"
+// legacy-line: " * still in flight must be waited on, while a request that failed must never"
+// legacy-line: " * be treated as \"incomplete\"."
+// legacy-line: " */"
+// legacy-line: "export type ProfileCompletionStatus = 'loading' | 'complete' | 'incomplete' | 'unknown';"
+// legacy-line: ""
+// legacy-line: "export type PersonalizedDialogueLifecycle = 'idle' | 'loading' | 'ready' | 'failed';"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Reasons a candidate provider can fail an evaluation outright (as opposed"
+// legacy-line: " * to completing and legitimately finding nothing). Distinct from `null`"
+// legacy-line: " * candidates: a `null` candidate means \"evaluation completed and there is"
+// legacy-line: " * genuinely nothing to show\"; a `failed` result means \"evaluation could not"
+// legacy-line: " * be trusted\" and must never be read as \"nothing urgent exists\"."
+// legacy-line: " */"
+// legacy-line: "export type CandidateProviderFailureReason ="
+// legacy-line: "  | 'item_query_failed'"
+// legacy-line: "  | 'batch_query_failed'"
+// legacy-line: "  | 'pagination_incomplete'"
+// legacy-line: "  | 'unexpected_data'"
+// legacy-line: "  | 'timeout';"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Explicit result contract for candidate providers that need to distinguish"
+// legacy-line: " * a trustworthy \"no candidate\" outcome from an untrustworthy failure or a"
+// legacy-line: " * cancelled evaluation. `aborted` covers unmount, user change, logout, and"
+// legacy-line: " * superseded (stale-generation) evaluations — callers must apply no result"
+// legacy-line: " * for it, not fall back to anything."
+// legacy-line: " */"
+// legacy-line: "export type CandidateProviderResult<T> ="
+// legacy-line: "  | { status: 'success'; candidate: T | null }"
+// legacy-line: "  | { status: 'failed'; reason: CandidateProviderFailureReason }"
+// legacy-line: "  | { status: 'aborted' };"
+// legacy-line: ""

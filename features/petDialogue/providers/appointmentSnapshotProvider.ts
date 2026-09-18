@@ -1,215 +1,218 @@
-import { supabase } from '@/services/supabaseClient';
-import type { CandidateProviderFailureReason, CandidateProviderResult, DialogueCandidate } from '../types';
-import { addCalendarDaysToDateKey, toCalendarDateKey } from '../dateUtils';
-import { evaluateAppointmentSoon } from './appointmentSoonProvider';
-
-/**
- * Fetches the current authenticated user's clinic-visible `public.appointments`
- * rows for a narrow [today, tomorrow] local date window. Deliberately does
- * NOT filter by clinic id client-side: production RLS on `appointments`
- * (`appointments_member_all`, `clinic_id = current_clinic_id() OR
- * is_admin()`, live-verified) already enforces clinic scoping server-side —
- * this mirrors the same already-reviewed pattern used by the Inventory and
- * Todo snapshot providers, where RLS (not a client-side filter) is the
- * authorization boundary. `userId` is still required to gate the call (no
- * matched identity → no query) and for the caller's own de-duplication
- * scoping.
- */
-
-export interface AppointmentSnapshotRow {
-  id: string;
-  date: string | null;
-  start_time: string | null;
-  status: string | null;
-  created_at: string | null;
-}
-
-export interface AppointmentSnapshot {
-  appointments: AppointmentSnapshotRow[];
-}
-
-export interface AppointmentDialogueEvaluation {
-  appointmentSoonCandidate: DialogueCandidate | null;
-  /** Ordered candidate pool, additive alongside the single-winner field
-   *  above — `appointmentSoonCandidates[0] === appointmentSoonCandidate`.
-   *  See appointmentSoonProvider.ts for the ordering it preserves. */
-  appointmentSoonCandidates: DialogueCandidate[];
-}
-
-const APPOINTMENT_PAGE_SIZE = 200;
-// Safety net against a runaway/non-advancing pagination loop, not a
-// correctness truncation — hitting it fails the evaluation rather than
-// silently returning a partial appointment set. 50 pages * 200 rows =
-// 10,000 appointments in a 2-day window, far beyond any real clinic's
-// volume today.
-const MAX_APPOINTMENT_PAGES = 50;
-const PROVIDER_TIMEOUT_MS = 10_000;
-
-/** Thrown internally to carry a specific, typed failure reason up to the
- *  single catch site in fetchAppointmentSnapshot. Never allowed to escape
- *  this module. */
-class ProviderFailure extends Error {
-  readonly reason: CandidateProviderFailureReason;
-  constructor(reason: CandidateProviderFailureReason) {
-    super(`[petDialogue] appointment snapshot failure: ${reason}`);
-    this.reason = reason;
-  }
-}
-
-function isAbortLikeError(err: unknown): boolean {
-  return (err as { name?: string })?.name === 'AbortError';
-}
-
-/**
- * Fetches every eligible-status appointment in [localToday, localTomorrow]
- * visible to the current session via deterministic keyset pagination
- * (ordered by `id` ascending, no arbitrary total-row cap). The
- * `status IN ('confirmed','scheduled')` filter here is a practical
- * server-side narrowing only, not the authoritative eligibility check —
- * evaluateAppointmentSoon re-normalizes status independently, since the
- * column is free text and could contain malformed casing/whitespace this
- * exact-match filter would miss. Any of the following is treated as a
- * failure (never a silently-truncated success): a page query error, a
- * cursor that fails to advance, a missing row id, a duplicate id across
- * pages, or exceeding MAX_APPOINTMENT_PAGES.
- */
-async function fetchAllVisibleAppointments(
-  localToday: string,
-  localTomorrow: string,
-  signal: AbortSignal
-): Promise<AppointmentSnapshotRow[]> {
-  const rows: AppointmentSnapshotRow[] = [];
-  const seenIds = new Set<string>();
-  let cursor: string | null = null;
-  let pageCount = 0;
-
-  for (;;) {
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-
-    if (pageCount >= MAX_APPOINTMENT_PAGES) {
-      throw new ProviderFailure('pagination_incomplete');
-    }
-    pageCount += 1;
-
-    let query = supabase
-      .from('appointments')
-      .select('id, date, start_time, status, created_at')
-      .gte('date', localToday)
-      .lte('date', localTomorrow)
-      .in('status', ['confirmed', 'scheduled'])
-      .order('id', { ascending: true })
-      .limit(APPOINTMENT_PAGE_SIZE);
-
-    if (cursor !== null) {
-      query = query.gt('id', cursor);
-    }
-
-    const { data, error } = await query.abortSignal(signal);
-    if (error) throw new ProviderFailure('item_query_failed');
-
-    const page = (data || []) as AppointmentSnapshotRow[];
-    if (page.length === 0) break;
-
-    const lastId = page[page.length - 1]?.id;
-    if (!lastId) throw new ProviderFailure('unexpected_data');
-
-    // `.gt('id', cursor)` should guarantee this server-side; re-checked here
-    // as a defensive invariant rather than trusted blindly.
-    if (cursor !== null && !(lastId > cursor)) {
-      throw new ProviderFailure('pagination_incomplete');
-    }
-
-    for (const row of page) {
-      if (!row.id) throw new ProviderFailure('unexpected_data');
-      if (seenIds.has(row.id)) {
-        // A duplicate id across pages means pagination can't be trusted;
-        // fail closed rather than risk under- or double-counting.
-        throw new ProviderFailure('unexpected_data');
-      }
-      seenIds.add(row.id);
-      rows.push(row);
-    }
-
-    cursor = lastId;
-
-    if (page.length < APPOINTMENT_PAGE_SIZE) break; // final partial page — done
-  }
-
-  return rows;
-}
-
-async function fetchAppointmentSnapshot(
-  userId: string,
-  localToday: string,
-  localTomorrow: string,
-  signal?: AbortSignal
-): Promise<CandidateProviderResult<AppointmentSnapshot>> {
-  if (!userId) return { status: 'success', candidate: { appointments: [] } };
-
-  // Same timeout/abort disambiguation as inventorySnapshotProvider.ts /
-  // todoSnapshotProvider.ts: an external abort (unmount/logout/newer-
-  // generation) must resolve as `aborted` (apply no result), while a
-  // request that's simply taking too long must resolve as `failed` with
-  // reason 'timeout' (show the neutral fallback).
-  const internalController = new AbortController();
-  let timedOut = false;
-
-  const onExternalAbort = () => internalController.abort();
-  if (signal) {
-    if (signal.aborted) internalController.abort();
-    else signal.addEventListener('abort', onExternalAbort);
-  }
-
-  const timeoutId = setTimeout(() => {
-    timedOut = true;
-    internalController.abort();
-  }, PROVIDER_TIMEOUT_MS);
-
-  try {
-    const appointments = await fetchAllVisibleAppointments(localToday, localTomorrow, internalController.signal);
-    return { status: 'success', candidate: { appointments } };
-  } catch (err) {
-    if (isAbortLikeError(err)) {
-      if (signal?.aborted) return { status: 'aborted' };
-      if (timedOut) return { status: 'failed', reason: 'timeout' };
-      return { status: 'aborted' };
-    }
-    if (err instanceof ProviderFailure) {
-      return { status: 'failed', reason: err.reason };
-    }
-    console.warn('[petDialogue] appointment snapshot fetch failed unexpectedly');
-    return { status: 'failed', reason: 'unexpected_data' };
-  } finally {
-    clearTimeout(timeoutId);
-    if (signal) signal.removeEventListener('abort', onExternalAbort);
-  }
-}
-
-/**
- * Single hook-facing entry point: captures one local clock snapshot
- * (`evaluationNow`), derives the [localToday, localTomorrow] query window
- * from it, fetches the appointment snapshot once, then derives the P1
- * Appointment Within 2 Hours candidate from it — using that same captured
- * `evaluationNow`, never a freshly-read clock, so a single evaluation is
- * always internally consistent even if it happens to straddle local
- * midnight while in flight.
- */
-export async function fetchAppointmentDialogueEvaluation(
-  userId: string,
-  evaluationNow: Date,
-  signal?: AbortSignal
-): Promise<CandidateProviderResult<AppointmentDialogueEvaluation>> {
-  const localToday = toCalendarDateKey(evaluationNow);
-  const localTomorrow = addCalendarDaysToDateKey(localToday, 1);
-
-  const snapshotResult = await fetchAppointmentSnapshot(userId, localToday, localTomorrow, signal);
-  if (snapshotResult.status !== 'success') return snapshotResult;
-
-  const snapshot = snapshotResult.candidate ?? { appointments: [] };
-  const { candidate: appointmentSoonCandidate, candidates: appointmentSoonCandidates } = evaluateAppointmentSoon(
-    snapshot,
-    evaluationNow
-  );
-
-  return { status: 'success', candidate: { appointmentSoonCandidate, appointmentSoonCandidates } };
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "import { supabase } from '@/services/supabaseClient';"
+// legacy-line: "import type { CandidateProviderFailureReason, CandidateProviderResult, DialogueCandidate } from '../types';"
+// legacy-line: "import { addCalendarDaysToDateKey, toCalendarDateKey } from '../dateUtils';"
+// legacy-line: "import { evaluateAppointmentSoon } from './appointmentSoonProvider';"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Fetches the current authenticated user's clinic-visible `public.appointments`"
+// legacy-line: " * rows for a narrow [today, tomorrow] local date window. Deliberately does"
+// legacy-line: " * NOT filter by clinic id client-side: production RLS on `appointments`"
+// legacy-line: " * (`appointments_member_all`, `clinic_id = current_clinic_id() OR"
+// legacy-line: " * is_admin()`, live-verified) already enforces clinic scoping server-side —"
+// legacy-line: " * this mirrors the same already-reviewed pattern used by the Inventory and"
+// legacy-line: " * Todo snapshot providers, where RLS (not a client-side filter) is the"
+// legacy-line: " * authorization boundary. `userId` is still required to gate the call (no"
+// legacy-line: " * matched identity → no query) and for the caller's own de-duplication"
+// legacy-line: " * scoping."
+// legacy-line: " */"
+// legacy-line: ""
+// legacy-line: "export interface AppointmentSnapshotRow {"
+// legacy-line: "  id: string;"
+// legacy-line: "  date: string | null;"
+// legacy-line: "  start_time: string | null;"
+// legacy-line: "  status: string | null;"
+// legacy-line: "  created_at: string | null;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export interface AppointmentSnapshot {"
+// legacy-line: "  appointments: AppointmentSnapshotRow[];"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export interface AppointmentDialogueEvaluation {"
+// legacy-line: "  appointmentSoonCandidate: DialogueCandidate | null;"
+// legacy-line: "  /** Ordered candidate pool, additive alongside the single-winner field"
+// legacy-line: "   *  above — `appointmentSoonCandidates[0] === appointmentSoonCandidate`."
+// legacy-line: "   *  See appointmentSoonProvider.ts for the ordering it preserves. */"
+// legacy-line: "  appointmentSoonCandidates: DialogueCandidate[];"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "const APPOINTMENT_PAGE_SIZE = 200;"
+// legacy-line: "// Safety net against a runaway/non-advancing pagination loop, not a"
+// legacy-line: "// correctness truncation — hitting it fails the evaluation rather than"
+// legacy-line: "// silently returning a partial appointment set. 50 pages * 200 rows ="
+// legacy-line: "// 10,000 appointments in a 2-day window, far beyond any real clinic's"
+// legacy-line: "// volume today."
+// legacy-line: "const MAX_APPOINTMENT_PAGES = 50;"
+// legacy-line: "const PROVIDER_TIMEOUT_MS = 10_000;"
+// legacy-line: ""
+// legacy-line: "/** Thrown internally to carry a specific, typed failure reason up to the"
+// legacy-line: " *  single catch site in fetchAppointmentSnapshot. Never allowed to escape"
+// legacy-line: " *  this module. */"
+// legacy-line: "class ProviderFailure extends Error {"
+// legacy-line: "  readonly reason: CandidateProviderFailureReason;"
+// legacy-line: "  constructor(reason: CandidateProviderFailureReason) {"
+// legacy-line: "    super(`[petDialogue] appointment snapshot failure: ${reason}`);"
+// legacy-line: "    this.reason = reason;"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function isAbortLikeError(err: unknown): boolean {"
+// legacy-line: "  return (err as { name?: string })?.name === 'AbortError';"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Fetches every eligible-status appointment in [localToday, localTomorrow]"
+// legacy-line: " * visible to the current session via deterministic keyset pagination"
+// legacy-line: " * (ordered by `id` ascending, no arbitrary total-row cap). The"
+// legacy-line: " * `status IN ('confirmed','scheduled')` filter here is a practical"
+// legacy-line: " * server-side narrowing only, not the authoritative eligibility check —"
+// legacy-line: " * evaluateAppointmentSoon re-normalizes status independently, since the"
+// legacy-line: " * column is free text and could contain malformed casing/whitespace this"
+// legacy-line: " * exact-match filter would miss. Any of the following is treated as a"
+// legacy-line: " * failure (never a silently-truncated success): a page query error, a"
+// legacy-line: " * cursor that fails to advance, a missing row id, a duplicate id across"
+// legacy-line: " * pages, or exceeding MAX_APPOINTMENT_PAGES."
+// legacy-line: " */"
+// legacy-line: "async function fetchAllVisibleAppointments("
+// legacy-line: "  localToday: string,"
+// legacy-line: "  localTomorrow: string,"
+// legacy-line: "  signal: AbortSignal"
+// legacy-line: "): Promise<AppointmentSnapshotRow[]> {"
+// legacy-line: "  const rows: AppointmentSnapshotRow[] = [];"
+// legacy-line: "  const seenIds = new Set<string>();"
+// legacy-line: "  let cursor: string | null = null;"
+// legacy-line: "  let pageCount = 0;"
+// legacy-line: ""
+// legacy-line: "  for (;;) {"
+// legacy-line: "    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');"
+// legacy-line: ""
+// legacy-line: "    if (pageCount >= MAX_APPOINTMENT_PAGES) {"
+// legacy-line: "      throw new ProviderFailure('pagination_incomplete');"
+// legacy-line: "    }"
+// legacy-line: "    pageCount += 1;"
+// legacy-line: ""
+// legacy-line: "    let query = supabase"
+// legacy-line: "      .from('appointments')"
+// legacy-line: "      .select('id, date, start_time, status, created_at')"
+// legacy-line: "      .gte('date', localToday)"
+// legacy-line: "      .lte('date', localTomorrow)"
+// legacy-line: "      .in('status', ['confirmed', 'scheduled'])"
+// legacy-line: "      .order('id', { ascending: true })"
+// legacy-line: "      .limit(APPOINTMENT_PAGE_SIZE);"
+// legacy-line: ""
+// legacy-line: "    if (cursor !== null) {"
+// legacy-line: "      query = query.gt('id', cursor);"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    const { data, error } = await query.abortSignal(signal);"
+// legacy-line: "    if (error) throw new ProviderFailure('item_query_failed');"
+// legacy-line: ""
+// legacy-line: "    const page = (data || []) as AppointmentSnapshotRow[];"
+// legacy-line: "    if (page.length === 0) break;"
+// legacy-line: ""
+// legacy-line: "    const lastId = page[page.length - 1]?.id;"
+// legacy-line: "    if (!lastId) throw new ProviderFailure('unexpected_data');"
+// legacy-line: ""
+// legacy-line: "    // `.gt('id', cursor)` should guarantee this server-side; re-checked here"
+// legacy-line: "    // as a defensive invariant rather than trusted blindly."
+// legacy-line: "    if (cursor !== null && !(lastId > cursor)) {"
+// legacy-line: "      throw new ProviderFailure('pagination_incomplete');"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    for (const row of page) {"
+// legacy-line: "      if (!row.id) throw new ProviderFailure('unexpected_data');"
+// legacy-line: "      if (seenIds.has(row.id)) {"
+// legacy-line: "        // A duplicate id across pages means pagination can't be trusted;"
+// legacy-line: "        // fail closed rather than risk under- or double-counting."
+// legacy-line: "        throw new ProviderFailure('unexpected_data');"
+// legacy-line: "      }"
+// legacy-line: "      seenIds.add(row.id);"
+// legacy-line: "      rows.push(row);"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    cursor = lastId;"
+// legacy-line: ""
+// legacy-line: "    if (page.length < APPOINTMENT_PAGE_SIZE) break; // final partial page — done"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  return rows;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "async function fetchAppointmentSnapshot("
+// legacy-line: "  userId: string,"
+// legacy-line: "  localToday: string,"
+// legacy-line: "  localTomorrow: string,"
+// legacy-line: "  signal?: AbortSignal"
+// legacy-line: "): Promise<CandidateProviderResult<AppointmentSnapshot>> {"
+// legacy-line: "  if (!userId) return { status: 'success', candidate: { appointments: [] } };"
+// legacy-line: ""
+// legacy-line: "  // Same timeout/abort disambiguation as inventorySnapshotProvider.ts /"
+// legacy-line: "  // todoSnapshotProvider.ts: an external abort (unmount/logout/newer-"
+// legacy-line: "  // generation) must resolve as `aborted` (apply no result), while a"
+// legacy-line: "  // request that's simply taking too long must resolve as `failed` with"
+// legacy-line: "  // reason 'timeout' (show the neutral fallback)."
+// legacy-line: "  const internalController = new AbortController();"
+// legacy-line: "  let timedOut = false;"
+// legacy-line: ""
+// legacy-line: "  const onExternalAbort = () => internalController.abort();"
+// legacy-line: "  if (signal) {"
+// legacy-line: "    if (signal.aborted) internalController.abort();"
+// legacy-line: "    else signal.addEventListener('abort', onExternalAbort);"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  const timeoutId = setTimeout(() => {"
+// legacy-line: "    timedOut = true;"
+// legacy-line: "    internalController.abort();"
+// legacy-line: "  }, PROVIDER_TIMEOUT_MS);"
+// legacy-line: ""
+// legacy-line: "  try {"
+// legacy-line: "    const appointments = await fetchAllVisibleAppointments(localToday, localTomorrow, internalController.signal);"
+// legacy-line: "    return { status: 'success', candidate: { appointments } };"
+// legacy-line: "  } catch (err) {"
+// legacy-line: "    if (isAbortLikeError(err)) {"
+// legacy-line: "      if (signal?.aborted) return { status: 'aborted' };"
+// legacy-line: "      if (timedOut) return { status: 'failed', reason: 'timeout' };"
+// legacy-line: "      return { status: 'aborted' };"
+// legacy-line: "    }"
+// legacy-line: "    if (err instanceof ProviderFailure) {"
+// legacy-line: "      return { status: 'failed', reason: err.reason };"
+// legacy-line: "    }"
+// legacy-line: "    console.warn('[petDialogue] appointment snapshot fetch failed unexpectedly');"
+// legacy-line: "    return { status: 'failed', reason: 'unexpected_data' };"
+// legacy-line: "  } finally {"
+// legacy-line: "    clearTimeout(timeoutId);"
+// legacy-line: "    if (signal) signal.removeEventListener('abort', onExternalAbort);"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Single hook-facing entry point: captures one local clock snapshot"
+// legacy-line: " * (`evaluationNow`), derives the [localToday, localTomorrow] query window"
+// legacy-line: " * from it, fetches the appointment snapshot once, then derives the P1"
+// legacy-line: " * Appointment Within 2 Hours candidate from it — using that same captured"
+// legacy-line: " * `evaluationNow`, never a freshly-read clock, so a single evaluation is"
+// legacy-line: " * always internally consistent even if it happens to straddle local"
+// legacy-line: " * midnight while in flight."
+// legacy-line: " */"
+// legacy-line: "export async function fetchAppointmentDialogueEvaluation("
+// legacy-line: "  userId: string,"
+// legacy-line: "  evaluationNow: Date,"
+// legacy-line: "  signal?: AbortSignal"
+// legacy-line: "): Promise<CandidateProviderResult<AppointmentDialogueEvaluation>> {"
+// legacy-line: "  const localToday = toCalendarDateKey(evaluationNow);"
+// legacy-line: "  const localTomorrow = addCalendarDaysToDateKey(localToday, 1);"
+// legacy-line: ""
+// legacy-line: "  const snapshotResult = await fetchAppointmentSnapshot(userId, localToday, localTomorrow, signal);"
+// legacy-line: "  if (snapshotResult.status !== 'success') return snapshotResult;"
+// legacy-line: ""
+// legacy-line: "  const snapshot = snapshotResult.candidate ?? { appointments: [] };"
+// legacy-line: "  const { candidate: appointmentSoonCandidate, candidates: appointmentSoonCandidates } = evaluateAppointmentSoon("
+// legacy-line: "    snapshot,"
+// legacy-line: "    evaluationNow"
+// legacy-line: "  );"
+// legacy-line: ""
+// legacy-line: "  return { status: 'success', candidate: { appointmentSoonCandidate, appointmentSoonCandidates } };"
+// legacy-line: "}"
+// legacy-line: ""

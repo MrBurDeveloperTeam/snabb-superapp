@@ -1,351 +1,354 @@
-import { supabase } from '@/services/supabaseClient';
-import type { CandidateProviderFailureReason, CandidateProviderResult, DialogueCandidate } from '../types';
-import { evaluateExpiredInventory } from './expiredInventoryProvider';
-import { evaluateExpiringSoonInventory } from './expiringSoonInventoryProvider';
-import { evaluateLowStockInventory } from './lowStockInventoryProvider';
-
-/**
- * Fetches the complete inventory dataset visible to the current
- * authenticated Supabase session — the owner's own inventory, plus anything
- * shared with them as a `collaborators` member. Deliberately does NOT filter
- * by `.eq('user_id', userId)` (or query `collaborators` directly): live RLS
- * on `inventory_items` / `inventory_item_batches` already enforces "owner OR
- * valid collaborator of the owner" as a server-side policy, and live testing
- * (see the Phase 1A RLS verification report) confirmed that removing the
- * client-side user_id filter still returns only rows the authenticated user
- * is authorized to see — an anonymous or unrelated session gets zero rows
- * regardless of what this query asks for. `userId` is still required and
- * still used to gate the call (no session → no query) and for the caller's
- * own de-duplication scoping, just not as an authorization filter here.
- *
- * This is the single shared fetch both P0 (expired) and P1 (expiring soon)
- * are derived from — see evaluateExpiredInventory / evaluateExpiringSoonInventory.
- * It never throws for a normal query/data problem and never silently
- * returns "no data" for one either — see CandidateProviderResult in
- * ../types. A `failed` result must cause callers to treat both P0 and P1 as
- * unknown (never as "nothing urgent exists").
- */
-
-export interface InventorySnapshotItem {
-  id: string;
-  name: string | null;
-  quantity: number | string | null;
-  expiry_date: string | null;
-  created_at: string | null;
-}
-
-export interface InventorySnapshotBatch {
-  id: string;
-  item_id: string;
-  qty: number | string | null;
-  expiry_date: string | null;
-  created_at: string | null;
-}
-
-export interface InventorySnapshot {
-  items: InventorySnapshotItem[];
-  batchesByItem: Map<string, InventorySnapshotBatch[]>;
-}
-
-export interface InventoryDialogueEvaluation {
-  expiredCandidate: DialogueCandidate | null;
-  expiringSoonCandidate: DialogueCandidate | null;
-  lowStockCandidate: DialogueCandidate | null;
-  /** Ordered candidate pools, additive alongside the single-winner fields
-   *  above — `expiredCandidates[0] === expiredCandidate`, etc. See
-   *  expiredInventoryProvider.ts / lowStockInventoryProvider.ts /
-   *  expiringSoonInventoryProvider.ts for the ordering each preserves. */
-  expiredCandidates: DialogueCandidate[];
-  expiringSoonCandidates: DialogueCandidate[];
-  lowStockCandidates: DialogueCandidate[];
-}
-
-const ITEM_PAGE_SIZE = 200;
-// Safety net against a runaway/non-advancing pagination loop, not a
-// correctness truncation — hitting it fails the evaluation rather than
-// silently returning a partial item set. 50 pages * 200 rows = 10,000
-// items, far beyond any real account's visible inventory today.
-const MAX_ITEM_PAGES = 50;
-const BATCH_ITEM_ID_CHUNK_SIZE = 50;
-// Under the MAX_ITEM_PAGES safety cap (10,000 items), the batch fetch could
-// otherwise need up to 200 chunk requests — firing all of them at once via
-// a bare Promise.all would be a disproportionate concurrent-request burst
-// for what's meant to be a defensive edge case, not the common path (today's
-// real inventory sizes are far smaller). Bounded to a small, fixed worker
-// pool instead — see runWithConcurrencyLimit.
-const BATCH_CHUNK_CONCURRENCY = 8;
-const PROVIDER_TIMEOUT_MS = 10_000;
-
-/** Thrown internally to carry a specific, typed failure reason up to the
- *  single catch site in fetchInventorySnapshot. Never allowed to escape
- *  this module. */
-class ProviderFailure extends Error {
-  readonly reason: CandidateProviderFailureReason;
-  constructor(reason: CandidateProviderFailureReason) {
-    super(`[petDialogue] inventory snapshot failure: ${reason}`);
-    this.reason = reason;
-  }
-}
-
-function isAbortLikeError(err: unknown): boolean {
-  return (err as { name?: string })?.name === 'AbortError';
-}
-
-function toChunks<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
-}
-
-/**
- * Runs `tasks` with at most `limit` in flight at once, preserving each
- * task's result at its original index. Rejects as soon as any task rejects
- * (same fail-fast semantics as Promise.all — a failed batch chunk still
- * invalidates the whole snapshot immediately) without waiting for the rest
- * of that task's still-in-flight siblings, which the caller's
- * AbortController/timeout are responsible for eventually settling. No
- * dependency: a small fixed-size worker pool over a shared cursor.
- */
-async function runWithConcurrencyLimit<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {
-  const results: T[] = new Array(tasks.length);
-  let nextIndex = 0;
-
-  async function worker(): Promise<void> {
-    for (;;) {
-      const i = nextIndex++;
-      if (i >= tasks.length) return;
-      results[i] = await tasks[i]();
-    }
-  }
-
-  const workerCount = Math.max(1, Math.min(limit, tasks.length));
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-
-  return results;
-}
-
-/**
- * Fetches every inventory item visible to the current session via
- * deterministic keyset pagination (ordered by `id` ascending, no arbitrary
- * total-row cap). An item with batches is evaluated purely on batch data —
- * its own `quantity`/`expiry_date` may be stale or unset — so this
- * deliberately applies no quantity/expiry filter either; filtering here
- * could hide a real batch-derived P0 or P1.
- *
- * Any of the following is treated as a failure (never a silently-truncated
- * success): a page query error, a cursor that fails to advance, a missing
- * row id, a duplicate id across pages, or exceeding MAX_ITEM_PAGES.
- */
-async function fetchAllVisibleInventoryItems(signal: AbortSignal): Promise<InventorySnapshotItem[]> {
-  const items: InventorySnapshotItem[] = [];
-  const seenIds = new Set<string>();
-  let cursor: string | null = null;
-  let pageCount = 0;
-
-  for (;;) {
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-
-    if (pageCount >= MAX_ITEM_PAGES) {
-      throw new ProviderFailure('pagination_incomplete');
-    }
-    pageCount += 1;
-
-    let query = supabase
-      .from('inventory_items')
-      .select('id, name, quantity, expiry_date, created_at')
-      .order('id', { ascending: true })
-      .limit(ITEM_PAGE_SIZE);
-
-    if (cursor !== null) {
-      query = query.gt('id', cursor);
-    }
-
-    const { data, error } = await query.abortSignal(signal);
-    if (error) throw new ProviderFailure('item_query_failed');
-
-    const page = (data || []) as InventorySnapshotItem[];
-    if (page.length === 0) break;
-
-    const lastId = page[page.length - 1]?.id;
-    if (!lastId) throw new ProviderFailure('unexpected_data');
-
-    // `.gt('id', cursor)` should guarantee this server-side; re-checked here
-    // as a defensive invariant rather than trusted blindly.
-    if (cursor !== null && !(lastId > cursor)) {
-      throw new ProviderFailure('pagination_incomplete');
-    }
-
-    for (const item of page) {
-      if (!item.id) throw new ProviderFailure('unexpected_data');
-      if (seenIds.has(item.id)) {
-        // A duplicate id across pages — identical or conflicting values —
-        // means pagination can't be trusted; fail closed rather than risk
-        // under- or double-counting.
-        throw new ProviderFailure('unexpected_data');
-      }
-      seenIds.add(item.id);
-      items.push(item);
-    }
-
-    cursor = lastId;
-
-    if (page.length < ITEM_PAGE_SIZE) break; // final partial page — done
-  }
-
-  return items;
-}
-
-/**
- * Fetches every batch row for the given item IDs, chunked to keep each
- * request small. No qty/expiry filter: an unfiltered result is also how we
- * know an item HAS batches at all (see the evaluators) — pre-filtering to
- * only qualifying rows would make "has batches, none qualify" indistinguishable
- * from "no batches", incorrectly falling through to the legacy item-level
- * path. Any failed chunk fails the whole evaluation — partial batch data is
- * never used to compute a candidate.
- */
-async function fetchBatchesForItems(itemIds: string[], signal: AbortSignal): Promise<InventorySnapshotBatch[]> {
-  if (itemIds.length === 0) return [];
-
-  const chunks = toChunks(itemIds, BATCH_ITEM_ID_CHUNK_SIZE);
-  const results = await runWithConcurrencyLimit(
-    chunks.map((chunk) => async () => {
-      const { data, error } = await supabase
-        .from('inventory_item_batches')
-        .select('id, item_id, qty, expiry_date, created_at')
-        .in('item_id', chunk)
-        .abortSignal(signal);
-
-      if (error) throw new ProviderFailure('batch_query_failed');
-      return (data || []) as InventorySnapshotBatch[];
-    }),
-    BATCH_CHUNK_CONCURRENCY
-  );
-
-  return results.flat();
-}
-
-function groupBatchesByItem(
-  batches: InventorySnapshotBatch[],
-  validItemIds: Set<string>
-): Map<string, InventorySnapshotBatch[]> {
-  const map = new Map<string, InventorySnapshotBatch[]>();
-  for (const batch of batches) {
-    if (!batch.item_id || !validItemIds.has(batch.item_id)) {
-      // A batch referencing an item outside the fetched item set indicates
-      // the item/batch fetches are out of sync with each other — fail
-      // rather than silently evaluate against an incomplete picture.
-      throw new ProviderFailure('unexpected_data');
-    }
-    const list = map.get(batch.item_id);
-    if (list) list.push(batch);
-    else map.set(batch.item_id, [batch]);
-  }
-  return map;
-}
-
-async function fetchInventorySnapshot(
-  userId: string,
-  signal?: AbortSignal
-): Promise<CandidateProviderResult<InventorySnapshot>> {
-  if (!userId) return { status: 'success', candidate: { items: [], batchesByItem: new Map() } };
-
-  // A real, active-request timeout distinct from the caller's own
-  // AbortController: unmount/logout/newer-generation cancellation must
-  // resolve as `aborted` (apply no result), while a request that's simply
-  // taking too long must resolve as `failed` with reason 'timeout' (show
-  // the neutral fallback) — the two need to be told apart even though both
-  // ultimately abort the same in-flight Supabase requests.
-  const internalController = new AbortController();
-  let timedOut = false;
-
-  const onExternalAbort = () => internalController.abort();
-  if (signal) {
-    if (signal.aborted) internalController.abort();
-    else signal.addEventListener('abort', onExternalAbort);
-  }
-
-  const timeoutId = setTimeout(() => {
-    timedOut = true;
-    internalController.abort();
-  }, PROVIDER_TIMEOUT_MS);
-
-  try {
-    const items = await fetchAllVisibleInventoryItems(internalController.signal);
-    if (items.length === 0) return { status: 'success', candidate: { items: [], batchesByItem: new Map() } };
-
-    const itemIds = items.map((i) => i.id);
-    const validItemIds = new Set(itemIds);
-
-    const batches = await fetchBatchesForItems(itemIds, internalController.signal);
-    const batchesByItem = groupBatchesByItem(batches, validItemIds);
-
-    return { status: 'success', candidate: { items, batchesByItem } };
-  } catch (err) {
-    if (isAbortLikeError(err)) {
-      // A real external cancellation always wins over an incidental
-      // same-moment timeout — it reflects genuine intent (unmount, logout,
-      // user change, superseded generation) to discard this evaluation.
-      if (signal?.aborted) return { status: 'aborted' };
-      if (timedOut) return { status: 'failed', reason: 'timeout' };
-      return { status: 'aborted' };
-    }
-    if (err instanceof ProviderFailure) {
-      return { status: 'failed', reason: err.reason };
-    }
-    console.warn('[petDialogue] inventory snapshot fetch failed unexpectedly');
-    return { status: 'failed', reason: 'unexpected_data' };
-  } finally {
-    clearTimeout(timeoutId);
-    if (signal) signal.removeEventListener('abort', onExternalAbort);
-  }
-}
-
-/**
- * Single hook-facing entry point: fetches the inventory snapshot once, then
- * derives the P0 (expired), P2 (low stock), and P2 (expiring soon)
- * candidates from it. None of the three ever trigger a second complete
- * item/batch fetch.
- *
- * Same-item precedence (expired > low stock > expiring soon — the approved
- * priority-order change) is enforced here by threading each evaluator's
- * full qualifying-item-id set into the next: expiring soon excludes the
- * union of expired and low-stock item ids, not just their global winners,
- * and independent of session-handled state (that's applied later, per
- * candidate, in the hook).
- */
-export async function fetchInventoryDialogueEvaluation(
-  userId: string,
-  signal?: AbortSignal
-): Promise<CandidateProviderResult<InventoryDialogueEvaluation>> {
-  const snapshotResult = await fetchInventorySnapshot(userId, signal);
-  if (snapshotResult.status !== 'success') return snapshotResult;
-
-  const snapshot = snapshotResult.candidate ?? { items: [], batchesByItem: new Map() };
-
-  const { candidate: expiredCandidate, candidates: expiredCandidates, expiredItemIds } = evaluateExpiredInventory(snapshot);
-  const {
-    candidate: lowStockCandidate,
-    candidates: lowStockCandidates,
-    lowStockItemIds,
-  } = evaluateLowStockInventory(snapshot, expiredItemIds);
-  const expiringSoonExcludedItemIds = new Set([...expiredItemIds, ...lowStockItemIds]);
-  const { candidate: expiringSoonCandidate, candidates: expiringSoonCandidates } = evaluateExpiringSoonInventory(
-    snapshot,
-    expiringSoonExcludedItemIds
-  );
-
-  return {
-    status: 'success',
-    candidate: {
-      expiredCandidate,
-      expiringSoonCandidate,
-      lowStockCandidate,
-      expiredCandidates,
-      expiringSoonCandidates,
-      lowStockCandidates,
-    },
-  };
-}
+// LEGACY CAT CODE: inactive; preserved reversibly as JSON-encoded comment lines.
+// Active implementation now comes from @mrburdeveloperteam/pet-function/apps/superapp via sharedPet/.
+// legacy-line: "import { supabase } from '@/services/supabaseClient';"
+// legacy-line: "import type { CandidateProviderFailureReason, CandidateProviderResult, DialogueCandidate } from '../types';"
+// legacy-line: "import { evaluateExpiredInventory } from './expiredInventoryProvider';"
+// legacy-line: "import { evaluateExpiringSoonInventory } from './expiringSoonInventoryProvider';"
+// legacy-line: "import { evaluateLowStockInventory } from './lowStockInventoryProvider';"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Fetches the complete inventory dataset visible to the current"
+// legacy-line: " * authenticated Supabase session — the owner's own inventory, plus anything"
+// legacy-line: " * shared with them as a `collaborators` member. Deliberately does NOT filter"
+// legacy-line: " * by `.eq('user_id', userId)` (or query `collaborators` directly): live RLS"
+// legacy-line: " * on `inventory_items` / `inventory_item_batches` already enforces \"owner OR"
+// legacy-line: " * valid collaborator of the owner\" as a server-side policy, and live testing"
+// legacy-line: " * (see the Phase 1A RLS verification report) confirmed that removing the"
+// legacy-line: " * client-side user_id filter still returns only rows the authenticated user"
+// legacy-line: " * is authorized to see — an anonymous or unrelated session gets zero rows"
+// legacy-line: " * regardless of what this query asks for. `userId` is still required and"
+// legacy-line: " * still used to gate the call (no session → no query) and for the caller's"
+// legacy-line: " * own de-duplication scoping, just not as an authorization filter here."
+// legacy-line: " *"
+// legacy-line: " * This is the single shared fetch both P0 (expired) and P1 (expiring soon)"
+// legacy-line: " * are derived from — see evaluateExpiredInventory / evaluateExpiringSoonInventory."
+// legacy-line: " * It never throws for a normal query/data problem and never silently"
+// legacy-line: " * returns \"no data\" for one either — see CandidateProviderResult in"
+// legacy-line: " * ../types. A `failed` result must cause callers to treat both P0 and P1 as"
+// legacy-line: " * unknown (never as \"nothing urgent exists\")."
+// legacy-line: " */"
+// legacy-line: ""
+// legacy-line: "export interface InventorySnapshotItem {"
+// legacy-line: "  id: string;"
+// legacy-line: "  name: string | null;"
+// legacy-line: "  quantity: number | string | null;"
+// legacy-line: "  expiry_date: string | null;"
+// legacy-line: "  created_at: string | null;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export interface InventorySnapshotBatch {"
+// legacy-line: "  id: string;"
+// legacy-line: "  item_id: string;"
+// legacy-line: "  qty: number | string | null;"
+// legacy-line: "  expiry_date: string | null;"
+// legacy-line: "  created_at: string | null;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export interface InventorySnapshot {"
+// legacy-line: "  items: InventorySnapshotItem[];"
+// legacy-line: "  batchesByItem: Map<string, InventorySnapshotBatch[]>;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "export interface InventoryDialogueEvaluation {"
+// legacy-line: "  expiredCandidate: DialogueCandidate | null;"
+// legacy-line: "  expiringSoonCandidate: DialogueCandidate | null;"
+// legacy-line: "  lowStockCandidate: DialogueCandidate | null;"
+// legacy-line: "  /** Ordered candidate pools, additive alongside the single-winner fields"
+// legacy-line: "   *  above — `expiredCandidates[0] === expiredCandidate`, etc. See"
+// legacy-line: "   *  expiredInventoryProvider.ts / lowStockInventoryProvider.ts /"
+// legacy-line: "   *  expiringSoonInventoryProvider.ts for the ordering each preserves. */"
+// legacy-line: "  expiredCandidates: DialogueCandidate[];"
+// legacy-line: "  expiringSoonCandidates: DialogueCandidate[];"
+// legacy-line: "  lowStockCandidates: DialogueCandidate[];"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "const ITEM_PAGE_SIZE = 200;"
+// legacy-line: "// Safety net against a runaway/non-advancing pagination loop, not a"
+// legacy-line: "// correctness truncation — hitting it fails the evaluation rather than"
+// legacy-line: "// silently returning a partial item set. 50 pages * 200 rows = 10,000"
+// legacy-line: "// items, far beyond any real account's visible inventory today."
+// legacy-line: "const MAX_ITEM_PAGES = 50;"
+// legacy-line: "const BATCH_ITEM_ID_CHUNK_SIZE = 50;"
+// legacy-line: "// Under the MAX_ITEM_PAGES safety cap (10,000 items), the batch fetch could"
+// legacy-line: "// otherwise need up to 200 chunk requests — firing all of them at once via"
+// legacy-line: "// a bare Promise.all would be a disproportionate concurrent-request burst"
+// legacy-line: "// for what's meant to be a defensive edge case, not the common path (today's"
+// legacy-line: "// real inventory sizes are far smaller). Bounded to a small, fixed worker"
+// legacy-line: "// pool instead — see runWithConcurrencyLimit."
+// legacy-line: "const BATCH_CHUNK_CONCURRENCY = 8;"
+// legacy-line: "const PROVIDER_TIMEOUT_MS = 10_000;"
+// legacy-line: ""
+// legacy-line: "/** Thrown internally to carry a specific, typed failure reason up to the"
+// legacy-line: " *  single catch site in fetchInventorySnapshot. Never allowed to escape"
+// legacy-line: " *  this module. */"
+// legacy-line: "class ProviderFailure extends Error {"
+// legacy-line: "  readonly reason: CandidateProviderFailureReason;"
+// legacy-line: "  constructor(reason: CandidateProviderFailureReason) {"
+// legacy-line: "    super(`[petDialogue] inventory snapshot failure: ${reason}`);"
+// legacy-line: "    this.reason = reason;"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function isAbortLikeError(err: unknown): boolean {"
+// legacy-line: "  return (err as { name?: string })?.name === 'AbortError';"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function toChunks<T>(items: T[], size: number): T[][] {"
+// legacy-line: "  const chunks: T[][] = [];"
+// legacy-line: "  for (let i = 0; i < items.length; i += size) {"
+// legacy-line: "    chunks.push(items.slice(i, i + size));"
+// legacy-line: "  }"
+// legacy-line: "  return chunks;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Runs `tasks` with at most `limit` in flight at once, preserving each"
+// legacy-line: " * task's result at its original index. Rejects as soon as any task rejects"
+// legacy-line: " * (same fail-fast semantics as Promise.all — a failed batch chunk still"
+// legacy-line: " * invalidates the whole snapshot immediately) without waiting for the rest"
+// legacy-line: " * of that task's still-in-flight siblings, which the caller's"
+// legacy-line: " * AbortController/timeout are responsible for eventually settling. No"
+// legacy-line: " * dependency: a small fixed-size worker pool over a shared cursor."
+// legacy-line: " */"
+// legacy-line: "async function runWithConcurrencyLimit<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {"
+// legacy-line: "  const results: T[] = new Array(tasks.length);"
+// legacy-line: "  let nextIndex = 0;"
+// legacy-line: ""
+// legacy-line: "  async function worker(): Promise<void> {"
+// legacy-line: "    for (;;) {"
+// legacy-line: "      const i = nextIndex++;"
+// legacy-line: "      if (i >= tasks.length) return;"
+// legacy-line: "      results[i] = await tasks[i]();"
+// legacy-line: "    }"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  const workerCount = Math.max(1, Math.min(limit, tasks.length));"
+// legacy-line: "  await Promise.all(Array.from({ length: workerCount }, () => worker()));"
+// legacy-line: ""
+// legacy-line: "  return results;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Fetches every inventory item visible to the current session via"
+// legacy-line: " * deterministic keyset pagination (ordered by `id` ascending, no arbitrary"
+// legacy-line: " * total-row cap). An item with batches is evaluated purely on batch data —"
+// legacy-line: " * its own `quantity`/`expiry_date` may be stale or unset — so this"
+// legacy-line: " * deliberately applies no quantity/expiry filter either; filtering here"
+// legacy-line: " * could hide a real batch-derived P0 or P1."
+// legacy-line: " *"
+// legacy-line: " * Any of the following is treated as a failure (never a silently-truncated"
+// legacy-line: " * success): a page query error, a cursor that fails to advance, a missing"
+// legacy-line: " * row id, a duplicate id across pages, or exceeding MAX_ITEM_PAGES."
+// legacy-line: " */"
+// legacy-line: "async function fetchAllVisibleInventoryItems(signal: AbortSignal): Promise<InventorySnapshotItem[]> {"
+// legacy-line: "  const items: InventorySnapshotItem[] = [];"
+// legacy-line: "  const seenIds = new Set<string>();"
+// legacy-line: "  let cursor: string | null = null;"
+// legacy-line: "  let pageCount = 0;"
+// legacy-line: ""
+// legacy-line: "  for (;;) {"
+// legacy-line: "    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');"
+// legacy-line: ""
+// legacy-line: "    if (pageCount >= MAX_ITEM_PAGES) {"
+// legacy-line: "      throw new ProviderFailure('pagination_incomplete');"
+// legacy-line: "    }"
+// legacy-line: "    pageCount += 1;"
+// legacy-line: ""
+// legacy-line: "    let query = supabase"
+// legacy-line: "      .from('inventory_items')"
+// legacy-line: "      .select('id, name, quantity, expiry_date, created_at')"
+// legacy-line: "      .order('id', { ascending: true })"
+// legacy-line: "      .limit(ITEM_PAGE_SIZE);"
+// legacy-line: ""
+// legacy-line: "    if (cursor !== null) {"
+// legacy-line: "      query = query.gt('id', cursor);"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    const { data, error } = await query.abortSignal(signal);"
+// legacy-line: "    if (error) throw new ProviderFailure('item_query_failed');"
+// legacy-line: ""
+// legacy-line: "    const page = (data || []) as InventorySnapshotItem[];"
+// legacy-line: "    if (page.length === 0) break;"
+// legacy-line: ""
+// legacy-line: "    const lastId = page[page.length - 1]?.id;"
+// legacy-line: "    if (!lastId) throw new ProviderFailure('unexpected_data');"
+// legacy-line: ""
+// legacy-line: "    // `.gt('id', cursor)` should guarantee this server-side; re-checked here"
+// legacy-line: "    // as a defensive invariant rather than trusted blindly."
+// legacy-line: "    if (cursor !== null && !(lastId > cursor)) {"
+// legacy-line: "      throw new ProviderFailure('pagination_incomplete');"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    for (const item of page) {"
+// legacy-line: "      if (!item.id) throw new ProviderFailure('unexpected_data');"
+// legacy-line: "      if (seenIds.has(item.id)) {"
+// legacy-line: "        // A duplicate id across pages — identical or conflicting values —"
+// legacy-line: "        // means pagination can't be trusted; fail closed rather than risk"
+// legacy-line: "        // under- or double-counting."
+// legacy-line: "        throw new ProviderFailure('unexpected_data');"
+// legacy-line: "      }"
+// legacy-line: "      seenIds.add(item.id);"
+// legacy-line: "      items.push(item);"
+// legacy-line: "    }"
+// legacy-line: ""
+// legacy-line: "    cursor = lastId;"
+// legacy-line: ""
+// legacy-line: "    if (page.length < ITEM_PAGE_SIZE) break; // final partial page — done"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  return items;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Fetches every batch row for the given item IDs, chunked to keep each"
+// legacy-line: " * request small. No qty/expiry filter: an unfiltered result is also how we"
+// legacy-line: " * know an item HAS batches at all (see the evaluators) — pre-filtering to"
+// legacy-line: " * only qualifying rows would make \"has batches, none qualify\" indistinguishable"
+// legacy-line: " * from \"no batches\", incorrectly falling through to the legacy item-level"
+// legacy-line: " * path. Any failed chunk fails the whole evaluation — partial batch data is"
+// legacy-line: " * never used to compute a candidate."
+// legacy-line: " */"
+// legacy-line: "async function fetchBatchesForItems(itemIds: string[], signal: AbortSignal): Promise<InventorySnapshotBatch[]> {"
+// legacy-line: "  if (itemIds.length === 0) return [];"
+// legacy-line: ""
+// legacy-line: "  const chunks = toChunks(itemIds, BATCH_ITEM_ID_CHUNK_SIZE);"
+// legacy-line: "  const results = await runWithConcurrencyLimit("
+// legacy-line: "    chunks.map((chunk) => async () => {"
+// legacy-line: "      const { data, error } = await supabase"
+// legacy-line: "        .from('inventory_item_batches')"
+// legacy-line: "        .select('id, item_id, qty, expiry_date, created_at')"
+// legacy-line: "        .in('item_id', chunk)"
+// legacy-line: "        .abortSignal(signal);"
+// legacy-line: ""
+// legacy-line: "      if (error) throw new ProviderFailure('batch_query_failed');"
+// legacy-line: "      return (data || []) as InventorySnapshotBatch[];"
+// legacy-line: "    }),"
+// legacy-line: "    BATCH_CHUNK_CONCURRENCY"
+// legacy-line: "  );"
+// legacy-line: ""
+// legacy-line: "  return results.flat();"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "function groupBatchesByItem("
+// legacy-line: "  batches: InventorySnapshotBatch[],"
+// legacy-line: "  validItemIds: Set<string>"
+// legacy-line: "): Map<string, InventorySnapshotBatch[]> {"
+// legacy-line: "  const map = new Map<string, InventorySnapshotBatch[]>();"
+// legacy-line: "  for (const batch of batches) {"
+// legacy-line: "    if (!batch.item_id || !validItemIds.has(batch.item_id)) {"
+// legacy-line: "      // A batch referencing an item outside the fetched item set indicates"
+// legacy-line: "      // the item/batch fetches are out of sync with each other — fail"
+// legacy-line: "      // rather than silently evaluate against an incomplete picture."
+// legacy-line: "      throw new ProviderFailure('unexpected_data');"
+// legacy-line: "    }"
+// legacy-line: "    const list = map.get(batch.item_id);"
+// legacy-line: "    if (list) list.push(batch);"
+// legacy-line: "    else map.set(batch.item_id, [batch]);"
+// legacy-line: "  }"
+// legacy-line: "  return map;"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "async function fetchInventorySnapshot("
+// legacy-line: "  userId: string,"
+// legacy-line: "  signal?: AbortSignal"
+// legacy-line: "): Promise<CandidateProviderResult<InventorySnapshot>> {"
+// legacy-line: "  if (!userId) return { status: 'success', candidate: { items: [], batchesByItem: new Map() } };"
+// legacy-line: ""
+// legacy-line: "  // A real, active-request timeout distinct from the caller's own"
+// legacy-line: "  // AbortController: unmount/logout/newer-generation cancellation must"
+// legacy-line: "  // resolve as `aborted` (apply no result), while a request that's simply"
+// legacy-line: "  // taking too long must resolve as `failed` with reason 'timeout' (show"
+// legacy-line: "  // the neutral fallback) — the two need to be told apart even though both"
+// legacy-line: "  // ultimately abort the same in-flight Supabase requests."
+// legacy-line: "  const internalController = new AbortController();"
+// legacy-line: "  let timedOut = false;"
+// legacy-line: ""
+// legacy-line: "  const onExternalAbort = () => internalController.abort();"
+// legacy-line: "  if (signal) {"
+// legacy-line: "    if (signal.aborted) internalController.abort();"
+// legacy-line: "    else signal.addEventListener('abort', onExternalAbort);"
+// legacy-line: "  }"
+// legacy-line: ""
+// legacy-line: "  const timeoutId = setTimeout(() => {"
+// legacy-line: "    timedOut = true;"
+// legacy-line: "    internalController.abort();"
+// legacy-line: "  }, PROVIDER_TIMEOUT_MS);"
+// legacy-line: ""
+// legacy-line: "  try {"
+// legacy-line: "    const items = await fetchAllVisibleInventoryItems(internalController.signal);"
+// legacy-line: "    if (items.length === 0) return { status: 'success', candidate: { items: [], batchesByItem: new Map() } };"
+// legacy-line: ""
+// legacy-line: "    const itemIds = items.map((i) => i.id);"
+// legacy-line: "    const validItemIds = new Set(itemIds);"
+// legacy-line: ""
+// legacy-line: "    const batches = await fetchBatchesForItems(itemIds, internalController.signal);"
+// legacy-line: "    const batchesByItem = groupBatchesByItem(batches, validItemIds);"
+// legacy-line: ""
+// legacy-line: "    return { status: 'success', candidate: { items, batchesByItem } };"
+// legacy-line: "  } catch (err) {"
+// legacy-line: "    if (isAbortLikeError(err)) {"
+// legacy-line: "      // A real external cancellation always wins over an incidental"
+// legacy-line: "      // same-moment timeout — it reflects genuine intent (unmount, logout,"
+// legacy-line: "      // user change, superseded generation) to discard this evaluation."
+// legacy-line: "      if (signal?.aborted) return { status: 'aborted' };"
+// legacy-line: "      if (timedOut) return { status: 'failed', reason: 'timeout' };"
+// legacy-line: "      return { status: 'aborted' };"
+// legacy-line: "    }"
+// legacy-line: "    if (err instanceof ProviderFailure) {"
+// legacy-line: "      return { status: 'failed', reason: err.reason };"
+// legacy-line: "    }"
+// legacy-line: "    console.warn('[petDialogue] inventory snapshot fetch failed unexpectedly');"
+// legacy-line: "    return { status: 'failed', reason: 'unexpected_data' };"
+// legacy-line: "  } finally {"
+// legacy-line: "    clearTimeout(timeoutId);"
+// legacy-line: "    if (signal) signal.removeEventListener('abort', onExternalAbort);"
+// legacy-line: "  }"
+// legacy-line: "}"
+// legacy-line: ""
+// legacy-line: "/**"
+// legacy-line: " * Single hook-facing entry point: fetches the inventory snapshot once, then"
+// legacy-line: " * derives the P0 (expired), P2 (low stock), and P2 (expiring soon)"
+// legacy-line: " * candidates from it. None of the three ever trigger a second complete"
+// legacy-line: " * item/batch fetch."
+// legacy-line: " *"
+// legacy-line: " * Same-item precedence (expired > low stock > expiring soon — the approved"
+// legacy-line: " * priority-order change) is enforced here by threading each evaluator's"
+// legacy-line: " * full qualifying-item-id set into the next: expiring soon excludes the"
+// legacy-line: " * union of expired and low-stock item ids, not just their global winners,"
+// legacy-line: " * and independent of session-handled state (that's applied later, per"
+// legacy-line: " * candidate, in the hook)."
+// legacy-line: " */"
+// legacy-line: "export async function fetchInventoryDialogueEvaluation("
+// legacy-line: "  userId: string,"
+// legacy-line: "  signal?: AbortSignal"
+// legacy-line: "): Promise<CandidateProviderResult<InventoryDialogueEvaluation>> {"
+// legacy-line: "  const snapshotResult = await fetchInventorySnapshot(userId, signal);"
+// legacy-line: "  if (snapshotResult.status !== 'success') return snapshotResult;"
+// legacy-line: ""
+// legacy-line: "  const snapshot = snapshotResult.candidate ?? { items: [], batchesByItem: new Map() };"
+// legacy-line: ""
+// legacy-line: "  const { candidate: expiredCandidate, candidates: expiredCandidates, expiredItemIds } = evaluateExpiredInventory(snapshot);"
+// legacy-line: "  const {"
+// legacy-line: "    candidate: lowStockCandidate,"
+// legacy-line: "    candidates: lowStockCandidates,"
+// legacy-line: "    lowStockItemIds,"
+// legacy-line: "  } = evaluateLowStockInventory(snapshot, expiredItemIds);"
+// legacy-line: "  const expiringSoonExcludedItemIds = new Set([...expiredItemIds, ...lowStockItemIds]);"
+// legacy-line: "  const { candidate: expiringSoonCandidate, candidates: expiringSoonCandidates } = evaluateExpiringSoonInventory("
+// legacy-line: "    snapshot,"
+// legacy-line: "    expiringSoonExcludedItemIds"
+// legacy-line: "  );"
+// legacy-line: ""
+// legacy-line: "  return {"
+// legacy-line: "    status: 'success',"
+// legacy-line: "    candidate: {"
+// legacy-line: "      expiredCandidate,"
+// legacy-line: "      expiringSoonCandidate,"
+// legacy-line: "      lowStockCandidate,"
+// legacy-line: "      expiredCandidates,"
+// legacy-line: "      expiringSoonCandidates,"
+// legacy-line: "      lowStockCandidates,"
+// legacy-line: "    },"
+// legacy-line: "  };"
+// legacy-line: "}"
+// legacy-line: ""
