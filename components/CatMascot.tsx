@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SharedCatMascot } from '@mrburdeveloperteam/molar-experience/cat';
-import type { CatDialoguePresentation } from '@mrburdeveloperteam/molar-experience/cat';
+import { SharedCatMascot } from '@mrburdeveloperteam/pet-function/cat';
+import type { CatDialoguePresentation } from '@mrburdeveloperteam/pet-function/cat';
 import { supabase } from '../services/supabaseClient';
 import { normalizePetId } from '../VirtualPet/petOptions';
 import { isPersonalizedPetDialogueEnabled } from '../features/petDialogue/dialogueFlag';
