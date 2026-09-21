@@ -39,20 +39,6 @@ const ODOO_DEV_HOST = "mrbur.odoo.com"
 const ODOO_DEV_BASE = "https://mrbur.odoo.com"
 // const ODOO_DEV_HOST = "aht-systemadmin-mrbur-main-20994444.dev.odoo.com";
 // const ODOO_DEV_BASE = `https://${ODOO_DEV_HOST}`;
-
-// Scoped to CHECKOUT_API_PATHS only (see below) -- kept separate from
-// ODOO_DEV_HOST/ODOO_DEV_BASE above, which the generic /api/web/* reverse
-// proxy further down also uses for non-checkout Odoo RPC calls, and from
-// ODOO_SHOP_HOST below, which is shared by unrelated shop-hostname/redirect
-// logic elsewhere in this file. Pointing either of those shared constants
-// at staging would silently reroute features that have nothing to do with
-// the Unified Shop. Covers every /api/unified-shop/* route: checkout,
-// payment, and the product catalog.
-const UNIFIED_SHOP_ODOO_HOST = "mrbur-staging-2-37426912.dev.odoo.com"
-const UNIFIED_SHOP_ODOO_BASE = `https://${UNIFIED_SHOP_ODOO_HOST}`
-// Production:
-// const UNIFIED_SHOP_ODOO_HOST = "mrbur.odoo.com"
-// const UNIFIED_SHOP_ODOO_BASE = "https://mrbur.odoo.com"
 const PUBLIC_SHOP_HOST = "mrbur.shop";
 const ODOO_SHOP_HOST = "mrbur.odoo.com";
 const ODOO_ACTIVITY_URL = "https://mrbur.odoo.com/snabbb/api/inventory/activity";
@@ -808,7 +794,7 @@ if (url.pathname.startsWith("/auth/verify/email")) {
 }
 
 if (CHECKOUT_API_PATHS.has(url.pathname)) {
-  const odooUrl = `${UNIFIED_SHOP_ODOO_BASE}${url.pathname}${url.search}`;
+  const odooUrl = `https://${ODOO_DEV_HOST}${url.pathname}${url.search}`;
 
   const odooRes = await fetch(odooUrl, {
     method: request.method,
@@ -9249,7 +9235,7 @@ if (url.pathname === "/api/unified-shop/products") {
     try {
       const payload = await request.text(); // forward the raw JSON body as-is
 
-      const odooRes = await fetch(`${UNIFIED_SHOP_ODOO_BASE}/api/unified-shop/products`, {
+      const odooRes = await fetch(`https://${ODOO_SHOP_HOST}/api/unified-shop/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: payload,
