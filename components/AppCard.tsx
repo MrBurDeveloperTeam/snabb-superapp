@@ -112,8 +112,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
         let targetUrl = res.result?.url;
 
         if (
-          appCode === 'inventory' &&
-          targetUrl
+          (appCode === "inventory" || appCode === "appointment") &&
+            targetUrl
         ) {
           const selectedCompanyOwnerId =
             localStorage.getItem(
