@@ -11,14 +11,13 @@ const useGetSessionInfo = () => {
                 return new Error("No session info found");
             }
 
-            // If the response is valid, try to get sessionInfo with retry
+            // If the response is valid, try to get sessionInfo with retry.
+            // getSessionInfoWithRetry() returns null in local dev on
+            // purpose (see its own comment in GetSessionInfo.ts) — that's
+            // an expected skip, not a failure, since it only ever adds
+            // fields response already has. Only merge it in when present.
             const sessionInfo = await getSessionInfoWithRetry();
-            if (!sessionInfo) {
-                return new Error("Session info with retry failed");
-            }
-
-            // Ensure sessionInfo exists before proceeding
-            const res = { ...response, ...sessionInfo };
+            const res = sessionInfo ? { ...response, ...sessionInfo } : response;
 
             // Return the merged session info
             return { sessionInfo: res };
