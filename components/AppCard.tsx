@@ -108,7 +108,44 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
           );
         }
 
+        
         let targetUrl = res.result?.url;
+
+        if (
+          appCode === 'inventory' &&
+          targetUrl
+        ) {
+          const selectedCompanyOwnerId =
+            localStorage.getItem(
+              'snabbb.activeWorkspaceOwnerUserId'
+            );
+
+          const inventoryUrl =
+            new URL(targetUrl);
+
+          if (selectedCompanyOwnerId) {
+            inventoryUrl.searchParams.set(
+              'workspace_type',
+              'company'
+            );
+
+            inventoryUrl.searchParams.set(
+              'workspace_owner_id',
+              selectedCompanyOwnerId
+            );
+          } else {
+            inventoryUrl.searchParams.set(
+              'workspace_type',
+              'personal'
+            );
+
+            inventoryUrl.searchParams.delete(
+              'workspace_owner_id'
+            );
+          }
+
+          targetUrl = inventoryUrl.toString();
+        }
 
         if (appCode === 'shop' && targetUrl) {
           const ssoUrl = new URL(targetUrl);
