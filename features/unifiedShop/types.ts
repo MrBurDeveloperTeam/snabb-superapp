@@ -101,9 +101,13 @@ export interface CartLine {
   qty: number;
 }
 
-// Kaneiko isn't a separate res.company/website in Odoo today — a cart
-// mixing "mrbur" and "kaneiko" tagged products is one real order, not one
-// per brand — so there's no per-brand order-split shape below either.
+// Kaneiko isn't a separate res.company/website in Odoo today, but as of
+// 2026-09-22 a cart mixing "mrbur" and "kaneiko" tagged products DOES
+// split into separate sale.orders/invoices behind the scenes — see
+// CompanyCheckoutBreakdown below. That split stays invisible in the
+// checkout UI itself ("unified checkout UX", same date) — one address,
+// one item list, one delivery method, one total — so it's purely a
+// backend/invoicing detail this frontend renders nowhere by default.
 //
 // The Delivery step itself (address, delivery method, billing toggle,
 // reward claim, Snabbb Credit toggle) IS a JSON request/response round
@@ -163,24 +167,22 @@ export interface CheckoutLine {
 }
 
 /**
- * One company's own slice of a Unified Shop checkout — its own
- * sale.order, its own delivery-method choice, its own eventual invoice.
- * See unified_shop_api's `unified.shop.order` model (mrbur repo) for why
- * a cart can now genuinely span more than one of these: Odoo ties a
- * sale.order (and its invoice) to exactly one company, so "one order,
- * several companies" becomes one `CompanyCheckoutBreakdown` per company
- * behind a single combined total — see CheckoutStateResponse.companies.
- * There is exactly one of these today (Kaneiko has no company of its own
- * yet), so every consumer of `companies` should still work correctly
- * when the array has length 1.
+ * One brand/company's own slice of a Unified Shop checkout — its own
+ * sale.order, its own eventual invoice. See unified_shop_api's
+ * `unified.shop.order` model (mrbur repo) for why a cart can now
+ * genuinely span more than one of these: Odoo ties a sale.order (and its
+ * invoice) to exactly one company, so "one order, several brands"
+ * becomes one `CompanyCheckoutBreakdown` per brand behind a single
+ * combined total — see CheckoutStateResponse.companies.
  *
- * As of 2026-09-22, `companies` can genuinely have more than one entry
- * even though every entry's company_id/company_name is currently
- * identical (MR.BUR) — the split is now on `brand`, not company (Kaneiko
- * still has no company of its own). Use `sale_order_id`, not company_id,
- * as a React list key here, and prefer `brand` over company_name for any
- * "Sold by" label so two entries never render as indistinguishable
- * duplicates.
+ * As of 2026-09-22 ("unified checkout UX"), this is a backend/invoicing
+ * detail only — the checkout UI itself never renders a "Sold by"
+ * grouping from `companies` any more (see CheckoutStateResponse's own
+ * doc comment for where the flat, unified fields live instead). Every
+ * entry's company_id/company_name can be identical (MR.BUR) while
+ * differing by `brand` (Kaneiko has no company of its own), so anything
+ * that still needs to key off an entry should use `sale_order_id`, not
+ * company_id.
  */
 export interface CompanyCheckoutBreakdown {
   company_id: number;
@@ -194,8 +196,6 @@ export interface CompanyCheckoutBreakdown {
   amount_tax: number;
   amount_delivery: number;
   amount_total: number;
-  delivery_methods: DeliveryMethod[];
-  selected_carrier_id: number | false;
   /** Populated only after this company's own invoice has been created — empty right up through Confirm/Pay now. */
   invoice_ids: number[];
   invoice_numbers: string[];
@@ -250,20 +250,28 @@ export interface CheckoutStateResponse {
   amount_delivery?: number;
   amount_total?: number;
   /**
-   * One entry per company represented in the cart — today always exactly
-   * one (Kaneiko has no company of its own yet). Render a "Sold &
-   * invoiced by <company>" grouping from this rather than assuming
-   * `lines`/`delivery_methods`/`selected_carrier_id` above describe a
-   * single order once this can have more than one entry.
+   * One entry per brand/company represented in the cart — a backend/
+   * invoicing detail only as of 2026-09-22 ("unified checkout UX"). The
+   * checkout UI itself renders the flat, unified `lines`/
+   * `delivery_methods`/`selected_carrier_id` fields below, never a
+   * "Sold by <company>" grouping from this array — see this interface's
+   * own note on those fields.
    */
   companies?: CompanyCheckoutBreakdown[];
   delivery_address?: CheckoutAddress | null;
   billing_address?: CheckoutAddress | null;
   billing_same_as_delivery?: boolean;
   saved_addresses?: SavedAddress[];
-  /** @deprecated the backend no longer sends this at the top level as of the multi-company order-group change — use `companies[].delivery_methods` (there's always at least one entry). Left optional here only so a stale cached response shape doesn't fail to typecheck. */
+  /**
+   * ONE delivery-method list / selection for the whole cart (2026-09-22,
+   * "unified checkout UX" — un-deprecated: these briefly moved to
+   * `companies[].delivery_methods`/`companies[].selected_carrier_id`
+   * during the brand-split work, but the shopper only ever sees and
+   * picks one delivery method total, rated against the primary/MR.BUR
+   * order — see checkout.py's `_ready_for_payment_error` and
+   * `checkout_delivery_method` in the mrbur repo).
+   */
   delivery_methods?: DeliveryMethod[];
-  /** @deprecated use `companies[].selected_carrier_id` */
   selected_carrier_id?: number | false;
   credit?: CreditWalletState;
   rewards?: ClaimableReward[];

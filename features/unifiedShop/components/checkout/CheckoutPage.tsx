@@ -8,21 +8,7 @@ import { CART_TOAST_STYLE } from '../cartToastStyle';
 import AddressFormModal from './AddressFormModal';
 import DeliveryMethodList from './DeliveryMethodList';
 import OrderSummary from './OrderSummary';
-import { BRANDS, type AddressFormValues, type CheckoutAddress, type CompanyCheckoutBreakdown } from '../../types';
-
-/**
- * "Sold by" label for one company/brand breakdown entry — prefers the
- * brand's own display label (see BRANDS in types.ts) over company_name,
- * since as of 2026-09-22 a cart can split into more than one entry that
- * all share the same company_name (MR.BUR) but differ by brand (Kaneiko
- * has no company of its own yet) — falling back to company_name keeps
- * this correct even against a stale/older backend response that hasn't
- * started sending `brand` yet.
- */
-function sellerLabel(company: Pick<CompanyCheckoutBreakdown, 'brand' | 'company_name'>): string {
-  const brandMeta = company.brand && BRANDS.find((b) => b.id === company.brand);
-  return brandMeta ? brandMeta.label : company.company_name;
-}
+import type { AddressFormValues, CheckoutAddress } from '../../types';
 
 interface CheckoutPageProps {
   /** Returns to the product grid (see UnifiedShopApp's `view` state). */
@@ -113,9 +99,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
     }
   };
 
-  const handleSelectDeliveryMethod = async (saleOrderId: number, carrierId: number) => {
+  const handleSelectDeliveryMethod = async (carrierId: number) => {
     try {
-      await actions.selectDeliveryMethod.mutateAsync({ saleOrderId, carrierId });
+      await actions.selectDeliveryMethod.mutateAsync(carrierId);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Could not select this delivery method.',
@@ -223,7 +209,12 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
   }
 
   const currency = data.currency ?? 'USD';
+  // `companies` (per-brand order/invoice split) is a backend-only detail
+  // as of the "unified checkout UX" change — the checkout UI itself
+  // never groups by it; use the flat, group-level fields below instead.
   const companies = data.companies ?? [];
+  const deliveryMethods = data.delivery_methods ?? [];
+  const selectedCarrierId = data.selected_carrier_id ?? false;
   const deliveryAddress = data.delivery_address ?? null;
   const billingAddress = data.billing_address ?? null;
   const billingSame = billingSameOverride ?? (data.billing_same_as_delivery ?? true);
@@ -326,34 +317,20 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
               Choose a delivery method
             </h2>
             {/*
-              One list per company/brand order in the cart — each rates
-              and ships independently (own warehouse/carriers), so a cart
-              spanning more than one needs a delivery-method choice per
-              order, not just one. `companies` always has at least one
-              entry once the cart isn't empty; the "Sold by" label only
-              renders when there's genuinely more than one to disambiguate,
-              so today's single-order case looks exactly like it did
-              before this change. Keyed by sale_order_id (not company_id):
-              as of 2026-09-22 two entries can share the same company_id
-              (MR.BUR and Kaneiko both do today) while still being
-              different orders — see sellerLabel()'s own doc comment.
+              One flat delivery-method list for the whole cart ("unified
+              checkout UX", 2026-09-22) — even when the cart spans more
+              than one brand order behind the scenes (see
+              CompanyCheckoutBreakdown in types.ts), the shopper picks
+              exactly one method here, rated and charged against the
+              primary order only.
             */}
-            {companies.map((company) => (
-              <div key={company.sale_order_id} className={companies.length > 1 ? 'mb-5' : ''}>
-                {companies.length > 1 && (
-                  <p className="mb-2 text-[12px] font-bold text-slate-500 dark:text-slate-400">
-                    Sold by {sellerLabel(company)}
-                  </p>
-                )}
-                <DeliveryMethodList
-                  methods={company.delivery_methods}
-                  selectedId={company.selected_carrier_id}
-                  currency={currency}
-                  disabled={actions.selectDeliveryMethod.isPending}
-                  onSelect={(carrierId) => handleSelectDeliveryMethod(company.sale_order_id, carrierId)}
-                />
-              </div>
-            ))}
+            <DeliveryMethodList
+              methods={deliveryMethods}
+              selectedId={selectedCarrierId}
+              currency={currency}
+              disabled={actions.selectDeliveryMethod.isPending}
+              onSelect={handleSelectDeliveryMethod}
+            />
           </section>
 
           <section>
@@ -425,7 +402,6 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
           <OrderSummary
             itemCount={(data.lines ?? []).reduce((sum, l) => sum + l.qty, 0)}
             lines={data.lines ?? []}
-            companies={companies}
             currency={currency}
             amountSubtotal={data.amount_subtotal ?? 0}
             amountDelivery={data.amount_delivery ?? 0}
@@ -444,7 +420,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
               !deliveryAddress ||
               !(billingSame || billingAddress) ||
               companies.length === 0 ||
-              !companies.every((c) => c.selected_carrier_id)
+              !selectedCarrierId
             }
             confirming={actions.confirm.isPending}
             confirmError={confirmError}

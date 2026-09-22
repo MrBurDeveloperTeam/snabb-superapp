@@ -1,20 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { BRANDS, type CheckoutLine, type ClaimableReward, type CompanyCheckoutBreakdown, type CreditWalletState } from '../../types';
-
-/**
- * "Sold & invoiced by" label for one company/brand breakdown entry —
- * same reasoning as CheckoutPage.tsx's own sellerLabel(): prefers the
- * brand's display label (BRANDS in types.ts) over company_name, since as
- * of 2026-09-22 a cart can split into more than one entry that share the
- * same company_name (MR.BUR) but differ by brand (Kaneiko has no company
- * of its own yet). Falls back to company_name against an older backend
- * response that hasn't started sending `brand` yet.
- */
-function sellerLabel(company: Pick<CompanyCheckoutBreakdown, 'brand' | 'company_name'>): string {
-  const brandMeta = company.brand && BRANDS.find((b) => b.id === company.brand);
-  return brandMeta ? brandMeta.label : company.company_name;
-}
+import type { CheckoutLine, ClaimableReward, CreditWalletState } from '../../types';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -26,18 +12,16 @@ function formatPrice(price: number, currency: string) {
 
 interface OrderSummaryProps {
   itemCount: number;
-  lines: CheckoutLine[];
   /**
-   * One entry per company/brand order in the cart — see
-   * CompanyCheckoutBreakdown's own doc comment. As of 2026-09-22 this can
-   * genuinely have more than one entry (a cart mixing MR.BUR and Kaneiko
-   * items splits into two orders, brand being the split key since
-   * Kaneiko has no company of its own), which is exactly why the
-   * line-item list below only shows a "Sold & invoiced by <seller>"
-   * header per group once there's genuinely more than one — a single-
-   * entry cart still renders identically to before this prop existed.
+   * Every line across every brand order in the cart, flat — the item
+   * list below renders straight from this, with no "Sold & invoiced by
+   * <seller>" grouping ("unified checkout UX", 2026-09-22): a cart
+   * mixing MR.BUR and Kaneiko items still splits into separate
+   * sale.orders/invoices behind the scenes (see CompanyCheckoutBreakdown
+   * in types.ts), but that split is a backend/invoicing detail this
+   * summary no longer discloses.
    */
-  companies: CompanyCheckoutBreakdown[];
+  lines: CheckoutLine[];
   currency: string;
   amountSubtotal: number;
   amountDelivery: number;
@@ -71,7 +55,6 @@ interface OrderSummaryProps {
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   itemCount,
   lines,
-  companies,
   currency,
   amountSubtotal,
   amountDelivery,
@@ -118,66 +101,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       {expanded && (
         <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
           {/*
-            Grouped by seller (company + brand) rather than a single flat
-            list — once a cart genuinely spans more than one, each group
-            gets its own "Sold & invoiced by" header and its own
-            subtotal, the same disclosure shoppers already know from
-            other multi-seller marketplaces (one order, one Pay Now,
-            several sellers/invoices underneath). `companies` always has
-            at least one entry when there are lines at all; with exactly
-            one entry this renders identically to the old flat list: no
-            header, just the items.
+            One flat item list for the whole cart ("unified checkout
+            UX", 2026-09-22) — no "Sold & invoiced by <seller>" grouping,
+            even when the cart spans more than one brand order behind the
+            scenes (see CompanyCheckoutBreakdown in types.ts). `lines`
+            already carries every line across every brand order flat.
           */}
-          {companies.length > 0 && (
-            <div className="mb-2 flex flex-col gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
-              {companies.map((company) => (
-                <div key={company.sale_order_id} className="flex flex-col gap-3">
-                  {companies.length > 1 && (
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                        Sold &amp; invoiced by {sellerLabel(company)}
-                      </p>
-                      <span className="text-[11px] font-semibold text-slate-400">
-                        {formatPrice(company.amount_total, currency)}
-                      </span>
-                    </div>
-                  )}
-                  {company.lines.map((line) => (
-                    <div key={line.id} className="flex items-center gap-3">
-                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
-                        {line.image_url && (
-                          <img
-                            src={line.image_url}
-                            alt={line.name}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">
-                          {line.qty} x {line.name}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-[12px] font-bold text-slate-900 dark:text-white">
-                        {formatPrice(line.price_subtotal, currency)}
-                      </span>
-                    </div>
-                  ))}
-                  {companies.length > 1 && company.invoice_numbers.length > 0 && (
-                    <p className="text-[11px] text-slate-400">
-                      Invoice{company.invoice_numbers.length > 1 ? 's' : ''}: {company.invoice_numbers.join(', ')}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {companies.length === 0 && lines.length > 0 && (
-            // Defensive fallback only — the backend always sends
-            // `companies` alongside `lines` as of the multi-company
-            // order-group change, but if an older cached response ever
-            // lands here without it, still show the flat list rather
-            // than silently rendering nothing.
+          {lines.length > 0 && (
             <div className="mb-2 flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
               {lines.map((line) => (
                 <div key={line.id} className="flex items-center gap-3">

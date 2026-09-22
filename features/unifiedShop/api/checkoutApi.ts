@@ -101,19 +101,17 @@ export function setBillingSameAsDelivery(sameAsDelivery: boolean): Promise<Check
 }
 
 /**
- * `saleOrderId` says which company order this selection is for — a cart
- * spanning more than one company can have more than one delivery method
- * to pick (each company rates its own order independently), so the
- * backend needs to know which one a given carrier_id applies to. See
- * checkout.py's checkout_delivery_method (mrbur repo).
+ * One flat delivery choice for the whole cart (2026-09-22, "unified
+ * checkout UX") — the backend always rates and charges this against the
+ * primary/MR.BUR order itself, so there's no order to disambiguate here
+ * any more. See checkout.py's checkout_delivery_method (mrbur repo).
  */
 export function selectDeliveryMethod(
-  saleOrderId: number,
   carrierId: number
-): Promise<{ ok: boolean; sale_order_id: number; selected_carrier_id: number; amount_delivery: number; amount_total: number }> {
+): Promise<{ ok: boolean; selected_carrier_id: number; amount_delivery: number; amount_total: number }> {
   return call(`/delivery-method`, {
     method: 'POST',
-    body: JSON.stringify({ sale_order_id: saleOrderId, carrier_id: carrierId }),
+    body: JSON.stringify({ carrier_id: carrierId }),
   });
 }
 
