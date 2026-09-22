@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { authOdoo } from '@/services/authOdoo';
 import { DENTAL_POSITIONS } from '@/constants/dentalPositions';
 import { getCompanyInvitation } from '../services/subuserService';
+import { rememberCompanyInvitation } from '../services/pendingCompanyInvitation';
 import type { InvitationDetails } from '../types';
 import { SnabbbIcon } from '@/public/icons/SnabbbIcon';
 import { EmailVerificationToast } from '@/features/auth/components/EmailVerificationToast';
@@ -110,7 +111,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
       // The Worker accepts an invitation only for an authenticated user.
       // Keep the token until this newly created account has verified its
       // email and successfully signed in.
-      sessionStorage.setItem('pendingCompanyInvitation', token);
+      rememberCompanyInvitation(token, invitation.expiresAt);
 
       if (setToastMsg) {
         setToastMsg(
@@ -161,7 +162,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
           <button
             type="button"
             onClick={() => {
-              sessionStorage.setItem('pendingCompanyInvitation', token);
+              rememberCompanyInvitation(token, invitation.expiresAt);
               onComplete();
             }}
             className="mt-8 w-full rounded-2xl bg-tiffany-600 py-4 font-black text-white hover:bg-tiffany-700"
