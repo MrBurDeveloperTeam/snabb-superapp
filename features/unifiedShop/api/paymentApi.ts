@@ -2,9 +2,13 @@ import { CheckoutApiError } from './checkoutApi';
 import type { PaymentInitResponse, PaymentMethodsResponse, PaymentStatusResponse } from '../types';
 
 /**
- * Same convention as checkoutApi.ts's BASE — same-origin, forwarded-session
- * cookie (see checkout.py's module docstring in the mrbur repo) — just one
- * path segment deeper, `/checkout/payment/*` instead of `/checkout/*`.
+ * Same convention as checkoutApi.ts's BASE — a relative path so a
+ * same-origin request carries the forwarded session cookie (see
+ * checkout.py's module docstring in the mrbur repo), whether that's
+ * app.snabbb.com in production or vite's dev proxy locally (see
+ * vite.config.ts) — just one path segment deeper, `/checkout/payment/*`
+ * instead of `/checkout/*`. Matches checkout.py's exact routes
+ * (`/api/unified-shop/checkout/payment/methods|init|status`, mrbur repo).
  *
  * Cloudflare Worker note: if the Worker forwards `/api/unified-shop/
  * checkout/*` by a path-*prefix* match, these three new routes are already
@@ -14,7 +18,7 @@ import type { PaymentInitResponse, PaymentMethodsResponse, PaymentStatusResponse
  * need adding to that allowlist the same way the Delivery step's routes
  * were.
  */
-const BASE = 'https://app.snabbb.com/api/unified-shop/checkout/payment';
+const BASE = '/api/unified-shop/checkout/payment';
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

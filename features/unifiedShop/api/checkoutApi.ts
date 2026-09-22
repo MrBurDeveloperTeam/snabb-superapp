@@ -5,14 +5,22 @@ import type {
 } from '../types';
 
 /**
- * Same-origin path, same convention as unifiedShopApi.ts's `/api/unified-
- * shop/products` and themeStore.ts's `/api/user/theme` — whatever proxies
- * `/api/*` on app.snabbb.com to Odoo handles this the same way, forwarding
- * the browser's session cookie (see checkout.py's module docstring in the
- * mrbur repo for why that's safe to rely on here). Nothing here talks to
- * an Odoo *.shop domain directly.
+ * Relative path, same convention as unifiedShopApi.ts's `/api/unified-
+ * shop/products` and themeStore.ts's `/api/user/theme` — matches
+ * unified_shop_api/controllers/checkout.py's exact route
+ * (`/api/unified-shop/checkout/*`, mrbur repo) exactly.
+ *
+ * This MUST stay relative, not a hardcoded `https://app.snabbb.com/...`
+ * origin: in production the app is served from app.snabbb.com itself, so a
+ * relative path resolves identically there, but hardcoding that origin
+ * makes every call cross-origin during local/LAN dev (`npm run dev`),
+ * which drops the browser's real Odoo session cookie and vite's dev proxy
+ * both — that's what caused `/unified-shop` to show "Please log in to
+ * continue to checkout" locally even while logged in. See
+ * checkout.py's module docstring in the mrbur repo for why forwarding the
+ * cookie on a same-origin request is what makes auth work here at all.
  */
-const BASE = 'https://app.snabbb.com/api/unified-shop/checkout';
+const BASE = '/api/unified-shop/checkout';
 
 export class CheckoutApiError extends Error {
   body: unknown;
