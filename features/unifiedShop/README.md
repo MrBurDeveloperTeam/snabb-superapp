@@ -125,10 +125,33 @@ first time the page opens (`?lines=productTemplateId:qty,...`, built by
 `checkoutApi.ts`'s `buildLinesParam`) and syncs them onto a real
 `sale.order` via `website_sale`'s own `_cart_update` — idempotently, unlike
 the old `checkout_handoff` route's additive-only version, since this one
-can be (and is) called again on every refetch. One real order per cart,
-not one per brand: Kaneiko has no company/website of its own in Odoo, so a
-cart mixing "mrbur" and "kaneiko" tagged products is one `sale.order`, same
-as any other mixed-category cart on mrbur.shop.
+can be (and is) called again on every refetch.
+
+**One order the shopper sees, one `sale.order` per company underneath.**
+As of 2026-09-22, `/checkout/state` can return more than one `sale.order`
+grouped under a single `unified.shop.order` (`order_group_id` /
+`order_group_name` in the response) — see `unified_shop_api/controllers/
+checkout.py`'s own module docstring in the `mrbur` repo for the full
+design. This is a direct consequence of an Odoo constraint, not a design
+preference: a `sale.order` (and its invoice) belongs to exactly one
+company, so once a brand shown here is a real `res.company` with its own
+products, a cart mixing two companies' products becomes two
+`sale.order`s — each invoiced, and eventually e-invoiced, separately —
+while this page still shows one combined total and one Pay Now. The
+response's new `companies` array carries that breakdown (one entry per
+company: its own lines, subtotal, delivery methods, and eventual invoice
+numbers); `CheckoutPage.tsx` renders one delivery-method list per company
+and `OrderSummary.tsx` groups line items under a "Sold & invoiced by
+&lt;company&gt;" header once there's more than one entry.
+
+**This is a no-op in production today.** Kaneiko still has no
+company/website of its own in Odoo (`company_id = False` on every
+product — "brand" here is still just a display grouping, see the note at
+the top of this README), so `companies` always comes back with exactly
+one entry and every component above renders identically to how it did
+before this change — no visible "Sold by" header, one delivery-method
+list, unchanged layout. The split only activates the day a second brand
+in this catalog becomes a real company.
 
 Reward claim and Snabbb Credit toggle don't reimplement any wallet/reward
 logic — `unified_shop_api/controllers/checkout.py`'s `reward-claim` and

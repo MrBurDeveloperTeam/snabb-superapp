@@ -61,7 +61,8 @@ export function useCheckoutActions() {
   });
 
   const selectDeliveryMethodMutation = useMutation({
-    mutationFn: (carrierId: number) => selectDeliveryMethod(carrierId),
+    mutationFn: ({ saleOrderId, carrierId }: { saleOrderId: number; carrierId: number }) =>
+      selectDeliveryMethod(saleOrderId, carrierId),
     onSuccess: invalidate,
   });
 

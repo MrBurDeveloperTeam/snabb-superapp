@@ -143,6 +143,44 @@ export interface CheckoutLine {
   price_unit: number;
   price_subtotal: number;
   image_url: string | false;
+  /**
+   * Which company's own sale.order/invoice this line will land on — see
+   * unified_shop_api's checkout.py `_resolve_line_company` in the mrbur
+   * repo. Always the same single company across every line today
+   * (Kaneiko has no company of its own yet), which is exactly why this
+   * is optional rather than assumed present everywhere.
+   */
+  company_id?: number;
+  company_name?: string;
+}
+
+/**
+ * One company's own slice of a Unified Shop checkout — its own
+ * sale.order, its own delivery-method choice, its own eventual invoice.
+ * See unified_shop_api's `unified.shop.order` model (mrbur repo) for why
+ * a cart can now genuinely span more than one of these: Odoo ties a
+ * sale.order (and its invoice) to exactly one company, so "one order,
+ * several companies" becomes one `CompanyCheckoutBreakdown` per company
+ * behind a single combined total — see CheckoutStateResponse.companies.
+ * There is exactly one of these today (Kaneiko has no company of its own
+ * yet), so every consumer of `companies` should still work correctly
+ * when the array has length 1.
+ */
+export interface CompanyCheckoutBreakdown {
+  company_id: number;
+  company_name: string;
+  sale_order_id: number;
+  sale_order_name: string;
+  lines: CheckoutLine[];
+  amount_subtotal: number;
+  amount_tax: number;
+  amount_delivery: number;
+  amount_total: number;
+  delivery_methods: DeliveryMethod[];
+  selected_carrier_id: number | false;
+  /** Populated only after this company's own invoice has been created — empty right up through Confirm/Pay now. */
+  invoice_ids: number[];
+  invoice_numbers: string[];
 }
 
 /** One available shipping option, with its computed rate for this order/address. */
@@ -183,18 +221,31 @@ export interface CheckoutStateResponse {
   ok: boolean;
   authenticated: boolean;
   cart_empty?: boolean;
-  order_id?: number;
+  /** Customer-facing order number (unified.shop.order, e.g. "USH000123") — replaces the old single `order_id`, since one checkout can now be more than one sale.order. */
+  order_group_id?: number;
+  order_group_name?: string;
   currency?: string;
+  /** Every line across every company, each tagged with company_id/company_name — see CheckoutLine. Prefer `companies` below when rendering a per-seller breakdown; this flat list is for the simple "N items" summary. */
   lines?: CheckoutLine[];
   amount_subtotal?: number;
   amount_tax?: number;
   amount_delivery?: number;
   amount_total?: number;
+  /**
+   * One entry per company represented in the cart — today always exactly
+   * one (Kaneiko has no company of its own yet). Render a "Sold &
+   * invoiced by <company>" grouping from this rather than assuming
+   * `lines`/`delivery_methods`/`selected_carrier_id` above describe a
+   * single order once this can have more than one entry.
+   */
+  companies?: CompanyCheckoutBreakdown[];
   delivery_address?: CheckoutAddress | null;
   billing_address?: CheckoutAddress | null;
   billing_same_as_delivery?: boolean;
   saved_addresses?: SavedAddress[];
+  /** @deprecated the backend no longer sends this at the top level as of the multi-company order-group change — use `companies[].delivery_methods` (there's always at least one entry). Left optional here only so a stale cached response shape doesn't fail to typecheck. */
   delivery_methods?: DeliveryMethod[];
+  /** @deprecated use `companies[].selected_carrier_id` */
   selected_carrier_id?: number | false;
   credit?: CreditWalletState;
   rewards?: ClaimableReward[];
@@ -231,6 +282,12 @@ export interface PaymentProvider {
    *  redirect page regardless, so the frontend falls back to the existing
    *  SSO hand-off for those. */
   inline: boolean;
+  /** Stripe only — see checkout.py's _provider_json (mrbur repo) for why
+   *  this rides along here instead of in payment/init's processing_values
+   *  (Stripe.js needs it client-side before it can even construct the
+   *  stripe(...) instance). Used by PaymentPage.tsx's Stripe Elements
+   *  mount. */
+  stripe_publishable_key?: string;
 }
 
 export interface PaymentMethodsResponse {
@@ -253,12 +310,25 @@ export interface PaymentInitResponse {
   processing_values: Record<string, string | number | boolean | null>;
 }
 
+/** One company's own order/invoice, as reflected in a payment/status poll. */
+export interface PaymentStatusCompany {
+  company_id: number;
+  company_name: string;
+  sale_order_id: number;
+  sale_order_state: string;
+  sale_order_name: string;
+  invoice_ids: number[];
+  invoice_numbers: string[];
+}
+
 export interface PaymentStatusResponse {
   ok: boolean;
   state: string;
   is_done: boolean;
   is_error: boolean;
   state_message: string;
-  sale_order_state: string | false;
-  sale_order_name: string | false;
+  order_group_id?: number | false;
+  order_group_name?: string | false;
+  /** One entry per company order the payment.transaction covered — see checkout.py's payment/status route (mrbur repo). Always length 1 today. */
+  companies: PaymentStatusCompany[];
 }

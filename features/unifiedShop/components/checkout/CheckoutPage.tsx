@@ -99,9 +99,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
     }
   };
 
-  const handleSelectDeliveryMethod = async (carrierId: number) => {
+  const handleSelectDeliveryMethod = async (saleOrderId: number, carrierId: number) => {
     try {
-      await actions.selectDeliveryMethod.mutateAsync(carrierId);
+      await actions.selectDeliveryMethod.mutateAsync({ saleOrderId, carrierId });
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Could not select this delivery method.',
@@ -209,6 +209,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
   }
 
   const currency = data.currency ?? 'USD';
+  const companies = data.companies ?? [];
   const deliveryAddress = data.delivery_address ?? null;
   const billingAddress = data.billing_address ?? null;
   const billingSame = billingSameOverride ?? (data.billing_same_as_delivery ?? true);
@@ -310,13 +311,32 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
             <h2 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">
               Choose a delivery method
             </h2>
-            <DeliveryMethodList
-              methods={data.delivery_methods ?? []}
-              selectedId={data.selected_carrier_id ?? false}
-              currency={currency}
-              disabled={actions.selectDeliveryMethod.isPending}
-              onSelect={handleSelectDeliveryMethod}
-            />
+            {/*
+              One list per company in the cart — each company rates and
+              ships independently (own warehouse/carriers), so a cart
+              spanning more than one company needs a delivery-method
+              choice per company, not just one. `companies` always has at
+              least one entry once the cart isn't empty; the "Sold by"
+              label only renders when there's genuinely more than one to
+              disambiguate, so today's single-company case looks exactly
+              like it did before this change.
+            */}
+            {companies.map((company) => (
+              <div key={company.company_id} className={companies.length > 1 ? 'mb-5' : ''}>
+                {companies.length > 1 && (
+                  <p className="mb-2 text-[12px] font-bold text-slate-500 dark:text-slate-400">
+                    Sold by {company.company_name}
+                  </p>
+                )}
+                <DeliveryMethodList
+                  methods={company.delivery_methods}
+                  selectedId={company.selected_carrier_id}
+                  currency={currency}
+                  disabled={actions.selectDeliveryMethod.isPending}
+                  onSelect={(carrierId) => handleSelectDeliveryMethod(company.sale_order_id, carrierId)}
+                />
+              </div>
+            ))}
           </section>
 
           <section>
@@ -388,6 +408,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
           <OrderSummary
             itemCount={(data.lines ?? []).reduce((sum, l) => sum + l.qty, 0)}
             lines={data.lines ?? []}
+            companies={companies}
             currency={currency}
             amountSubtotal={data.amount_subtotal ?? 0}
             amountDelivery={data.amount_delivery ?? 0}
@@ -405,7 +426,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
             confirmDisabled={
               !deliveryAddress ||
               !(billingSame || billingAddress) ||
-              !data.selected_carrier_id
+              companies.length === 0 ||
+              !companies.every((c) => c.selected_carrier_id)
             }
             confirming={actions.confirm.isPending}
             confirmError={confirmError}

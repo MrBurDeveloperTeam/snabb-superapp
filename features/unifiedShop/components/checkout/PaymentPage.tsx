@@ -343,7 +343,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
         <ShieldCheck className="mx-auto h-10 w-10 text-emerald-500" />
         <p className="mt-3 text-[15px] font-bold text-slate-900 dark:text-white">Payment successful!</p>
         <p className="mt-1 text-[13px] text-slate-500 dark:text-slate-400">
-          {state?.order_id ? `Order confirmed — thank you for shopping with us.` : 'Your order is confirmed.'}
+          {state?.order_group_id ? `Order confirmed — thank you for shopping with us.` : 'Your order is confirmed.'}
         </p>
         <button
           type="button"
