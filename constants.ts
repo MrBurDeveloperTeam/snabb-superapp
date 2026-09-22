@@ -64,7 +64,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Dental Charting',
     category: 'Productivity',
     // icon: '/icons/dental_charting.PNG',
-    icon: '/icons/new-iconsdental-charting.jpeg',
+    icon: '/icons/new-icons/dental-charting.jpeg',
     route: `https://charting.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -126,7 +126,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Expenses',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
-    icon: '/icons/new-icons/expenses_tiffany.png',
+    icon: '/icons/new-icons/expenses.jpeg',
     // route: `https://app.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
