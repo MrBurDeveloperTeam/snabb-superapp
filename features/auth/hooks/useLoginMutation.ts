@@ -2,6 +2,7 @@ import { loginOdoo } from "@/services/LoginOdoo";
 import { useMutation } from "@tanstack/react-query";
 import { AuthFormInputs } from "../types/AuthFormInputs";
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
+import { isLocalDev } from '@/utils/env';
 
 async function plantSnabbbIdentity(sessionInfo: any) {
   const snabbbToken =
@@ -91,18 +92,10 @@ onSuccess: async ({ sessionInfo, session_id }) => {
   // this tab to production app.snabbb.com instead. The Odoo session
   // cookie + odoo_session in localStorage set above are already enough
   // to be logged in here — same fallback the redirect-param branch below
-  // already uses on error.
-  //
-  // Checking hostname against a fixed ['localhost', '127.0.0.1'] list
-  // missed real dev traffic: vite.config.ts's server.host is '0.0.0.0'
-  // with allowedHosts: true, specifically so this can be reached over the
-  // LAN too (e.g. http://192.168.x.x:3000, for testing from a phone on
-  // the same network) — that hostname is neither 'localhost' nor
-  // '127.0.0.1', so the old check let this bounce through anyway. Testing
-  // "is this a *.snabbb.com origin" instead of enumerating dev hostnames
-  // covers every local/LAN/tunnel address without having to list them.
-  const isLocalDev = typeof window !== 'undefined' &&
-    !/(^|\.)snabbb\.com$/.test(window.location.hostname);
+  // already uses on error. See utils/env.ts's isLocalDev() for why this
+  // checks the hostname against snabbb.com rather than an enumerated list
+  // of dev addresses.
+  const localDev = isLocalDev();
 
   if (redirectUrl && session_id) {
     try {
@@ -119,7 +112,7 @@ onSuccess: async ({ sessionInfo, session_id }) => {
     } catch {
       onAuthSuccess();
     }
-  } else if (isLocalDev) {
+  } else if (localDev) {
     onAuthSuccess();
   } else {
     // No redirect param — stay on Snabbb (normal login).

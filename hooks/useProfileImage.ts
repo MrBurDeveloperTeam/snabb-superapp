@@ -1,11 +1,19 @@
 // src/hooks/useProfileImage.ts
 import { useState, useEffect } from "react";
+import { isLocalDev } from "@/utils/env";
 
 export function useProfileImage(isLoggedIn: boolean | null) {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) return; // ← only fetch when logged in
+
+    // account.snabbb.com is a production-only service (no local/dev
+    // equivalent, and no session cookie for it exists when testing against
+    // a local Odoo backend) — skip it in local dev instead of firing a
+    // request that can only ever come back 401, same end result
+    // (profileImageUrl stays null) without the console noise.
+    if (isLocalDev()) return;
 
     fetch("https://account.snabbb.com/api/account/profile", {
       method: "GET",
