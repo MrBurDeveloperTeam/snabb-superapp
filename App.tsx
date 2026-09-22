@@ -44,6 +44,7 @@ import UserManagementPage from './subuser/components/UserManagementPage';
 import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
 import WorkspaceSwitcher from './subuser/components/WorkspaceSwitcher';
 import { acceptCompanyInvitation } from './subuser/services/subuserService';
+import { readPendingCompanyInvitation, clearPendingCompanyInvitation } from './subuser/services/pendingCompanyInvitation';
 import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
 import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
 import { BookOpenText, ShoppingBag, ArrowLeft } from 'lucide-react';
@@ -1241,16 +1242,18 @@ useEffect(() => {
   );
 
   useEffect(() => {
-    if (!isLoggedIn || typeof matchedSupabaseUserId !== 'string') return;
+    // The Worker authenticates its own cookie and resolves profiles.user_id.
+    // A separate browser Supabase session is not required for acceptance.
+    if (!isLoggedIn) return;
 
-    const token = sessionStorage.getItem('pendingCompanyInvitation');
+    const token = readPendingCompanyInvitation();
     if (!token || acceptingInvitationRef.current === token) return;
 
     acceptingInvitationRef.current = token;
 
     acceptCompanyInvitation(token)
       .then(() => {
-        sessionStorage.removeItem('pendingCompanyInvitation');
+        clearPendingCompanyInvitation(token);
         window.dispatchEvent(new CustomEvent('snabbb:memberships-changed'));
         toastMessage('Your company membership has been activated.', {
           type: 'success',
@@ -1258,14 +1261,14 @@ useEffect(() => {
       })
       .catch((error: any) => {
         toastMessage(
-          error?.message || 'Unable to activate your company membership.',
+          `${error?.message || 'Unable to activate your company membership.'} Your invitation is saved. Reload to retry, or reopen the invitation link and sign in with the invited email.`,
           { type: 'error' }
         );
       })
       .finally(() => {
         acceptingInvitationRef.current = null;
       });
-  }, [isLoggedIn, matchedSupabaseUserId, toastMessage]);
+  }, [isLoggedIn, matchedSupabaseUserId, path, toastMessage]);
 
   if(path === '/sso/check') {
     return <SsoCheck />;
