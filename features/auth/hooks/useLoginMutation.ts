@@ -92,8 +92,17 @@ onSuccess: async ({ sessionInfo, session_id }) => {
   // cookie + odoo_session in localStorage set above are already enough
   // to be logged in here — same fallback the redirect-param branch below
   // already uses on error.
+  //
+  // Checking hostname against a fixed ['localhost', '127.0.0.1'] list
+  // missed real dev traffic: vite.config.ts's server.host is '0.0.0.0'
+  // with allowedHosts: true, specifically so this can be reached over the
+  // LAN too (e.g. http://192.168.x.x:3000, for testing from a phone on
+  // the same network) — that hostname is neither 'localhost' nor
+  // '127.0.0.1', so the old check let this bounce through anyway. Testing
+  // "is this a *.snabbb.com origin" instead of enumerating dev hostnames
+  // covers every local/LAN/tunnel address without having to list them.
   const isLocalDev = typeof window !== 'undefined' &&
-    ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    !/(^|\.)snabbb\.com$/.test(window.location.hostname);
 
   if (redirectUrl && session_id) {
     try {
