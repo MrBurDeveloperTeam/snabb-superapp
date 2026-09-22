@@ -8,7 +8,21 @@ import { CART_TOAST_STYLE } from '../cartToastStyle';
 import AddressFormModal from './AddressFormModal';
 import DeliveryMethodList from './DeliveryMethodList';
 import OrderSummary from './OrderSummary';
-import type { AddressFormValues, CheckoutAddress } from '../../types';
+import { BRANDS, type AddressFormValues, type CheckoutAddress, type CompanyCheckoutBreakdown } from '../../types';
+
+/**
+ * "Sold by" label for one company/brand breakdown entry — prefers the
+ * brand's own display label (see BRANDS in types.ts) over company_name,
+ * since as of 2026-09-22 a cart can split into more than one entry that
+ * all share the same company_name (MR.BUR) but differ by brand (Kaneiko
+ * has no company of its own yet) — falling back to company_name keeps
+ * this correct even against a stale/older backend response that hasn't
+ * started sending `brand` yet.
+ */
+function sellerLabel(company: Pick<CompanyCheckoutBreakdown, 'brand' | 'company_name'>): string {
+  const brandMeta = company.brand && BRANDS.find((b) => b.id === company.brand);
+  return brandMeta ? brandMeta.label : company.company_name;
+}
 
 interface CheckoutPageProps {
   /** Returns to the product grid (see UnifiedShopApp's `view` state). */
@@ -312,20 +326,23 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
               Choose a delivery method
             </h2>
             {/*
-              One list per company in the cart — each company rates and
-              ships independently (own warehouse/carriers), so a cart
-              spanning more than one company needs a delivery-method
-              choice per company, not just one. `companies` always has at
-              least one entry once the cart isn't empty; the "Sold by"
-              label only renders when there's genuinely more than one to
-              disambiguate, so today's single-company case looks exactly
-              like it did before this change.
+              One list per company/brand order in the cart — each rates
+              and ships independently (own warehouse/carriers), so a cart
+              spanning more than one needs a delivery-method choice per
+              order, not just one. `companies` always has at least one
+              entry once the cart isn't empty; the "Sold by" label only
+              renders when there's genuinely more than one to disambiguate,
+              so today's single-order case looks exactly like it did
+              before this change. Keyed by sale_order_id (not company_id):
+              as of 2026-09-22 two entries can share the same company_id
+              (MR.BUR and Kaneiko both do today) while still being
+              different orders — see sellerLabel()'s own doc comment.
             */}
             {companies.map((company) => (
-              <div key={company.company_id} className={companies.length > 1 ? 'mb-5' : ''}>
+              <div key={company.sale_order_id} className={companies.length > 1 ? 'mb-5' : ''}>
                 {companies.length > 1 && (
                   <p className="mb-2 text-[12px] font-bold text-slate-500 dark:text-slate-400">
-                    Sold by {company.company_name}
+                    Sold by {sellerLabel(company)}
                   </p>
                 )}
                 <DeliveryMethodList

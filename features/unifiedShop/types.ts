@@ -152,6 +152,14 @@ export interface CheckoutLine {
    */
   company_id?: number;
   company_name?: string;
+  /**
+   * Which brand this line's order was split on (2026-09-22) — see
+   * checkout.py's `_resolve_line_brand`/`_order_brand` in the mrbur repo.
+   * This, not company_id above, is what actually differs between an
+   * MR.BUR and a Kaneiko line today, since both currently share MR.BUR's
+   * own company_id.
+   */
+  brand?: ShopBrand;
 }
 
 /**
@@ -165,10 +173,20 @@ export interface CheckoutLine {
  * There is exactly one of these today (Kaneiko has no company of its own
  * yet), so every consumer of `companies` should still work correctly
  * when the array has length 1.
+ *
+ * As of 2026-09-22, `companies` can genuinely have more than one entry
+ * even though every entry's company_id/company_name is currently
+ * identical (MR.BUR) — the split is now on `brand`, not company (Kaneiko
+ * still has no company of its own). Use `sale_order_id`, not company_id,
+ * as a React list key here, and prefer `brand` over company_name for any
+ * "Sold by" label so two entries never render as indistinguishable
+ * duplicates.
  */
 export interface CompanyCheckoutBreakdown {
   company_id: number;
   company_name: string;
+  /** Which brand this order is for — see CheckoutLine.brand's own doc comment. */
+  brand?: ShopBrand;
   sale_order_id: number;
   sale_order_name: string;
   lines: CheckoutLine[];
@@ -314,6 +332,8 @@ export interface PaymentInitResponse {
 export interface PaymentStatusCompany {
   company_id: number;
   company_name: string;
+  /** See CheckoutLine.brand's own doc comment — same 2026-09-22 brand split. */
+  brand?: ShopBrand;
   sale_order_id: number;
   sale_order_state: string;
   sale_order_name: string;

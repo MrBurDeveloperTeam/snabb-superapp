@@ -1,6 +1,20 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { CheckoutLine, ClaimableReward, CompanyCheckoutBreakdown, CreditWalletState } from '../../types';
+import { BRANDS, type CheckoutLine, type ClaimableReward, type CompanyCheckoutBreakdown, type CreditWalletState } from '../../types';
+
+/**
+ * "Sold & invoiced by" label for one company/brand breakdown entry —
+ * same reasoning as CheckoutPage.tsx's own sellerLabel(): prefers the
+ * brand's display label (BRANDS in types.ts) over company_name, since as
+ * of 2026-09-22 a cart can split into more than one entry that share the
+ * same company_name (MR.BUR) but differ by brand (Kaneiko has no company
+ * of its own yet). Falls back to company_name against an older backend
+ * response that hasn't started sending `brand` yet.
+ */
+function sellerLabel(company: Pick<CompanyCheckoutBreakdown, 'brand' | 'company_name'>): string {
+  const brandMeta = company.brand && BRANDS.find((b) => b.id === company.brand);
+  return brandMeta ? brandMeta.label : company.company_name;
+}
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -14,12 +28,14 @@ interface OrderSummaryProps {
   itemCount: number;
   lines: CheckoutLine[];
   /**
-   * One entry per company in the cart — see CompanyCheckoutBreakdown's own
-   * doc comment. Always length 1 today (Kaneiko has no company of its
-   * own yet), which is exactly why the line-item list below only shows a
-   * "Sold & invoiced by <company>" header per group once this genuinely
-   * has more than one entry — the single-company case renders identically
-   * to before this prop existed.
+   * One entry per company/brand order in the cart — see
+   * CompanyCheckoutBreakdown's own doc comment. As of 2026-09-22 this can
+   * genuinely have more than one entry (a cart mixing MR.BUR and Kaneiko
+   * items splits into two orders, brand being the split key since
+   * Kaneiko has no company of its own), which is exactly why the
+   * line-item list below only shows a "Sold & invoiced by <seller>"
+   * header per group once there's genuinely more than one — a single-
+   * entry cart still renders identically to before this prop existed.
    */
   companies: CompanyCheckoutBreakdown[];
   currency: string;
@@ -102,25 +118,24 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       {expanded && (
         <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
           {/*
-            Grouped by company rather than a single flat list — once a
-            cart genuinely spans more than one company, each group gets
-            its own "Sold & invoiced by" header and its own subtotal, the
-            same disclosure shoppers already know from other multi-seller
-            marketplaces (one order, one Pay Now, several sellers/
-            invoices underneath). `companies` always has at least one
-            entry when there are lines at all, and with exactly one entry
-            (true in production today — Kaneiko has no company of its own
-            yet) this renders identically to the old flat list: no
+            Grouped by seller (company + brand) rather than a single flat
+            list — once a cart genuinely spans more than one, each group
+            gets its own "Sold & invoiced by" header and its own
+            subtotal, the same disclosure shoppers already know from
+            other multi-seller marketplaces (one order, one Pay Now,
+            several sellers/invoices underneath). `companies` always has
+            at least one entry when there are lines at all; with exactly
+            one entry this renders identically to the old flat list: no
             header, just the items.
           */}
           {companies.length > 0 && (
             <div className="mb-2 flex flex-col gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
               {companies.map((company) => (
-                <div key={company.company_id} className="flex flex-col gap-3">
+                <div key={company.sale_order_id} className="flex flex-col gap-3">
                   {companies.length > 1 && (
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                        Sold &amp; invoiced by {company.company_name}
+                        Sold &amp; invoiced by {sellerLabel(company)}
                       </p>
                       <span className="text-[11px] font-semibold text-slate-400">
                         {formatPrice(company.amount_total, currency)}
