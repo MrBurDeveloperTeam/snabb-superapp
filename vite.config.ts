@@ -30,28 +30,28 @@ export default defineConfig(({ mode }) => {
           //   secure: false,
           // },
           "/web": {
-            target: "https://mrbur-sandbox.odoo.com",
+            target: "https://mrbur-staging-2-37426912.dev.odoo.com",
             changeOrigin: true,
             secure: false,
           },
           '/odoo': {
-            target: 'https://mrbur-sandbox.odoo.com',  
+            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',  
             changeOrigin: true,
             secure: false,
           },
           '/api/web': {
-            target: 'https://mrbur-sandbox.odoo.com',  
+            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',  
             changeOrigin: true,
             secure: false,
             rewrite: (p) => p.replace(/^\/api/, ''),
           },
           '/api': {
-            target: 'https://mrbur-sandbox.odoo.com',  
+            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',  
             changeOrigin: true,
             secure: false,
           },
           '/web/session/get_session_info': {
-            target: 'https://mrbur-staging-bur-26090883.dev.odoo.com',  
+            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',  
             changeOrigin: true,
             secure: false,
           },
@@ -88,7 +88,7 @@ export default defineConfig(({ mode }) => {
             secure: false,
           },
           '/api/v1/users': {
-            target: 'https://mrbur-sandbox.odoo.com',
+            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',
             changeOrigin: true,
             secure: false,
           },
