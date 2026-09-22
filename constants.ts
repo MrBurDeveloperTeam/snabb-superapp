@@ -46,7 +46,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Inventory',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
-    icon: 'https://app.snabbb.com/icons/Inventory.png',
+    icon: '/icons/Inventory.png',
     route: `https://inventory.snabbb.com/`,
     colorScheme: { text: 'text-[#b91c1c]', icon: '#0891b2' }
   },
@@ -55,7 +55,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Appointment',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/appointment.png',
-    icon: 'https://app.snabbb.com/icons/appointment.png',
+    icon: '/icons/Appointment.png',
     route: `https://appointment.snabbb.com/`,
     colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
   },
@@ -73,7 +73,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'E-Learning',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/e-learning.png',
-    icon: 'https://app.snabbb.com/icons/e-learning.png',
+    icon: '/icons/E-learning.png',
     route: `https://e-learning.snabbb.com/`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -82,7 +82,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'To-Do Manager',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
-    icon: 'https://app.snabbb.com/icons/Todo_Manager.png',
+    icon: '/icons/Todo_Manager.png',
     route: `https://todo.snabbb.com/`,
     colorScheme: { text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -91,7 +91,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Events',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/event.png',
-    icon: 'https://app.snabbb.com/icons/Events.png',
+    icon: '/icons/Events.png',
     // route: `https://app.snabbb.com/event`,
     colorScheme: { text: 'text-[#0891b2]', icon: '#0891b2' }
   },
@@ -100,7 +100,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Content Studio',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/ai_image.png',
-    icon: 'https://app.snabbb.com/icons/Content_Studio.png',
+    icon: '/icons/Content_Studio.png',
     route: 'https://imageai.snabbb.com',
     colorScheme: { text: 'text-[#7e22ce]', icon: '#0891b2' }
   },
@@ -117,7 +117,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Profit Calculator',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/profit_calculator.png',
-    icon: 'https://app.snabbb.com/icons/profit_calculator.png',
+    icon: '/icons/Profit_Calculator.png',
     route: `https://calculator.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -126,7 +126,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Expenses',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
-    icon: 'https://app.snabbb.com/icons/Expenses.png',
+    icon: '/icons/Expenses.png',
     // route: `https://app.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
