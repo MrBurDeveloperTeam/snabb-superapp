@@ -155,7 +155,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Lease',
     category: 'Value Added',
     // icon: '/icons/lease.png',
-    icon: '/icons/lease.png',
+    icon: '/icons/Lease.png',
     // route: `https://app.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
