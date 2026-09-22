@@ -58,6 +58,30 @@ export const MINI_APPS: MiniApp[] = [
     colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
   },
   {
+    id: 'app-12',
+    title: 'Dental Charting',
+    category: 'Productivity',
+    icon: '/icons/dental_charting.PNG',
+    route: `https://charting.snabbb.com`,
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-10',
+    title: 'E-Learning',
+    category: 'Productivity',
+    icon: 'https://app.snabbb.com/icons/e-learning.png',
+    route: `https://e-learning.snabbb.com/`,
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-9',
+    title: 'To-Do Manager',
+    category: 'Productivity',
+    icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
+    route: `https://todo.snabbb.com/`,
+    colorScheme: { text: 'text-[#b45309]', icon: '#0891b2' }
+  },
+  {
     id: 'app-3',
     title: 'Events',
     category: 'Productivity',
@@ -90,35 +114,11 @@ export const MINI_APPS: MiniApp[] = [
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
-    id: 'app-9',
-    title: 'To-Do Manager',
-    category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
-    route: `https://todo.snabbb.com/`,
-    colorScheme: { text: 'text-[#b45309]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-10',
-    title: 'E-Learning',
-    category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/e-learning.png',
-    route: `https://e-learning.snabbb.com/`,
-    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
-  },
-  {
     id: 'app-11',
     title: 'Expenses',
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
     // route: `https://app.snabbb.com`,
-    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-12',
-    title: 'Dental Charting',
-    category: 'Productivity',
-    icon: '/icons/dental_charting.PNG',
-    route: `https://charting.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
 
@@ -133,18 +133,18 @@ export const MINI_APPS: MiniApp[] = [
   },
   {
     id: 'app-15',
-    title: 'Lease',
-    category: 'Value Added',
-    icon: '/icons/lease.png',
-    // route: `https://app.snabbb.com`,
-    colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-15',
     title: 'Snabbb Reward',
     category: 'Value Added',
     icon: `/icons/reward.png`,
     route: `https://reward.snabbb.com`,
+    colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-15',
+    title: 'Lease',
+    category: 'Value Added',
+    icon: '/icons/lease.png',
+    // route: `https://app.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
   // {
