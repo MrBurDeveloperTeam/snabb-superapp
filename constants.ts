@@ -50,20 +50,20 @@ export const MINI_APPS: MiniApp[] = [
     colorScheme: { text: 'text-[#b91c1c]', icon: '#0891b2' }
   },
   {
-    id: 'app-3',
-    title: 'Events',
-    category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/event.png',
-    // route: `https://app.snabbb.com/event`,
-    colorScheme: { text: 'text-[#0891b2]', icon: '#0891b2' }
-  },
-  {
     id: 'app-4',
     title: 'Appointment',
     category: 'Productivity',
     icon: 'https://app.snabbb.com/icons/appointment.png',
     route: `https://appointment.snabbb.com/`,
     colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-3',
+    title: 'Events',
+    category: 'Productivity',
+    icon: 'https://app.snabbb.com/icons/event.png',
+    // route: `https://app.snabbb.com/event`,
+    colorScheme: { text: 'text-[#0891b2]', icon: '#0891b2' }
   },
   {
     id: 'app-6',
