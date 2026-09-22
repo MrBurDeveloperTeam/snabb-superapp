@@ -124,20 +124,20 @@ export const MINI_APPS: MiniApp[] = [
 
   // ======= VALUE ADDED =======
   {
-    id: 'app-14',
-    title: 'Insurance',
-    category: 'Value Added',
-    icon: '/icons/insurance.png',
-    // route: `https://app.snabbb.com`,
-    colorScheme: {  text: 'text-[#166534]', icon: '#0891b2' }
-  },
-  {
     id: 'app-15',
     title: 'Snabbb Reward',
     category: 'Value Added',
     icon: `/icons/reward.png`,
     route: `https://reward.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-14',
+    title: 'Insurance',
+    category: 'Value Added',
+    icon: '/icons/insurance.png',
+    // route: `https://app.snabbb.com`,
+    colorScheme: {  text: 'text-[#166534]', icon: '#0891b2' }
   },
   {
     id: 'app-15',
