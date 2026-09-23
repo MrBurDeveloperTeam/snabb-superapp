@@ -59,7 +59,7 @@ const PLACEHOLDER_PLAYBACK_ID = 'RBYw67M01tIGwOuK2mvLPilMrr11tXM8iCuqTApuhowE';
 // eg: like the placeHolder above. If you don't have a Mux playback ID yet, you can use the placeholder above until you get one.
 export const TUTORIAL_VIDEOS: TutorialVideo[] = [
   // INVENTORY: Replace this playback ID or add more Inventory videos here.
-  { id: 'inventory-getting-started', title: 'Getting Started with Snabbb Inventory', description: 'Learn the essential inventory workflow, from setup to managing your stock.', category: 'Inventory', playbackId: 'O78rmnStGiJhmQKWC00X9DtOCGedRNntFCvA5jzI57Ss', isNew: true },
+  { id: 'inventory-getting-started', title: 'Getting Started with Snabbb Inventory', description: 'Learn the essential inventory workflow, from setup to managing your stock.', category: 'Inventory', playbackId: 'O78rmnStGiJhmQKWC00X9DtOCGedRNntFCvA5jzI57Ss'},
 
   // EVENTS: Replace the placeholder playback ID or add more Events videos here.
   // { id: 'events-getting-started', title: 'Managing Events with Snabbb', description: 'A practical walkthrough for setting up and managing an event.', category: 'Events', playbackId: PLACEHOLDER_PLAYBACK_ID },
@@ -68,7 +68,7 @@ export const TUTORIAL_VIDEOS: TutorialVideo[] = [
   { id: 'appointment-getting-started', title: 'Booking Appointments End-to-End', description: 'See how to configure schedules and manage customer appointments.', category: 'Appointment', playbackId: 'ow02NRO2qN01lImnuuBgGEAyp02ecaGfp9ooiXPD02PfRLY' , isNew: true },
 
   // CONTENT STUDIO: Replace the placeholder playback ID or add more Content Studio videos here.
-  // { id: 'content-studio-getting-started', title: 'Creating Content with Content Studio', description: 'Create and organize content for your business in a few simple steps.', category: 'Content Studio', playbackId: PLACEHOLDER_PLAYBACK_ID },
+  { id: 'content-studio-getting-started', title: 'Creating Content with Content Studio', description: 'Create content for your business using Content Studio AI features.', category: 'Content Studio', playbackId: 'rFNSfky9PYZIbq00RiYv02ZXrhI00fc1SWyQCq01GPNd01js', isNew: true  },
 
   // PROFIT CALCULATOR: Replace the placeholder playback ID or add more Profit Calculator videos here.
   // { id: 'profit-calculator-getting-started', title: 'Calculating Profit Margins', description: 'Understand costs, pricing, and profit with the built-in calculator.', category: 'Profit Calculator', playbackId: PLACEHOLDER_PLAYBACK_ID },
