@@ -46,7 +46,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Inventory',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
-    icon: '/icons/new-icons/inventory.jpeg',
+    icon: '/icons/new-icons/inventory.png',
     route: `https://inventory.snabbb.com/`,
     colorScheme: { text: 'text-[#b91c1c]', icon: '#0891b2' }
   },
@@ -64,7 +64,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Dental Charting',
     category: 'Productivity',
     // icon: '/icons/dental_charting.PNG',
-    icon: '/icons/new-icons/dental-charting.jpeg',
+    icon: '/icons/new-icons/charting.png',
     route: `https://charting.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -73,7 +73,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'E-Learning',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/e-learning.png',
-    icon: '/icons/new-icons/E-Learning.jpeg',
+    icon: '/icons/new-icons/e-learning.png',
     route: `https://e-learning.snabbb.com/`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -82,7 +82,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'To-Do Manager',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
-    icon: '/icons/new-icons/to-do.jpeg',
+    icon: '/icons/new-icons/to-do.png',
     route: `https://todo.snabbb.com/`,
     colorScheme: { text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -91,7 +91,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Events',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/event.png',
-    icon: '/icons/new-icons/events.jpeg',
+    icon: '/icons/new-icons/events.png',
     // route: `https://app.snabbb.com/event`,
     colorScheme: { text: 'text-[#0891b2]', icon: '#0891b2' }
   },
@@ -100,7 +100,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Content Studio',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/ai_image.png',
-    icon: '/icons/new-icons/content-studio.jpeg',
+    icon: '/icons/new-icons/content-studio.png',
     route: 'https://imageai.snabbb.com',
     colorScheme: { text: 'text-[#7e22ce]', icon: '#0891b2' }
   },
@@ -117,7 +117,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Profit Calculator',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/profit_calculator.png',
-    icon: '/icons/new-icons/profit-calculator.jpeg',
+    icon: '/icons/new-icons/profit-calculator.png',
     route: `https://calculator.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -126,7 +126,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Expenses',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
-    icon: '/icons/new-icons/expenses.jpeg',
+    icon: '/icons/new-icons/expenses.png',
     // route: `https://app.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
@@ -137,7 +137,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Snabbb Reward',
     category: 'Value Added',
     // icon: `/icons/reward.png`,
-    icon: `/icons/new-icons/snabbb-reward.jpeg`,
+    icon: `/icons/new-icons/snabbb-reward.png`,
     route: `https://reward.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
@@ -146,7 +146,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Insurance',
     category: 'Value Added',
     // icon: '/icons/insurance.png',
-    icon: '/icons/new-icons/insurance.jpeg',
+    icon: '/icons/new-icons/insurance.png',
     // route: `https://app.snabbb.com`,
     colorScheme: {  text: 'text-[#166534]', icon: '#0891b2' }
   },
@@ -155,7 +155,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Lease',
     category: 'Value Added',
     // icon: '/icons/lease.png',
-    icon: '/icons/new-icons/lease.jpeg',
+    icon: '/icons/new-icons/lease.png',
     // route: `https://app.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
