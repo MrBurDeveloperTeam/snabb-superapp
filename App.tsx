@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MINI_APPS, CATEGORIES } from './constants';
 import AppCard from './components/AppCard';
 import UnifiedShopApp from './features/unifiedShop/components/UnifiedShopApp';
+import MyInvoicesPage from './features/invoices/MyInvoicesPage';
 import { useUnifiedCartCount, useUnifiedCartStore } from './features/unifiedShop/store/unifiedCartStore';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
@@ -411,6 +412,7 @@ useEffect(() => {
   const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
   const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
   const isUnifiedShopRoute = path === '/unified-shop';
+  const isInvoicesRoute = path === '/my-invoices';
   // Unified Shop's cart badge/trigger, surfaced in the shared header
   // (profile-menu entries below, plus a guest-visible icon) instead of
   // Unified Shop rendering its own separate header.
@@ -1381,6 +1383,8 @@ useEffect(() => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                  aria-label="Open profile menu"
+                  aria-expanded={isProfileMenuOpen}
                   className="block relative"
                 >
                   {avatarPreview ? (
@@ -1544,6 +1548,21 @@ useEffect(() => {
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
  
+                      <button
+                        type="button"
+                        onClick={() => { navigate('/my-invoices'); setIsProfileMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiffany-600"
+                      >
+                        <span className="w-7 h-7 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-file-invoice text-[11px] text-teal-600" aria-hidden="true" />
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm font-bold text-slate-800 leading-tight">My Invoice</span>
+                          <span className="block text-[11px] font-semibold text-slate-400 truncate">View and download invoices</span>
+                        </span>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors" aria-hidden="true" />
+                      </button>
+
                       {isAccountTypeReady && (
                         <button
                           type="button"
@@ -1688,12 +1707,12 @@ useEffect(() => {
             switch unmounts A's Cat and mounts a fresh B instance, instead
             of the old key={isLoggedIn ? 'logged-in' : 'guest'} which never
             changed across an in-session account swap. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute || isInvoicesRoute ? 'hidden' : 'contents'}>
           <CatMascot
             key={!isLoggedIn ? 'guest' : (petCatOwnerId ?? 'guest')}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
-            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute}
+            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute || isInvoicesRoute}
             profileCompletionStatus={isPersonalizedPetDialogueEnabled() ? profileCompletionStatus : 'unknown'}
             personalizedMatchedUserId={isPersonalizedPetDialogueEnabled() ? matchedSupabaseUserId : null}
             catCacheOwnerId={petCatOwnerId}
@@ -1712,7 +1731,7 @@ useEffect(() => {
             leaving A's history visible under B. Disabled entirely — not
             just context-starved — while a logged-in identity is still
             unreconciled, so no chat can start under an unconfirmed owner. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute || isInvoicesRoute ? 'hidden' : 'contents'}>
           <SuperappMolarAIFloat
             key={!isLoggedIn ? 'guest' : typeof matchedSupabaseUserId === 'string' ? matchedSupabaseUserId : 'reconciling'}
             userContext={safeUserChatContext}
@@ -1727,7 +1746,7 @@ useEffect(() => {
           !isCompanyMemberSignup &&
           !isVirtualPetOpen &&
           !isTutorialRoute &&
-          !isUnifiedShopRoute && (
+          !isUnifiedShopRoute && !isInvoicesRoute && (
             <div className="fixed bottom-28 right-6 z-[60]">
               <div className="group/tutorial relative">
                 <div className="pointer-events-none absolute -top-9 left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-bold text-tiffany-600 opacity-0 shadow-lg shadow-tiffany-500/20 transition-all duration-200 group-hover/tutorial:translate-y-0 group-hover/tutorial:opacity-100 group-focus-within/tutorial:translate-y-0 group-focus-within/tutorial:opacity-100">
@@ -1871,6 +1890,10 @@ useEffect(() => {
             <motion.div key="tutorial-library" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <TutorialLibraryPage onNavigate={navigate} />
             </motion.div>
+          )}
+
+          {isInvoicesRoute && (
+            <MyInvoicesPage key={`${authUser?.username || 'guest'}:${authUser?.company_id || ''}`} signedIn={isLoggedIn === true} onNavigate={navigate} />
           )}
 
           {isUnifiedShopRoute && (
@@ -2024,7 +2047,7 @@ useEffect(() => {
           )}
         {/* </AnimatePresence> */}
 
-        {!isAuthRoute && !isCompanyMemberSignup && !isTutorialRoute && !isTicketingRoute && !isUnifiedShopRoute && (
+        {!isAuthRoute && !isCompanyMemberSignup && !isTutorialRoute && !isTicketingRoute && !isUnifiedShopRoute && !isInvoicesRoute && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
             <div className="py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-slate-400 text-sm font-bold">© 2026 Snabbb Apps Gallery.</p>

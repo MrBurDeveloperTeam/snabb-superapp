@@ -793,6 +793,30 @@ if (url.pathname.startsWith("/auth/verify/email")) {
     });
 }
 
+// Private invoice list and PDF documents; preserve binary responses.
+if (url.pathname === '/api/my/invoices' || /^\/api\/my\/invoices\/\d+\/pdf$/.test(url.pathname)) {
+  if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405, headers: { Allow: 'GET' } });
+  const upstream = await fetch(`https://${ODOO_DEV_HOST}${url.pathname}${url.search}`, {
+    method: 'GET',
+    headers: { Cookie: request.headers.get('Cookie') || '', Accept: request.headers.get('Accept') || '*/*' },
+    redirect: 'manual',
+  });
+  const headers = new Headers();
+  for (const name of ['Content-Type', 'Content-Disposition']) {
+    const value = upstream.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('Vary', 'Cookie');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  // An auth redirect is an expired session, never an HTML success response.
+  if (upstream.status >= 300 && upstream.status < 400) {
+    headers.set('Content-Type', 'application/json');
+    return new Response(JSON.stringify({ ok: false, error: 'not_authenticated' }), { status: 401, headers });
+  }
+  return new Response(upstream.body, { status: upstream.status, headers });
+}
+
 if (CHECKOUT_API_PATHS.has(url.pathname)) {
   const odooUrl = `https://${ODOO_DEV_HOST}${url.pathname}${url.search}`;
 
