@@ -1495,9 +1495,9 @@ useEffect(() => {
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                        {/* <div className="w-7 h-7 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
                           <i className="fa-solid fa-wallet text-[11px] text-violet-500"></i>
-                        </div>
+                        </div> */}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">Snabbb Credit</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">
@@ -1534,9 +1534,9 @@ useEffect(() => {
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+                        {/* <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
                           <i className="fa-solid fa-tv text-[11px] text-sky-500"></i>
-                        </div>
+                        </div> */}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">My Channel</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your channel</p>
@@ -1553,9 +1553,9 @@ useEffect(() => {
                           }}
                           className="flex w-full items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                         >
-                          <span className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
+                          {/* <span className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
                             <i className="fa-solid fa-life-ring text-xs" aria-hidden="true"></i>
-                          </span>
+                          </span> */}
                           <span className="flex-1 min-w-0">
                             <span className="block text-sm font-bold text-slate-900 leading-tight">
                               {accountType === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}
@@ -1592,9 +1592,9 @@ useEffect(() => {
                         onClick={() => navigate('/profile-settings')}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                        {/* <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
                           <i className="fa-solid fa-gear text-[11px] text-slate-500"></i>
-                        </div>
+                        </div> */}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">Settings</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">Account & preferences</p>
