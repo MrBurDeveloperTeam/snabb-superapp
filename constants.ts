@@ -21,7 +21,7 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-1',
     title: 'Mr.Bur',
     category: 'Shops',
-    icon: 'https://app.snabbb.com/icons/mr_bur.png',
+    icon: 'https://app.snabbb.com/icons/new-icons/mr_bur.png',
     route: getMrBurUrlFromCompanyCode(companyCode),
     colorScheme: { text: 'text-[#4338ca]', icon: '#0891b2' }
   },
@@ -30,7 +30,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Snabbb Shop',
     category: 'Shops',
     // icon: 'fa-solid fa-basket-shopping',
-    icon: '/icons/new-icons/unify-shop.png',
+    icon: '/icons/new-icons/unify.png',
     // Not used for navigation — AppCard.tsx special-cases id === 'unified-shop'
     // and opens the embedded UnifiedShopApp overlay instead of following this
     // as a URL. Kept truthy only so isComingSoon (`!app.route`) doesn't grey
