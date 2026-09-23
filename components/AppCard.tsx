@@ -24,6 +24,9 @@ interface AppCardProps {
 // The viewport clips the excess evenly on every side.
 // const ICON_SCALE = 120 / 112;
 const ICON_SCALE = 1.4;
+const MR_BUR_ICON_SCALE = 1.48;
+const iconScale =
+  app.id === 'app-1' ? MR_BUR_ICON_SCALE : ICON_SCALE;
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedded }) => {
   const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
@@ -293,7 +296,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
                   className="block h-full w-full object-cover"
                   style={{
                     borderRadius: iconCornerRadius,
-                    transform: `scale(${ICON_SCALE})`,
+                    // transform: `scale(${ICON_SCALE})`,
+                    transform: `scale(${iconScale})`
                   }}
                 />
               ) : (
@@ -404,7 +408,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
                 src={app.icon}
                 alt={app.title}
                 className="block h-full w-full object-cover transition-transform duration-200"
-                style={{ transform: `scale(${ICON_SCALE})` }}
+                // style={{ transform: `scale(${ICON_SCALE})` }}
+                style={{ transform: `scale(${iconScale})` }}
               />
             ) : (
               <i className={`${app.icon} text-3xl sm:text-4xl`} />
