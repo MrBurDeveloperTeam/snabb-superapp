@@ -1553,9 +1553,7 @@ useEffect(() => {
                         onClick={() => { navigate('/my-invoices'); setIsProfileMenuOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiffany-600"
                       >
-                        <span className="w-7 h-7 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-file-invoice text-[11px] text-teal-600" aria-hidden="true" />
-                        </span>
+                        
                         <span className="flex-1 min-w-0">
                           <span className="block text-sm font-bold text-slate-800 leading-tight">My Invoice</span>
                           <span className="block text-[11px] font-semibold text-slate-400 truncate">View and download invoices</span>
