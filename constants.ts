@@ -22,7 +22,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Mr.Bur',
     category: 'Shops',
     // icon: 'https://app.snabbb.com/icons/mr_bur.png',
-    icon: '/icons/new-icons/mr-bur.png',
+    icon: '/icons/new-icons/mr-bur-logo.png',
     route: getMrBurUrlFromCompanyCode(companyCode),
     colorScheme: { text: 'text-[#4338ca]', icon: '#0891b2' }
   },
@@ -128,7 +128,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Expenses',
     category: 'Productivity',
     // icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
-    icon: '/icons/new-icons/expenses.png',
+    icon: '/icons/new-icons/snabbb-expenses.png',
     // route: `https://app.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
