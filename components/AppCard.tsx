@@ -22,7 +22,8 @@ interface AppCardProps {
 
 // Render a 120px image inside the 112px desktop icon viewport.
 // The viewport clips the excess evenly on every side.
-const ICON_SCALE = 120 / 112;
+// const ICON_SCALE = 120 / 112;
+const ICON_SCALE = 1;
 // const ICON_SCALE = 1.4;
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedded }) => {
