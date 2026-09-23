@@ -21,7 +21,8 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-1',
     title: 'Mr.Bur',
     category: 'Shops',
-    icon: 'https://app.snabbb.com/icons/mr_bur.png',
+    // icon: 'https://app.snabbb.com/icons/mr_bur.png',
+    icon: '/icons/new-icons/mr-bur.png',
     route: getMrBurUrlFromCompanyCode(companyCode),
     colorScheme: { text: 'text-[#4338ca]', icon: '#0891b2' }
   },
