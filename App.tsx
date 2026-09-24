@@ -1575,7 +1575,7 @@ useEffect(() => {
                           </span> */}
                           <span className="flex-1 min-w-0">
                             <span className="block text-sm font-bold text-slate-900 leading-tight">
-                              {accountType === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}
+                              {accountType === 'admin' ? 'Support Tickets' : 'Support Tickets'}
                             </span>
                             <span className="block text-[11px] font-semibold text-slate-500 truncate">
                               {accountType === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}
