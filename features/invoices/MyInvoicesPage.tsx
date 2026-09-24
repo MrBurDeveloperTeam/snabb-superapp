@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, Download, FileText, LoaderCircle, RefreshCw } from 'lucide-react';
-import { fetchInvoices, InvoiceApiError, type InvoicePage } from './invoiceApi';
+import { ArrowLeft, ArrowUpRight, CreditCard, Download, FileText, LoaderCircle, RefreshCw } from 'lucide-react';
+import { fetchInvoicePayUrl, fetchInvoices, InvoiceApiError, type InvoicePage } from './invoiceApi';
 
 const action = 'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiffany-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40';
 const statuses: Record<string, string> = { paid: 'Paid', partial: 'Partially paid', not_paid: 'Unpaid', in_payment: 'Processing', reversed: 'Reversed', blocked: 'On hold', invoicing_legacy: 'Invoiced' };
@@ -15,6 +15,18 @@ export default function MyInvoicesPage({ signedIn, onNavigate }: { signedIn: boo
   const [error, setError] = useState<InvoiceApiError | null>(null);
   const [loading, setLoading] = useState(true);
   const heading = useRef<HTMLHeadingElement>(null);
+  const [payingId, setPayingId] = useState<number | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
+
+  const payInvoice = async (invoiceId: number) => {
+    setPayingId(invoiceId); setPayError(null);
+    try {
+      window.location.assign(await fetchInvoicePayUrl(invoiceId));
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : 'We couldn’t open the payment page. Please try again.');
+      setPayingId(null);
+    }
+  };
 
   useEffect(() => { heading.current?.focus(); }, []);
   useEffect(() => {
@@ -59,6 +71,7 @@ export default function MyInvoicesPage({ signedIn, onNavigate }: { signedIn: boo
       : error ? <div role="alert" className="px-6 py-16 text-center"><h2 className="font-bold text-slate-900 dark:text-white">Invoices couldn’t be loaded</h2><p className="mt-2 text-sm text-slate-500">{error.message}</p><button type="button" onClick={() => setRevision(v => v + 1)} className={`${action} mt-5 bg-tiffany-700 text-white hover:bg-tiffany-800`}>Try again</button></div>
       : !data?.invoices.length ? <div className="px-6 py-16 text-center"><FileText className="mx-auto mb-4 text-slate-300" size={36} /><h2 className="font-bold text-slate-900 dark:text-white">No invoices yet</h2><p className="mt-2 text-sm text-slate-500">Your invoices will appear here once they’re issued.</p></div>
       : <>
+        {payError && <div role="alert" className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">{payError}</div>}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Issued invoices and credit notes, newest first. Document links open in a new tab.</caption>
@@ -68,7 +81,7 @@ export default function MyInvoicesPage({ signedIn, onNavigate }: { signedIn: boo
               <td className="hidden whitespace-nowrap px-5 py-5 md:table-cell">{dateLabel(invoice.date)}<span className="mt-1 block text-xs text-slate-500">Due {dateLabel(invoice.due_date)}</span></td>
               <td className="whitespace-nowrap px-2 py-5 text-right sm:px-5 tabular-nums"><span className="font-bold">{money(invoice.total, invoice.currency)}</span><span className="mt-1 block text-xs text-slate-500">{money(invoice.amount_due, invoice.currency)} due</span></td>
               <td className="hidden px-5 py-5 sm:table-cell"><span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${invoice.payment_state === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{statuses[invoice.payment_state] || 'Pending'}</span></td>
-              <td className="px-1 py-5 sm:px-3"><div className="flex flex-col items-start gap-1"><a href={`/api/my/invoices/${invoice.id}/pdf`} target="_blank" rel="noopener noreferrer" aria-label={`View invoice ${invoice.number} (opens in a new tab)`} className={`${action} whitespace-nowrap text-tiffany-700 hover:bg-tiffany-50 dark:text-tiffany-300 dark:hover:bg-slate-800`}>View <ArrowUpRight size={14} /></a><a href={`/api/my/invoices/${invoice.id}/pdf?download=1`} target="_blank" rel="noopener noreferrer" aria-label={`Download invoice ${invoice.number}`} className={`${action} text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800`}><Download size={14} /><span className="hidden lg:inline">Download</span></a></div></td>
+              <td className="px-1 py-5 sm:px-3"><div className="flex flex-col items-start gap-1">{invoice.can_pay && <button type="button" disabled={payingId !== null} onClick={() => payInvoice(invoice.id)} aria-label={`Pay invoice ${invoice.number}`} className={`${action} whitespace-nowrap bg-tiffany-700 text-white hover:bg-tiffany-800`}>{payingId === invoice.id ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <CreditCard size={14} />} Pay</button>}<a href={`/api/my/invoices/${invoice.id}/pdf`} target="_blank" rel="noopener noreferrer" aria-label={`View invoice ${invoice.number} (opens in a new tab)`} className={`${action} whitespace-nowrap text-tiffany-700 hover:bg-tiffany-50 dark:text-tiffany-300 dark:hover:bg-slate-800`}>View <ArrowUpRight size={14} /></a><a href={`/api/my/invoices/${invoice.id}/pdf?download=1`} target="_blank" rel="noopener noreferrer" aria-label={`Download invoice ${invoice.number}`} className={`${action} text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800`}><Download size={14} /><span className="hidden lg:inline">Download</span></a></div></td>
             </tr>)}</tbody>
           </table>
         </div>
