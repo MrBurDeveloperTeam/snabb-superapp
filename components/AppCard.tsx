@@ -113,7 +113,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
         let targetUrl = res.result?.url;
 
         if (
-           ["inventory", "appointment", "charting"].includes(appCode) &&
+           ["inventory", "appointment", "charting", "todo"].includes(appCode) &&
            targetUrl
         ) {
           const selectedCompanyOwnerId =
