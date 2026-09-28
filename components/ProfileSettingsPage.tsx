@@ -366,8 +366,6 @@ export default function ProfileSettingsPage() {
 
       const data = await res.json().catch(() => null);
 
-      console.log("GET profile response:", data);
-
       if (!res.ok || !data?.ok) {
         console.error("Profile load failed:", data);
         return;

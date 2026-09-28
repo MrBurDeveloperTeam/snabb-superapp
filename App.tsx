@@ -732,7 +732,6 @@ useEffect(() => {
       }
 
 
-      console.log('res.sessionInfo:', res);
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
         jobPosition: '',
@@ -1128,7 +1127,6 @@ useEffect(() => {
         email: user.email,
         name: user.fullName,
       });
-      console.log("check url: ", resurl);
       if (resurl?.result?.url) {
         window.location.href = resurl.result.url;
       }

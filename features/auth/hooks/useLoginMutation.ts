@@ -59,7 +59,6 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
    mutationFn: async (data: AuthFormInputs) => {
   const loginResult = await loginOdoo(data.login, data.password);
 
-  console.log("loginResult:", JSON.stringify(loginResult));
 
   return {
     sessionInfo: loginResult.data?.result ?? loginResult.sessionInfo ?? loginResult.result,
