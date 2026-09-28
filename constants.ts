@@ -153,7 +153,8 @@ export const MINI_APPS: MiniApp[] = [
     colorScheme: {  text: 'text-[#166534]', icon: '#0891b2' }
   },
   {
-    id: 'app-15',
+    // id: 'app-15',
+    id: 'app-17',
     title: 'Lease',
     category: 'Value Added',
     // icon: '/icons/lease.png',

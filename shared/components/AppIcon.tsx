@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 
 export const AppIcon = ({ icon, label }: { icon: string, label: string }) => {
-  const isImageUrl = icon.startsWith('http');
+  // const isImageUrl = icon.startsWith('http');
+  const isImageUrl = icon.startsWith('http') || icon.startsWith('/');
   const isMrBur = label === 'Mr.Bur';
 
   return (
