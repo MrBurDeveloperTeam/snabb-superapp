@@ -566,18 +566,18 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } } }}
           className="grid grid-cols-3 gap-y-10 gap-x-6"
         >
-          {/* {MINI_APPS.map((app, i) => {
+          {MINI_APPS.map((app, i) => {
             if (i <= 5) {
               return <AppIcon key={app.id} icon={app.icon} label={app.title} />;
             }
-          })} */}
-          {MINI_APPS.map((app) => (
+          })}
+          {/* {MINI_APPS.map((app) => (
             <AppIcon
               key={app.id}
               icon={app.icon}
               label={app.title}
             />
-          ))}
+          ))} */}
         </motion.div>
       </div>
     </>
