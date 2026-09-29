@@ -8,6 +8,7 @@ interface DOBPickerProps {
   inputClasses?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
+  mustBeBeforeToday?: boolean;
 }
 
 const MONTHS = [
@@ -29,6 +30,7 @@ export const DOBPicker: React.FC<DOBPickerProps> = ({
   inputClasses = '',
   onChange,
   required = false,
+  mustBeBeforeToday = false,
 }) => {
   const [open, setOpen] = useState(false);
   const [tempDay, setTempDay] = useState<number | null>(null);
@@ -74,8 +76,23 @@ export const DOBPicker: React.FC<DOBPickerProps> = ({
     <Controller
       name={name}
       control={control}
-      rules={{ required: required ? 'Date of birth is required.' : false }}
-      render={({ field }) => {
+      rules={{
+        required: required ? 'Date of birth is required.' : false,
+        validate: (value: string) => {
+          if (!value) return true;
+          const today = new Date();
+          const todayValue = [
+            today.getFullYear(),
+            String(today.getMonth() + 1).padStart(2, '0'),
+            String(today.getDate()).padStart(2, '0'),
+          ].join('-');
+          return (mustBeBeforeToday ? value < todayValue : value <= todayValue)
+            || (mustBeBeforeToday
+              ? 'Date of birth must be before today.'
+              : 'Date of birth cannot be in the future.');
+        },
+      }}
+      render={({ field, fieldState }) => {
         const parsed = parseISO(field.value || '');
         const displayDay = tempDay ?? parsed.day;
         const displayMonth = tempMonth ?? parsed.month;
@@ -85,6 +102,7 @@ export const DOBPicker: React.FC<DOBPickerProps> = ({
           if (!displayDay || !displayMonth || !displayYear) return;
           const iso = toISOValue(displayDay, displayMonth, displayYear);
           field.onChange(iso);
+          field.onBlur();
           if (onChange) {
             const syntheticEvent = {
               target: { value: iso },
@@ -118,7 +136,7 @@ export const DOBPicker: React.FC<DOBPickerProps> = ({
           <div className="relative group" ref={ref}>
             {/* Trigger */}
             <div
-              className={`${inputClasses} flex items-center cursor-pointer select-none`}
+              className={`${inputClasses} flex items-center cursor-pointer select-none ${fieldState.error ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`}
               onClick={handleOpen}
               role="button"
               tabIndex={0}
@@ -149,6 +167,13 @@ export const DOBPicker: React.FC<DOBPickerProps> = ({
             />
 
             {/* Dropdown */}
+            {fieldState.error && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500" role="alert">
+                <i className="fa-solid fa-circle-exclamation text-[10px]" aria-hidden="true" />
+                {fieldState.error.message}
+              </p>
+            )}
+
             {open && (
               <div className="absolute z-50 top-full left-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.12)] p-4 w-[300px]">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Date of Birth</p>

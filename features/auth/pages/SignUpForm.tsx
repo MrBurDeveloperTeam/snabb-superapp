@@ -34,6 +34,14 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
   const signupMutation = useAuthMutation();
 
   const passwordValue = useWatch({ control, name: 'password' });
+  const fieldClass = (hasError: boolean) =>
+    `${inputClasses} ${hasError ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`;
+  const validationMessage = (message?: string) => message ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500" role="alert">
+      <i className="fa-solid fa-circle-exclamation text-[10px]" aria-hidden="true" />
+      {message}
+    </p>
+  ) : null;
 
   const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
     try {
@@ -264,13 +272,16 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="firstName"
                     control={control}
-                    rules={{ required: 'First name is required.' }}
+                    rules={{
+                      required: 'First name is required.',
+                      validate: (value) => !/\p{N}/u.test(value || '') || 'First name cannot include numbers.',
+                    }}
                     render={({ field }) => (
                       <input
                         {...field}
                         type="text"
                         placeholder="e.g. Ahmad"
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.firstName))}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
@@ -280,7 +291,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 {accountType === 'company' && (
                   <p className="mt-1 text-xs text-slate-400 italic">Your name as the company representative.</p>
                 )}
-                {error.firstName && <p className="mt-1 text-xs text-red-500">{error.firstName.message}</p>}
+                {validationMessage(error.firstName?.message as string | undefined)}
               </div>
 
               {/* Last Name */}
@@ -291,20 +302,23 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="lastName"
                     control={control}
-                    rules={{ required: 'Last name is required.' }}
+                    rules={{
+                      required: 'Last name is required.',
+                      validate: (value) => !/\p{N}/u.test(value || '') || 'Last name cannot include numbers.',
+                    }}
                     render={({ field }) => (
                       <input
                         {...field}
                         type="text"
                         placeholder="e.g. Nizam"
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.lastName))}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
                   />
                 </div>
-                {error.lastName && <p className="mt-1 text-xs text-red-500">{error.lastName.message}</p>}
+                {validationMessage(error.lastName?.message as string | undefined)}
               </div>
 
               {/* Phone */}
@@ -315,20 +329,23 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="phone"
                     control={control}
-                    rules={{ required: 'Phone number is required.' }}
+                    rules={{
+                      required: 'Phone number is required.',
+                      validate: (value) => !/\p{L}/u.test(value || '') || 'Phone number cannot include letters.',
+                    }}
                     render={({ field }) => (
                       <input
                         {...field}
                         type="tel"
                         placeholder={accountType === 'individual' ? 'e.g. +60123456789' : 'phone'}
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.phone))}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
                   />
                 </div>
-                {error.phone && <p className="mt-1 text-xs text-red-500">{error.phone.message}</p>}
+                {validationMessage(error.phone?.message as string | undefined)}
               </div>
 
               {/* Date of Birth — both individual and company */}
@@ -342,12 +359,12 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     inputClasses={inputClasses}
                     onChange={onChange}
                     required
+                    mustBeBeforeToday
                   />
                 </div>
                 {accountType === 'company' && (
                   <p className="mt-1 text-xs text-slate-400 italic">Date of birth of the company representative.</p>
                 )}
-                {error.dob && <p className="mt-1 text-xs text-red-500">{error.dob.message}</p>}
               </div>
 
               {/* Job Position */}

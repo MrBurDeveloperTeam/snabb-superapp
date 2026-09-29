@@ -299,6 +299,33 @@ type ProfileForm = {
   categoryIds: string[];
 };
 
+type ValidatedProfileField = "firstName" | "lastName" | "phone" | "dateOfBirth";
+
+const getLocalDateValue = () => {
+  const today = new Date();
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+};
+
+const validateProfileField = (name: ValidatedProfileField, value: string) => {
+  if ((name === "firstName" || name === "lastName") && !value.trim()) {
+    return `${name === "firstName" ? "First" : "Last"} name is required.`;
+  }
+  if ((name === "firstName" || name === "lastName") && /\p{N}/u.test(value)) {
+    return `${name === "firstName" ? "First" : "Last"} name cannot include numbers.`;
+  }
+  if (name === "phone" && /\p{L}/u.test(value)) {
+    return "Phone number cannot include letters.";
+  }
+  if (name === "dateOfBirth" && value && value > getLocalDateValue()) {
+    return "Date of birth cannot be in the future.";
+  }
+  return "";
+};
+
 export default function ProfileSettingsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -336,6 +363,7 @@ export default function ProfileSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Partial<Record<ValidatedProfileField, boolean>>>({});
 
   // Referral contact ID
   const [contactId, setContactId] = useState<string | null>(null);
@@ -558,7 +586,28 @@ export default function ProfileSettingsPage() {
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (["firstName", "lastName", "phone", "dateOfBirth"].includes(name)) {
+      setTouchedFields((prev) => ({ ...prev, [name]: true }));
+    }
   };
+
+  const profileErrors: Record<ValidatedProfileField, string> = {
+    firstName: validateProfileField("firstName", form.firstName),
+    lastName: validateProfileField("lastName", form.lastName),
+    phone: validateProfileField("phone", form.phone),
+    dateOfBirth: validateProfileField("dateOfBirth", form.dateOfBirth),
+  };
+
+  const inputValidationClass = (name: ValidatedProfileField) =>
+    touchedFields[name] && profileErrors[name] ? " inp-error" : "";
+
+  const renderValidationError = (name: ValidatedProfileField) =>
+    touchedFields[name] && profileErrors[name] ? (
+      <p className="field-error" role="alert">
+        <span aria-hidden="true">!</span>
+        {profileErrors[name]}
+      </p>
+    ) : null;
 
   const updateState = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.selectedOptions[0];
@@ -624,8 +673,8 @@ export default function ProfileSettingsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      alert("First Name and Last Name are required.");
+    setTouchedFields({ firstName: true, lastName: true, phone: true, dateOfBirth: true });
+    if (Object.values(profileErrors).some(Boolean)) {
       return;
     }
 
@@ -853,6 +902,38 @@ export default function ProfileSettingsPage() {
           box-shadow: 0 0 0 3px rgba(100,114,148,0.12);
         }
 
+        .inp.inp-error {
+          border-color: #f87171;
+          box-shadow: 0 0 0 3px rgba(248,113,113,0.10);
+        }
+
+        .inp.inp-error:focus {
+          border-color: #ef4444;
+          box-shadow: 0 0 0 3px rgba(239,68,68,0.14);
+        }
+
+        .field-error {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 6px;
+          color: #ef4444;
+          font-size: 11.5px;
+          font-weight: 600;
+        }
+
+        .field-error span {
+          display: inline-flex;
+          width: 14px;
+          height: 14px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          background: #fee2e2;
+          font-size: 9px;
+          font-weight: 800;
+        }
+
         .inp:disabled {
           background: #f3f4f6;
           color: #9ca3af;
@@ -991,9 +1072,10 @@ export default function ProfileSettingsPage() {
                 value={form.firstName}
                 onChange={updateField}
                 required
-                className="inp"
+                className={`inp${inputValidationClass("firstName")}`}
                 placeholder="e.g. Ahmad"
               />
+              {renderValidationError("firstName")}
             </div>
 
             <div>
@@ -1003,9 +1085,10 @@ export default function ProfileSettingsPage() {
                 value={form.lastName}
                 onChange={updateField}
                 required
-                className="inp"
+                className={`inp${inputValidationClass("lastName")}`}
                 placeholder="e.g. Nizam"
               />
+              {renderValidationError("lastName")}
             </div>
 
             <div>
@@ -1025,9 +1108,10 @@ export default function ProfileSettingsPage() {
                 name="phone"
                 value={form.phone}
                 onChange={updateField}
-                className="inp"
+                className={`inp${inputValidationClass("phone")}`}
                 placeholder="+60 12 345 6789"
               />
+              {renderValidationError("phone")}
             </div>
 
             <div>
@@ -1037,8 +1121,10 @@ export default function ProfileSettingsPage() {
                 name="dateOfBirth"
                 value={form.dateOfBirth}
                 onChange={updateField}
-                className="inp"
+                max={getLocalDateValue()}
+                className={`inp${inputValidationClass("dateOfBirth")}`}
               />
+              {renderValidationError("dateOfBirth")}
             </div>
 
             <div className="md:col-span-2">

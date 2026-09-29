@@ -206,6 +206,15 @@ const LoginForm: React.FC<Props> = ({
                       <Controller
                         name="login"
                         control={control}
+                        rules={{
+                          required: 'Email or username is required.',
+                          validate: (value) => {
+                            const login = value?.trim() || '';
+                            if (!login || !login.includes('@')) return true;
+                            return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(login)
+                              || 'Please enter a valid email address.';
+                          },
+                        }}
                         render={({ field }) => (
                           <input
                             {...field}
@@ -218,7 +227,7 @@ const LoginForm: React.FC<Props> = ({
                             type="text"
                             autoComplete="username"
                             placeholder="you@example.com or username"
-                            className={inputClasses}
+                            className={`${inputClasses} ${error.login ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`}
                             required
                             onChange={(e) => {
                               field.onChange(e);
@@ -230,6 +239,12 @@ const LoginForm: React.FC<Props> = ({
                         )}
                       />
                     </div>
+                    {error.login && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500" role="alert">
+                        <i className="fa-solid fa-circle-exclamation text-[10px]" aria-hidden="true" />
+                        {String(error.login.message ?? '')}
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-4">
@@ -321,7 +336,6 @@ const LoginForm: React.FC<Props> = ({
                     </button>
                   </div>
 
-                  {error?.login && <ErrorMessage message={String(error.login.message ?? "")} />}
                   {error?.password && <ErrorMessage message={String(error.password.message ?? "")} />}
 
                   <SubmitButton isLoginMode={true} isLoading={isLoading} disabled={isLoading} />
