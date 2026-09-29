@@ -9,6 +9,7 @@ import AddressFormModal from './AddressFormModal';
 import DeliveryMethodList from './DeliveryMethodList';
 import OrderSummary from './OrderSummary';
 import type { AddressFormValues, CheckoutAddress } from '../../types';
+import { Switch } from '@mui/material';
 
 interface CheckoutPageProps {
   /** Returns to the product grid (see UnifiedShopApp's `view` state). */
@@ -338,7 +339,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
               Billing address
             </h2>
             <label className="flex items-center gap-2 text-[13px] font-medium text-slate-600 dark:text-slate-300">
-              <button
+              {/* <button
                 type="button"
                 role="switch"
                 aria-checked={billingSame}
@@ -353,7 +354,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
                     billingSame ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
-              </button>
+              </button> */}
+              <Switch aria-checked={billingSame}
+                disabled={actions.setBillingSame.isPending}
+                onClick={() => handleToggleBillingSame(!billingSame)}
+                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+                  billingSame ? 'bg-tiffany-500' : 'bg-slate-300 dark:bg-slate-700'
+                }`} />
               Same as delivery address
             </label>
 
