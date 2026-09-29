@@ -41,15 +41,14 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
       .filter((pattern) => pattern.test(passwordValue)).length;
     return variety >= 3 ? 'strong' : 'fair';
   })();
-  const passwordFieldClass = `${inputClasses} ${
+  const passwordFieldStyle: React.CSSProperties | undefined =
     passwordStrength === 'short' || (passwordStrength === 'empty' && error.password)
-      ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500'
+      ? { borderColor: '#ef4444', boxShadow: '0 0 0 4px rgba(239, 68, 68, 0.10)' }
       : passwordStrength === 'fair'
-        ? '!border-amber-400 !ring-4 !ring-amber-50 focus:!border-amber-500'
+        ? { borderColor: '#f59e0b', boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.10)' }
         : passwordStrength === 'strong'
-          ? '!border-emerald-400 !ring-4 !ring-emerald-50 focus:!border-emerald-500'
-          : ''
-  }`;
+          ? { borderColor: '#10b981', boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.10)' }
+          : undefined;
   const fieldClass = (hasError: boolean) =>
     `${inputClasses} ${hasError ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`;
   const validationMessage = (message?: string) => message ? (
@@ -283,7 +282,8 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         {...field}
                         type="text"
                         placeholder="Referral code"
-                        className={passwordFieldClass}
+                        className={inputClasses}
+                        style={passwordFieldStyle}
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
@@ -518,7 +518,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 {passwordStrength === 'fair' && (
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-500" role="status">
                     <i className="fa-solid fa-circle-half-stroke text-[10px]" aria-hidden="true" />
-                    Valid password, but it could be stronger.
+                    Weak password.
                   </p>
                 )}
                 {passwordStrength === 'strong' && (

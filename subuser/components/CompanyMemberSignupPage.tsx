@@ -244,20 +244,19 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
       {validationErrors[name]}
     </p>
   ) : null;
-  const passwordFieldClass = `${fieldClass} ${
+  const passwordFieldStyle: React.CSSProperties | undefined =
     passwordStrength === 'short' || (passwordStrength === 'empty' && touched.password && validationErrors.password)
-      ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500'
+      ? { borderColor: '#ef4444', boxShadow: '0 0 0 4px rgba(239, 68, 68, 0.10)' }
       : passwordStrength === 'fair'
-        ? '!border-amber-400 !ring-4 !ring-amber-50 focus:!border-amber-500'
+        ? { borderColor: '#f59e0b', boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.10)' }
         : passwordStrength === 'strong'
-          ? '!border-emerald-400 !ring-4 !ring-emerald-50 focus:!border-emerald-500'
-          : ''
-  }`;
+          ? { borderColor: '#10b981', boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.10)' }
+          : undefined;
   const passwordStrengthMessage = passwordStrength === 'short' ? (
     validationMessage('password')
   ) : passwordStrength === 'fair' ? (
     <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-500" role="status">
-      <span aria-hidden="true">●</span> Valid password, but it could be stronger.
+      <span aria-hidden="true">●</span> Weak password.
     </p>
   ) : passwordStrength === 'strong' ? (
     <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-500" role="status">
@@ -311,7 +310,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
           <div><label className={labelClass}>Date of birth</label><input required type="date" max={getLatestBirthDate()} value={form.dob} onChange={update('dob')} className={validatedFieldClass('dob')} />{validationMessage('dob')}</div>
           <div><label className={labelClass}>Job position</label><select required value={form.jobPosition} onChange={update('jobPosition')} className={fieldClass}><option value="">-- Select Position --</option>{DENTAL_POSITIONS.map((position) => <option key={position}>{position}</option>)}</select></div>
           <div><label className={labelClass}>Country</label><input readOnly required value={form.country} className={`${fieldClass} bg-slate-50 text-slate-500`} /></div>
-          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={passwordFieldClass} />{passwordStrengthMessage}</div>
+          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={fieldClass} style={passwordFieldStyle} />{passwordStrengthMessage}</div>
           <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={validatedFieldClass('confirmPassword')} />{validationMessage('confirmPassword')}</div>
         </div>
         <label className="mt-7 flex items-start gap-3 text-sm text-slate-600"><input required type="checkbox" checked={form.agreed} onChange={update('agreed')} className="mt-1" />I agree to the Terms of Service, Privacy Policy and Disclaimer.</label>
