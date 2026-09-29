@@ -136,7 +136,7 @@ export const DOBPicker: React.FC<DOBPickerProps> = ({
           <div className="relative group" ref={ref}>
             {/* Trigger */}
             <div
-              className={`${inputClasses} flex items-center cursor-pointer select-none ${fieldState.error ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`}
+              className={`${inputClasses} flex items-center cursor-pointer select-none ${fieldState.error ? '!border-red-500 focus:!border-red-500 dark:!border-red-400 dark:focus:!border-red-400' : ''}`}
               onClick={handleOpen}
               role="button"
               tabIndex={0}
@@ -168,7 +168,7 @@ export const DOBPicker: React.FC<DOBPickerProps> = ({
 
             {/* Dropdown */}
             {fieldState.error && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500" role="alert">
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500 dark:text-red-400" role="alert">
                 <i className="fa-solid fa-circle-exclamation text-[10px]" aria-hidden="true" />
                 {fieldState.error.message}
               </p>

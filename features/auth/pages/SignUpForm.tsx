@@ -50,9 +50,9 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           ? { borderColor: '#10b981', boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.10)' }
           : undefined;
   const fieldClass = (hasError: boolean) =>
-    `${inputClasses} ${hasError ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`;
+    `${inputClasses} ${hasError ? '!border-red-500 focus:!border-red-500 dark:!border-red-400 dark:focus:!border-red-400' : ''}`;
   const validationMessage = (message?: string) => message ? (
-    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500" role="alert">
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500 dark:text-red-400" role="alert">
       <i className="fa-solid fa-circle-exclamation text-[10px]" aria-hidden="true" />
       {message}
     </p>
