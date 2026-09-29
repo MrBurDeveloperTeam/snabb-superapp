@@ -563,6 +563,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
                 </p>
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-[11px] text-slate-400">100 Snabbb Credit = 1.00 order currency</span>
+                </div>
                   <button
                     type="button"
                     role="switch"
@@ -579,7 +580,6 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
                       }`}
                     />
                   </button>
-                </div>
                 <p className="mt-1 text-[11px] text-slate-400">
                   Available balance:{' '}
                   <span className="font-semibold text-slate-600 dark:text-slate-300">
