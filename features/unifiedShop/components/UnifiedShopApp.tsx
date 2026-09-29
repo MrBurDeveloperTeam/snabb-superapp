@@ -13,6 +13,8 @@ export interface UnifiedShopAppProps {
    * in the normal App.tsx flow, so nothing in this component calls it now.
    */
   onBack?: () => void;
+  /** Forwarded to CartDrawer — see its isLoggedIn prop doc comment. */
+  isLoggedIn: boolean;
 }
 
 type UnifiedShopView = 'shop' | 'checkout' | 'payment';
@@ -66,7 +68,7 @@ function readStripeResume(): { view: UnifiedShopView; reference: string | null }
  * folded into it, so the page owns everything below that shared header —
  * just its own in-flow page space, not a `fixed inset-0` overlay.
  */
-const UnifiedShopApp: React.FC<UnifiedShopAppProps> = () => {
+const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
   const [resume] = useState(readStripeResume);
   const [view, setView] = useState<UnifiedShopView>(resume.view);
 
@@ -96,7 +98,7 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = () => {
           <main className="mx-auto max-w-6xl px-4 py-4">
             <ProductGrid />
           </main>
-          <CartDrawer onCheckout={() => setView('checkout')} />
+          <CartDrawer onCheckout={() => setView('checkout')} isLoggedIn={isLoggedIn} />
         </>
       )}
     </div>

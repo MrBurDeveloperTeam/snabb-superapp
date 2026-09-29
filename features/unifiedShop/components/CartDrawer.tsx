@@ -22,14 +22,28 @@ interface CartDrawerProps {
    * button.
    */
   onCheckout: () => void;
+  /**
+   * The cart stays in localStorage across logout so a returning user gets
+   * their items back (see unifiedCartStore's reconcileOwner), but that
+   * means a signed-out visitor on the same browser could otherwise see
+   * whoever last shopped there. Rather than not persisting the cart, this
+   * drawer just doesn't *display* its contents while signed out — the
+   * data is untouched underneath and reappears once reconcileOwner
+   * confirms who's logged in.
+   */
+  isLoggedIn: boolean;
 }
 
-const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
+const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   const isOpen = useUnifiedCartStore((s) => s.isOpen);
   const close = useUnifiedCartStore((s) => s.close);
-  const lines = useUnifiedCartStore((s) => s.lines);
+  const storedLines = useUnifiedCartStore((s) => s.lines);
   const setQty = useUnifiedCartStore((s) => s.setQty);
   const removeItem = useUnifiedCartStore((s) => s.removeItem);
+
+  // See isLoggedIn's doc comment above — the underlying cart is left
+  // alone, only what's rendered is gated.
+  const lines = isLoggedIn ? storedLines : [];
 
   const currency = lines[0]?.currency ?? 'USD';
   const grandTotal = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
@@ -77,7 +91,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {lines.length === 0 ? (
             <p className="mt-10 text-center text-[13px] text-slate-400">
-              Your cart is empty.
+              {isLoggedIn ? 'Your cart is empty.' : 'Log in to see your cart.'}
             </p>
           ) : (
             <ul className="flex flex-col gap-3">

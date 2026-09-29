@@ -765,6 +765,12 @@ useEffect(() => {
         userChatContextGenerationRef.current += 1;
       }
 
+      // Same identity-change signal also decides whether the persisted
+      // Unified Shop cart belongs to whoever just logged in, or needs to
+      // be wiped because it belonged to a previous account on this
+      // browser (see reconcileOwner's doc comment).
+      useUnifiedCartStore.getState().reconcileOwner(normalizedNextEmail);
+
       // Fire-and-forget: confirms/repairs the Supabase session for this
       // Odoo-verified identity before any personalized-dialogue provider is
       // allowed to run. Every verifySession() success reconciles again
@@ -1202,6 +1208,7 @@ useEffect(() => {
     setIsLoggedIn(true);
     setAuthFormData(nextUser);
     setUser(nextUser);
+    useUnifiedCartStore.getState().reconcileOwner(nextUser.email.trim().toLowerCase());
     navigate(takeTicketingReturnPath() || '/');
 
     // Fetch the user's saved theme from Odoo and apply it.
@@ -1362,7 +1369,11 @@ useEffect(() => {
                 aria-label="Open cart"
               >
                 <ShoppingBag className="h-4 w-4" />
-                {unifiedCartCount > 0 && (
+                {/* Badge mirrors CartDrawer: hidden while signed out so a
+                    guest never sees a count that belongs to whoever last
+                    shopped on this browser (see CartDrawer's isLoggedIn
+                    doc comment). */}
+                {isLoggedIn && unifiedCartCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {unifiedCartCount}
                   </span>
@@ -1895,7 +1906,7 @@ useEffect(() => {
 
           {isUnifiedShopRoute && (
             <motion.div key="shop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <UnifiedShopApp onBack={() => navigate('/')} />
+              <UnifiedShopApp onBack={() => navigate('/')} isLoggedIn={!!isLoggedIn} />
             </motion.div>
           )}
 
