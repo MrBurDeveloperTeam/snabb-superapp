@@ -16,6 +16,42 @@ type Props = {
   ) => void;
 };
 
+type ValidatedField = 'firstName' | 'lastName' | 'phone' | 'dob' | 'password' | 'confirmPassword';
+
+const getLatestBirthDate = () => {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+};
+
+const validateField = (name: ValidatedField, value: string) => {
+  if (!value.trim()) {
+    if (name === 'firstName') return 'First name is required.';
+    if (name === 'lastName') return 'Last name is required.';
+    if (name === 'phone') return 'Phone number is required.';
+    if (name === 'password') return 'Password is required.';
+    if (name === 'confirmPassword') return 'Please confirm your password.';
+    return 'Date of birth is required.';
+  }
+  if ((name === 'firstName' || name === 'lastName') && /\p{N}/u.test(value)) {
+    return `${name === 'firstName' ? 'First' : 'Last'} name cannot include numbers.`;
+  }
+  if (name === 'phone' && /\p{L}/u.test(value)) {
+    return 'Phone number cannot include letters.';
+  }
+  if (name === 'dob' && value > getLatestBirthDate()) {
+    return 'Date of birth must be before today.';
+  }
+  if ((name === 'password' || name === 'confirmPassword') && value.length < 8) {
+    return 'Password must be at least 8 characters.';
+  }
+  return '';
+};
+
 export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Props) {
   const queryToken =
     new URLSearchParams(window.location.search).get('token') || '';
@@ -28,6 +64,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({firstName: '', lastName: '', phone: '', dob: '', jobPosition: '', country: '', password: '', confirmPassword: '', referralCode: '', agreed: false });
+  const [touched, setTouched] = useState<Partial<Record<ValidatedField, boolean>>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -67,12 +104,36 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
     };
   }, [token]);
 
-  const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((current) => ({ ...current, [key]: event.target.type === 'checkbox' ? (event.target as HTMLInputElement).checked : event.target.value }));
+    if (['firstName', 'lastName', 'phone', 'dob', 'password', 'confirmPassword'].includes(key)) {
+      setTouched((current) => ({ ...current, [key]: true }));
+    }
+  };
+
+  const validationErrors: Record<ValidatedField, string> = {
+    firstName: validateField('firstName', form.firstName),
+    lastName: validateField('lastName', form.lastName),
+    phone: validateField('phone', form.phone),
+    dob: validateField('dob', form.dob),
+    password: validateField('password', form.password),
+    confirmPassword: validateField('confirmPassword', form.confirmPassword)
+      || (form.confirmPassword !== form.password ? 'Passwords do not match.' : ''),
+  };
+
+  const passwordStrength = (() => {
+    if (!form.password) return 'empty';
+    if (form.password.length < 8) return 'short';
+    const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/]
+      .filter((pattern) => pattern.test(form.password)).length;
+    return variety >= 3 ? 'strong' : 'fair';
+  })();
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!invitation) return;
+    setTouched({ firstName: true, lastName: true, phone: true, dob: true, password: true, confirmPassword: true });
+    if (Object.values(validationErrors).some(Boolean)) return;
     if (!invitation.country) {
       return toast.error(
         "The company owner's country could not be loaded. Please ask the company owner to check their Odoo profile."
@@ -174,7 +235,34 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
     );
   }
 
-  const fieldClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/10';
+  const fieldClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 outline-none transition-all focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/10';
+  const validatedFieldClass = (name: ValidatedField) =>
+    `${fieldClass} ${touched[name] && validationErrors[name] ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`;
+  const validationMessage = (name: ValidatedField) => touched[name] && validationErrors[name] ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500" role="alert">
+      <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-100 text-[9px] font-black" aria-hidden="true">!</span>
+      {validationErrors[name]}
+    </p>
+  ) : null;
+  const passwordFieldStyle: React.CSSProperties | undefined =
+    passwordStrength === 'short' || (passwordStrength === 'empty' && touched.password && validationErrors.password)
+      ? { borderColor: '#ef4444', boxShadow: '0 0 0 4px rgba(239, 68, 68, 0.10)' }
+      : passwordStrength === 'fair'
+        ? { borderColor: '#f59e0b', boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.10)' }
+        : passwordStrength === 'strong'
+          ? { borderColor: '#10b981', boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.10)' }
+          : undefined;
+  const passwordStrengthMessage = passwordStrength === 'short' ? (
+    validationMessage('password')
+  ) : passwordStrength === 'fair' ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-500" role="status">
+      <span aria-hidden="true">●</span> Weak password.
+    </p>
+  ) : passwordStrength === 'strong' ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-500" role="status">
+      <span aria-hidden="true">●</span> Strong password.
+    </p>
+  ) : touched.password ? validationMessage('password') : null;
   const labelClass = 'mb-2 block text-xs font-black uppercase tracking-widest text-slate-400';
   return (
     <div className="min-h-screen bg-slate-100 px-5 py-10">
@@ -201,8 +289,9 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
             value={form.firstName}
             onChange={update('firstName')}
             placeholder="e.g. Alex"
-            className={fieldClass}
+            className={validatedFieldClass('firstName')}
           />
+          {validationMessage('firstName')}
         </div>
 
         <div>
@@ -212,16 +301,17 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
             value={form.lastName}
             onChange={update('lastName')}
             placeholder="e.g. Wong"
-            className={fieldClass}
+            className={validatedFieldClass('lastName')}
           />
+          {validationMessage('lastName')}
         </div>
           <div><label className={labelClass}>Your email</label><input readOnly value={invitation.email} className={`${fieldClass} bg-slate-50 text-slate-500`} /></div>
-          <div><label className={labelClass}>Phone (WhatsApp)</label><input required type="tel" value={form.phone} onChange={update('phone')} placeholder="e.g. +60123456789" className={fieldClass} /></div>
-          <div><label className={labelClass}>Date of birth</label><input required type="date" value={form.dob} onChange={update('dob')} className={fieldClass} /></div>
+          <div><label className={labelClass}>Phone (WhatsApp)</label><input required type="tel" value={form.phone} onChange={update('phone')} placeholder="e.g. +60123456789" className={validatedFieldClass('phone')} />{validationMessage('phone')}</div>
+          <div><label className={labelClass}>Date of birth</label><input required type="date" max={getLatestBirthDate()} value={form.dob} onChange={update('dob')} className={validatedFieldClass('dob')} />{validationMessage('dob')}</div>
           <div><label className={labelClass}>Job position</label><select required value={form.jobPosition} onChange={update('jobPosition')} className={fieldClass}><option value="">-- Select Position --</option>{DENTAL_POSITIONS.map((position) => <option key={position}>{position}</option>)}</select></div>
           <div><label className={labelClass}>Country</label><input readOnly required value={form.country} className={`${fieldClass} bg-slate-50 text-slate-500`} /></div>
-          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={fieldClass} /></div>
-          <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={fieldClass} /></div>
+          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={fieldClass} style={passwordFieldStyle} />{passwordStrengthMessage}</div>
+          <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={validatedFieldClass('confirmPassword')} />{validationMessage('confirmPassword')}</div>
         </div>
         <label className="mt-7 flex items-start gap-3 text-sm text-slate-600"><input required type="checkbox" checked={form.agreed} onChange={update('agreed')} className="mt-1" />I agree to the Terms of Service, Privacy Policy and Disclaimer.</label>
         <button disabled={submitting} className="mt-8 w-full rounded-2xl bg-slate-900 py-4 font-black text-white disabled:opacity-50">{submitting ? 'Creating account...' : 'Create Snabbb Account'}</button>

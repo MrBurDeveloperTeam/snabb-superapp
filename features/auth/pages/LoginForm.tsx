@@ -321,7 +321,6 @@ const LoginForm: React.FC<Props> = ({
                     </button>
                   </div>
 
-                  {error?.login && <ErrorMessage message={String(error.login.message ?? "")} />}
                   {error?.password && <ErrorMessage message={String(error.password.message ?? "")} />}
 
                   <SubmitButton isLoginMode={true} isLoading={isLoading} disabled={isLoading} />

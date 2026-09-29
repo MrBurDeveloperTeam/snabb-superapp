@@ -111,6 +111,8 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
 
   const { control: controlSignup, handleSubmit: handleSubmitSignUp, formState: { errors: errorssignup, isSubmitting: isSubmittingSignup }, setValue: setValueSignup } = useForm<AuthFormInputs>({
     shouldUnregister: false,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       account_type: 'individual',
       firstName: "",
