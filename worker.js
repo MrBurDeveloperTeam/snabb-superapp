@@ -2566,6 +2566,35 @@ function copyResponseHeadersWithoutSetCookie(upstreamRes) {
             });
         }
         
+        if (url.pathname === "/api/web/reset_password/confirm") {
+            if (request.method === "OPTIONS") {
+                return new Response(null, { status: 204, headers: corsHeaders });
+            }
+
+            const body = await request.text();
+
+            const odooRes = await fetch("https://mrbur.odoo.com/mrbur/reset_password/confirm", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    // Same Host spoof as /api/web/reset_password above
+                    "Host": "aht-systemadmin-mrbur-main-20994444.odoo.com",
+                },
+                body,
+            });
+
+            const data = await odooRes.text();
+
+            return new Response(data, {
+                status: odooRes.status,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...corsHeaders,
+                },
+            });
+        }
+
         // ==============================
         // ✅ ODOO UI PROXY under your domain
         // https://app.snabbb.com/odoo/*    ->    https://mrbur.odoo.com/*

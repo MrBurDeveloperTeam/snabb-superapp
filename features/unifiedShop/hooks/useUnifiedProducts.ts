@@ -8,7 +8,7 @@ import type { ProductQuery } from '../types';
 // nothing ever reads, silently defeating the whole point of warming it.
 export function unifiedProductsQueryOptions(query: ProductQuery) {
   return {
-    queryKey: ['unified-shop', 'products', query] as const,
+    queryKey: ['snabbb-shop', 'products', query] as const,
     queryFn: () => fetchProducts(query),
     // Product list is fine to sit stale for a bit — avoids a refetch on
     // every keystroke while the debounce below is settling, and keeps a

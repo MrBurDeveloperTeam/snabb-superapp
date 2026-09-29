@@ -19,8 +19,8 @@ import type { CartLine } from '../types';
  *   Odoo-domain session so /shop/payment's own payment-acquirer
  *   integrations work, then redirects straight there.
  */
-const CHECKOUT_HANDOFF_PATH = '/unified-shop/checkout-handoff';
-const CHECKOUT_CONFIRM_PATH = '/unified-shop/checkout-confirm';
+const CHECKOUT_HANDOFF_PATH = '/snabbb-shop/checkout-handoff';
+const CHECKOUT_CONFIRM_PATH = '/snabbb-shop/checkout-confirm';
 
 export class CheckoutHandoffError extends Error {}
 

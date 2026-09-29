@@ -11,7 +11,7 @@ interface AppCardProps {
   index: number;
   /**
    * Opens an embedded, in-app screen instead of following `app.route` as a
-   * URL — used by tiles like `unified-shop` that render inside this SPA
+   * URL — used by tiles like `snabbb-shop` that render inside this SPA
    * rather than launching another site via SSO. `app.route` is still set
    * (to a non-navigable placeholder) purely so `isComingSoon` below doesn't
    * grey the tile out; handleClick checks `app.id` for this before it ever
@@ -36,7 +36,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
   const iconCornerRadius = '20%';
 
   const handleClick = async () => {
-    if (app.id === 'unified-shop') {
+    if (app.id === 'snabbb-shop') {
       onOpenEmbedded?.(app.id);
       return;
     }

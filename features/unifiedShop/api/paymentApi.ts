@@ -18,7 +18,7 @@ import type { PaymentInitResponse, PaymentMethodsResponse, PaymentStatusResponse
  * need adding to that allowlist the same way the Delivery step's routes
  * were.
  */
-const BASE = '/api/unified-shop/checkout/payment';
+const BASE = '/api/snabbb-shop/checkout/payment';
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SnabbbIcon } from '../../../public/icons/SnabbbIcon';
 
-const ODOO_BASE = 'https://app.snabbb.com';
-
 interface ResetPasswordPageProps {
   navigate: (path: string) => void;
 }
@@ -46,9 +44,8 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ navigate }) => {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${ODOO_BASE}/mrbur/reset_password/confirm`, {
+      const res = await fetch('/api/web/reset_password/confirm', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
@@ -87,15 +84,15 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ navigate }) => {
           </div>
           <h2 className="text-2xl font-black text-slate-900 mb-2">Password updated!</h2>
           <p className="text-slate-500 text-sm mb-8">
-            Your password has been reset successfully. You're now logged in.
+            Your password has been set successfully. You can now log in with your new password.
           </p>
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/login')}
             className="w-full py-3 bg-tiffany-600 text-white font-bold rounded-xl hover:bg-tiffany-700 transition-all"
           >
-            Go to App
+            Go to Login
           </motion.button>
         </motion.div>
       </div>

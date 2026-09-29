@@ -8,6 +8,7 @@ import { useUnifiedCartCount, useUnifiedCartStore } from './features/unifiedShop
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import { AuthPage } from './features/auth/pages/AuthPage';
+import ResetPasswordPage from './features/auth/pages/ResetPassword';
 import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
@@ -411,7 +412,7 @@ useEffect(() => {
 
   const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
   const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
-  const isUnifiedShopRoute = path === '/unified-shop';
+  const isUnifiedShopRoute = path === '/snabbb-shop';
   const isInvoicesRoute = path === '/my-invoices';
   // Unified Shop's cart badge/trigger, surfaced in the shared header
   // (profile-menu entries below, plus a guest-visible icon) instead of
@@ -1281,6 +1282,11 @@ useEffect(() => {
     return <SsoCheck />;
   }
 
+  // Set-password page linked from the invoice account-activation email.
+  if (path === '/reset-password') {
+    return <ResetPasswordPage navigate={navigate} />;
+  }
+
   return (
     <>
     <LoadingOverlay
@@ -2010,7 +2016,7 @@ useEffect(() => {
                               key={app.id}
                               app={app}
                               index={index}
-                              onOpenEmbedded={() => window.open('/unified-shop', '_blank', 'noopener,noreferrer')}
+                              onOpenEmbedded={() => window.open('/snabbb-shop', '_blank', 'noopener,noreferrer')}
                             />
                           ))}
                         </motion.div>
@@ -2031,7 +2037,7 @@ useEffect(() => {
                         key={app.id}
                         app={app}
                         index={index}
-                        onOpenEmbedded={() => window.open('/unified-shop', '_blank', 'noopener,noreferrer')}
+                        onOpenEmbedded={() => window.open('/snabbb-shop', '_blank', 'noopener,noreferrer')}
                       />
                     ))}
 

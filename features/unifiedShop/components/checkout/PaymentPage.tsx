@@ -98,7 +98,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
   const clearCart = useUnifiedCartStore((s) => s.clear);
 
   const methodsQuery = useQuery({
-    queryKey: ['unified-shop', 'checkout', 'payment-methods'],
+    queryKey: ['snabbb-shop', 'checkout', 'payment-methods'],
     queryFn: fetchPaymentMethods,
     staleTime: 0,
     retry: false,
@@ -447,7 +447,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
                     {initializingTx && !elementMountedRef.current && (
                       <p className="text-[12px] text-slate-400">Loading secure card form…</p>
                     )}
-                    <div ref={elementContainerRef} id="unified-shop-payment-element" />
+                    <div ref={elementContainerRef} id="snabbb-shop-payment-element" />
 
                     <label className="mt-3 flex items-center gap-2 text-[12px] text-slate-500 dark:text-slate-400">
                       <input

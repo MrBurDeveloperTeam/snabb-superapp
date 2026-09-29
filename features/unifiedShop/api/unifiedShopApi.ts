@@ -14,7 +14,7 @@ import { mockQueryProducts } from '../data/mockProducts';
  * carries the browser's real Odoo session cookie — a hardcoded absolute
  * origin would bypass both.
  */
-const BASE = '/api/unified-shop';
+const BASE = '/api/snabbb-shop';
 
 let warnedAboutMockFallback = false;
 function warnMockFallbackOnce(context: string) {
@@ -22,7 +22,7 @@ function warnMockFallbackOnce(context: string) {
   warnedAboutMockFallback = true;
   // eslint-disable-next-line no-console
   console.info(
-    `[unified-shop] ${BASE} isn't deployed yet — using local mock data ` +
+    `[snabbb-shop] ${BASE} isn't deployed yet — using local mock data ` +
       `(first hit: ${context}). This will switch to live data automatically ` +
       `once the backend endpoint exists.`
   );
@@ -51,7 +51,7 @@ export async function fetchProducts(query: ProductQuery): Promise<ProductsRespon
     // Network-level failure (backend unreachable, dev server with no proxy
     // configured, etc.) — fall through to mock data rather than breaking the
     // page, but still surface it via console so it's not silently swallowed.
-    console.warn('[unified-shop] /products request failed, using mock data:', err);
+    console.warn('[snabbb-shop] /products request failed, using mock data:', err);
   }
 
   warnMockFallbackOnce('/products');

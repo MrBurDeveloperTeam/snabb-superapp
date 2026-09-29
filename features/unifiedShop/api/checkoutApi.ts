@@ -20,7 +20,7 @@ import type {
  * checkout.py's module docstring in the mrbur repo for why forwarding the
  * cookie on a same-origin request is what makes auth work here at all.
  */
-const BASE = '/api/unified-shop/checkout';
+const BASE = '/api/snabbb-shop/checkout';
 
 export class CheckoutApiError extends Error {
   body: unknown;

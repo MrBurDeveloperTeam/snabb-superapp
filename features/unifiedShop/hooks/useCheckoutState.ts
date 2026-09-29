@@ -10,7 +10,7 @@ import {
 } from '../api/checkoutApi';
 import type { AddressFormValues } from '../types';
 
-const CHECKOUT_STATE_QUERY_KEY = ['unified-shop', 'checkout', 'state'] as const;
+const CHECKOUT_STATE_QUERY_KEY = ['snabbb-shop', 'checkout', 'state'] as const;
 
 /**
  * `linesParam` (from checkoutApi's buildLinesParam) should be built from
