@@ -237,10 +237,10 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
 
   const fieldClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 outline-none transition-all focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/10';
   const validatedFieldClass = (name: ValidatedField) =>
-    `${fieldClass} ${touched[name] && validationErrors[name] ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`;
+    `${fieldClass} ${touched[name] && validationErrors[name] ? '!border-red-500 focus:!border-red-500 dark:!border-red-400 dark:focus:!border-red-400' : ''}`;
   const validationMessage = (name: ValidatedField) => touched[name] && validationErrors[name] ? (
-    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500" role="alert">
-      <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-100 text-[9px] font-black" aria-hidden="true">!</span>
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500 dark:text-red-400" role="alert">
+      <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-100 text-[9px] font-black dark:bg-red-400/15" aria-hidden="true">!</span>
       {validationErrors[name]}
     </p>
   ) : null;

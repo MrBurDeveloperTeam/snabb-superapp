@@ -903,13 +903,18 @@ export default function ProfileSettingsPage() {
         }
 
         .inp.inp-error {
-          border-color: #f87171;
-          box-shadow: 0 0 0 3px rgba(248,113,113,0.10);
+          border-color: #ef4444;
+          box-shadow: none;
         }
 
         .inp.inp-error:focus {
           border-color: #ef4444;
-          box-shadow: 0 0 0 3px rgba(239,68,68,0.14);
+          box-shadow: none;
+        }
+
+        .dark .inp.inp-error,
+        .dark .inp.inp-error:focus {
+          border-color: #f87171;
         }
 
         .field-error {
@@ -932,6 +937,14 @@ export default function ProfileSettingsPage() {
           background: #fee2e2;
           font-size: 9px;
           font-weight: 800;
+        }
+
+        .dark .field-error {
+          color: #f87171;
+        }
+
+        .dark .field-error span {
+          background: rgba(248,113,113,0.15);
         }
 
         .inp:disabled {
