@@ -358,9 +358,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
               <Switch aria-checked={billingSame}
                 disabled={actions.setBillingSame.isPending}
                 onClick={() => handleToggleBillingSame(!billingSame)}
-                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-                  billingSame ? 'bg-tiffany-500' : 'bg-slate-300 dark:bg-slate-700'
-                }`} />
+                 />
               Same as delivery address
             </label>
 

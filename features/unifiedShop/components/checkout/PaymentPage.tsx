@@ -10,6 +10,7 @@ import { useCreateAppLink } from '@/mutation/useCreateAppLink';
 import { useUnifiedCartStore } from '../../store/unifiedCartStore';
 import { CART_TOAST_STYLE } from '../cartToastStyle';
 import type { PaymentProvider } from '../../types';
+import { Switch } from '@mui/material';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -564,7 +565,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-[11px] text-slate-400">100 Snabbb Credit = 1.00 order currency</span>
                 </div>
-                  <button
+                  {/* <button
                     type="button"
                     role="switch"
                     aria-checked={credit.use_credit}
@@ -579,7 +580,11 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
                         credit.use_credit ? 'translate-x-4' : 'translate-x-0'
                       }`}
                     />
-                  </button>
+                  </button> */}
+                  <Switch aria-checked={credit.use_credit}
+                    disabled={actions.toggleCredit.isPending}
+                    onClick={() => handleToggleCredit(!credit.use_credit)}
+                     />
                 <p className="mt-1 text-[11px] text-slate-400">
                   Available balance:{' '}
                   <span className="font-semibold text-slate-600 dark:text-slate-300">
