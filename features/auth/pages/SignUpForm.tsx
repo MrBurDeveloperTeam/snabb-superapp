@@ -283,7 +283,6 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         type="text"
                         placeholder="Referral code"
                         className={inputClasses}
-                        style={passwordFieldStyle}
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
@@ -507,6 +506,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         type="password"
                         placeholder="••••••••"
                         className={inputClasses}
+                        style={passwordFieldStyle}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
