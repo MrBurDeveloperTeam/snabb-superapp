@@ -90,8 +90,6 @@ export function AuthPage({authMode = "login", setCurrentView, onAuthSuccess, set
     setValue: setValueLogin,
   } = useForm<AuthFormInputs>({
     shouldUnregister: false,
-    mode: 'onChange',
-    reValidateMode: 'onChange',
     defaultValues: {
       account_type: 'individual',
       firstName: "",

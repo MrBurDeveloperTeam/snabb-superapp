@@ -16,7 +16,7 @@ type Props = {
   ) => void;
 };
 
-type ValidatedField = 'firstName' | 'lastName' | 'phone' | 'dob';
+type ValidatedField = 'firstName' | 'lastName' | 'phone' | 'dob' | 'password' | 'confirmPassword';
 
 const getLatestBirthDate = () => {
   const date = new Date();
@@ -33,6 +33,8 @@ const validateField = (name: ValidatedField, value: string) => {
     if (name === 'firstName') return 'First name is required.';
     if (name === 'lastName') return 'Last name is required.';
     if (name === 'phone') return 'Phone number is required.';
+    if (name === 'password') return 'Password is required.';
+    if (name === 'confirmPassword') return 'Please confirm your password.';
     return 'Date of birth is required.';
   }
   if ((name === 'firstName' || name === 'lastName') && /\p{N}/u.test(value)) {
@@ -43,6 +45,9 @@ const validateField = (name: ValidatedField, value: string) => {
   }
   if (name === 'dob' && value > getLatestBirthDate()) {
     return 'Date of birth must be before today.';
+  }
+  if ((name === 'password' || name === 'confirmPassword') && value.length < 8) {
+    return 'Password must be at least 8 characters.';
   }
   return '';
 };
@@ -101,7 +106,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
 
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((current) => ({ ...current, [key]: event.target.type === 'checkbox' ? (event.target as HTMLInputElement).checked : event.target.value }));
-    if (['firstName', 'lastName', 'phone', 'dob'].includes(key)) {
+    if (['firstName', 'lastName', 'phone', 'dob', 'password', 'confirmPassword'].includes(key)) {
       setTouched((current) => ({ ...current, [key]: true }));
     }
   };
@@ -111,12 +116,15 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
     lastName: validateField('lastName', form.lastName),
     phone: validateField('phone', form.phone),
     dob: validateField('dob', form.dob),
+    password: validateField('password', form.password),
+    confirmPassword: validateField('confirmPassword', form.confirmPassword)
+      || (form.confirmPassword !== form.password ? 'Passwords do not match.' : ''),
   };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!invitation) return;
-    setTouched({ firstName: true, lastName: true, phone: true, dob: true });
+    setTouched({ firstName: true, lastName: true, phone: true, dob: true, password: true, confirmPassword: true });
     if (Object.values(validationErrors).some(Boolean)) return;
     if (!invitation.country) {
       return toast.error(
@@ -275,8 +283,8 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
           <div><label className={labelClass}>Date of birth</label><input required type="date" max={getLatestBirthDate()} value={form.dob} onChange={update('dob')} className={validatedFieldClass('dob')} />{validationMessage('dob')}</div>
           <div><label className={labelClass}>Job position</label><select required value={form.jobPosition} onChange={update('jobPosition')} className={fieldClass}><option value="">-- Select Position --</option>{DENTAL_POSITIONS.map((position) => <option key={position}>{position}</option>)}</select></div>
           <div><label className={labelClass}>Country</label><input readOnly required value={form.country} className={`${fieldClass} bg-slate-50 text-slate-500`} /></div>
-          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={fieldClass} /></div>
-          <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={fieldClass} /></div>
+          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={validatedFieldClass('password')} />{validationMessage('password')}</div>
+          <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={validatedFieldClass('confirmPassword')} />{validationMessage('confirmPassword')}</div>
         </div>
         <label className="mt-7 flex items-start gap-3 text-sm text-slate-600"><input required type="checkbox" checked={form.agreed} onChange={update('agreed')} className="mt-1" />I agree to the Terms of Service, Privacy Policy and Disclaimer.</label>
         <button disabled={submitting} className="mt-8 w-full rounded-2xl bg-slate-900 py-4 font-black text-white disabled:opacity-50">{submitting ? 'Creating account...' : 'Create Snabbb Account'}</button>

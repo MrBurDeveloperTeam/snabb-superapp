@@ -195,13 +195,19 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         name="companyEmail"
                         defaultValue=""
                         control={control}
-                        rules={{ required: 'Company email is required.' }}
+                        rules={{
+                          required: 'Company email is required.',
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+                            message: 'Please enter a valid email address.',
+                          },
+                        }}
                         render={({ field }) => (
                           <input
                             {...field}
                             type="email"
                             placeholder="e.g. hello@company.com"
-                            className={inputClasses}
+                            className={fieldClass(Boolean(error.companyEmail))}
                             required
                             onChange={(e) => { field.onChange(e); onChange(e); }}
                           />
@@ -209,7 +215,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                       />
                     </div>
                     <p className="mt-1 text-xs text-slate-400 italic">Company email for login and communication.</p>
-                    {error.companyEmail && <p className="mt-1 text-xs text-red-500">{error.companyEmail.message}</p>}
+                    {validationMessage(error.companyEmail?.message as string | undefined)}
                   </div>
                 </>
               )}
@@ -223,13 +229,19 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     <Controller
                       name="login"
                       control={control}
-                      rules={{ required: 'Email is required.' }}
+                      rules={{
+                        required: 'Email is required.',
+                        pattern: {
+                          value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+                          message: 'Please enter a valid email address.',
+                        },
+                      }}
                       render={({ field }) => (
                         <input
                           {...field}
                           type="email"
                           placeholder="e.g. nur@email.com"
-                          className={inputClasses}
+                          className={fieldClass(Boolean(error.login))}
                           required
                           onChange={(e) => { field.onChange(e); onChange(e); }}
                         />
@@ -237,7 +249,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     />
                   </div>
                   <p className="mt-1 text-xs text-slate-400 italic">This will be your login email.</p>
-                  {error.login && <p className="mt-1 text-xs text-red-500">{error.login.message}</p>}
+                  {validationMessage(error.login?.message as string | undefined)}
                 </div>
               )}
 
@@ -255,7 +267,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         {...field}
                         type="text"
                         placeholder="Referral code"
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.password))}
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
@@ -485,7 +497,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     )}
                   />
                 </div>
-                {error.password && <p className="mt-1 text-xs text-red-500">{error.password.message}</p>}
+                {validationMessage(error.password?.message as string | undefined)}
               </div>
 
               {/* Confirm Password */}
@@ -505,14 +517,14 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         {...field}
                         type="password"
                         placeholder="••••••••"
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.confirmPassword))}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
                   />
                 </div>
-                {error.confirmPassword && <p className="mt-1 text-xs text-red-500">{error.confirmPassword.message}</p>}
+                {validationMessage(error.confirmPassword?.message as string | undefined)}
               </div>
 
               {/* Terms */}
