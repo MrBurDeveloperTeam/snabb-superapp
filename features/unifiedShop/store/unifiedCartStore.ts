@@ -4,15 +4,23 @@ import { persist } from 'zustand/middleware';
 import type { CartLine, UnifiedProduct } from '../types';
 
 interface UnifiedCartStore {
+  /** The cart currently on screen — always the active owner's cart. */
   lines: CartLine[];
   isOpen: boolean;
   /**
-   * Identity (normalized email) of the account this persisted cart
-   * currently belongs to. `null` means the cart predates this field or
-   * was built by a guest who never logged in — either way, nothing to
-   * reconcile against yet.
+   * Identity (normalized email) of the account `lines` currently belongs
+   * to. `null` means this cart has never been tied to any account yet —
+   * either it predates this field, or it's a guest cart nobody has logged
+   * in to claim.
    */
   ownerId: string | null;
+  /**
+   * Other accounts' carts, parked here while they're not the active
+   * owner. Switching back to one of these accounts (reconcileOwner)
+   * swaps its stashed cart back into `lines` instead of starting it over.
+   * Not meant to be read directly by UI code.
+   */
+  carts: Record<string, CartLine[]>;
   open: () => void;
   close: () => void;
   toggle: () => void;
@@ -23,9 +31,16 @@ interface UnifiedCartStore {
   /**
    * Call this whenever the signed-in identity is (re)established — on
    * login and on session re-verification. Logout intentionally does NOT
-   * clear the cart (see services/signOut.ts) so a user who logs back in
-   * gets their items back; this is what stops a *different* account that
-   * logs in on the same browser afterward from inheriting them instead.
+   * touch the cart (see services/signOut.ts) so whoever logs back in
+   * gets their own items back.
+   *
+   * Each account's cart lives in its own slot (`carts`, keyed by
+   * identity), so switching from account A to account B on the same
+   * browser never shows B what A had in their cart — and switching back
+   * from B to A restores A's cart exactly as they left it, instead of
+   * wiping it. A cart with no owner yet (a guest who never logged in) is
+   * adopted by whichever account logs in first, unless that account
+   * already has its own stashed cart, in which case that one wins.
    */
   reconcileOwner: (identity: string | null) => void;
 }
@@ -36,6 +51,7 @@ export const useUnifiedCartStore = create<UnifiedCartStore>()(
       lines: [],
       isOpen: false,
       ownerId: null,
+      carts: {},
 
       open: () => set({ isOpen: true }),
       close: () => set({ isOpen: false }),
@@ -90,28 +106,50 @@ export const useUnifiedCartStore = create<UnifiedCartStore>()(
         // progress) — nothing to reconcile against.
         if (!identity) return;
 
-        const { ownerId } = get();
+        const { ownerId, lines, carts } = get();
 
-        // First time this cart has ever been tagged — either a cart
-        // that predates this field, or a genuine guest cart. Adopt the
-        // logging-in account as its owner without wiping it.
-        if (ownerId === null) {
-          set({ ownerId: identity });
-          return;
+        // Same account still logged in (routine re-verification on
+        // focus/SSO checks) — nothing to swap.
+        if (ownerId === identity) return;
+
+        const nextCarts = { ...carts };
+
+        // Park the outgoing account's cart instead of discarding it, so
+        // it's there to restore if they log back in later. A `null`
+        // ownerId means there's no real account to stash for (a fresh
+        // cart, or a guest cart nobody has claimed) — its lines fall
+        // through to the adoption branch below instead.
+        if (ownerId !== null) {
+          nextCarts[ownerId] = lines;
         }
 
-        // A different account just logged in on this browser/device —
-        // this cart isn't theirs, so it must not carry over.
-        if (ownerId !== identity) {
-          set({ lines: [], ownerId: identity });
+        let restored: CartLine[];
+        if (Object.prototype.hasOwnProperty.call(nextCarts, identity)) {
+          // This account has its own stashed cart from earlier on this
+          // browser — that's theirs, restore it.
+          restored = nextCarts[identity];
+          delete nextCarts[identity];
+        } else if (ownerId === null) {
+          // Nobody owned the cart that was active (guest/unattributed) —
+          // the logging-in account adopts it rather than starting empty.
+          restored = lines;
+        } else {
+          // A genuinely new account on this browser — starts empty.
+          restored = [];
         }
+
+        set({ ownerId: identity, lines: restored, carts: nextCarts });
       },
     }),
     {
       name: 'snabbb-unified-shop-cart',
       // isOpen is UI-only — no reason to restore a stale drawer-open state
       // across page loads.
-      partialize: (state) => ({ lines: state.lines, ownerId: state.ownerId }),
+      partialize: (state) => ({
+        lines: state.lines,
+        ownerId: state.ownerId,
+        carts: state.carts,
+      }),
     }
   )
 );
