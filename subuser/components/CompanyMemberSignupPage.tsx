@@ -121,6 +121,14 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
       || (form.confirmPassword !== form.password ? 'Passwords do not match.' : ''),
   };
 
+  const passwordStrength = (() => {
+    if (!form.password) return 'empty';
+    if (form.password.length < 8) return 'short';
+    const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/]
+      .filter((pattern) => pattern.test(form.password)).length;
+    return variety >= 3 ? 'strong' : 'fair';
+  })();
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!invitation) return;
@@ -236,6 +244,26 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
       {validationErrors[name]}
     </p>
   ) : null;
+  const passwordFieldClass = `${fieldClass} ${
+    passwordStrength === 'short' || (passwordStrength === 'empty' && touched.password && validationErrors.password)
+      ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500'
+      : passwordStrength === 'fair'
+        ? '!border-amber-400 !ring-4 !ring-amber-50 focus:!border-amber-500'
+        : passwordStrength === 'strong'
+          ? '!border-emerald-400 !ring-4 !ring-emerald-50 focus:!border-emerald-500'
+          : ''
+  }`;
+  const passwordStrengthMessage = passwordStrength === 'short' ? (
+    validationMessage('password')
+  ) : passwordStrength === 'fair' ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-500" role="status">
+      <span aria-hidden="true">●</span> Valid password, but it could be stronger.
+    </p>
+  ) : passwordStrength === 'strong' ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-500" role="status">
+      <span aria-hidden="true">●</span> Strong password.
+    </p>
+  ) : touched.password ? validationMessage('password') : null;
   const labelClass = 'mb-2 block text-xs font-black uppercase tracking-widest text-slate-400';
   return (
     <div className="min-h-screen bg-slate-100 px-5 py-10">
@@ -283,7 +311,7 @@ export default function CompanyMemberSignupPage({ onComplete, setToastMsg }: Pro
           <div><label className={labelClass}>Date of birth</label><input required type="date" max={getLatestBirthDate()} value={form.dob} onChange={update('dob')} className={validatedFieldClass('dob')} />{validationMessage('dob')}</div>
           <div><label className={labelClass}>Job position</label><select required value={form.jobPosition} onChange={update('jobPosition')} className={fieldClass}><option value="">-- Select Position --</option>{DENTAL_POSITIONS.map((position) => <option key={position}>{position}</option>)}</select></div>
           <div><label className={labelClass}>Country</label><input readOnly required value={form.country} className={`${fieldClass} bg-slate-50 text-slate-500`} /></div>
-          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={validatedFieldClass('password')} />{validationMessage('password')}</div>
+          <div><label className={labelClass}>Password</label><input required minLength={8} type="password" value={form.password} onChange={update('password')} placeholder="Create a password" className={passwordFieldClass} />{passwordStrengthMessage}</div>
           <div><label className={labelClass}>Confirm password</label><input required minLength={8} type="password" value={form.confirmPassword} onChange={update('confirmPassword')} placeholder="Re-enter your password" className={validatedFieldClass('confirmPassword')} />{validationMessage('confirmPassword')}</div>
         </div>
         <label className="mt-7 flex items-start gap-3 text-sm text-slate-600"><input required type="checkbox" checked={form.agreed} onChange={update('agreed')} className="mt-1" />I agree to the Terms of Service, Privacy Policy and Disclaimer.</label>

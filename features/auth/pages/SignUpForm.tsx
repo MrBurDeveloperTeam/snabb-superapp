@@ -34,6 +34,22 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
   const signupMutation = useAuthMutation();
 
   const passwordValue = useWatch({ control, name: 'password' });
+  const passwordStrength = (() => {
+    if (!passwordValue) return 'empty';
+    if (passwordValue.length < 8) return 'short';
+    const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/]
+      .filter((pattern) => pattern.test(passwordValue)).length;
+    return variety >= 3 ? 'strong' : 'fair';
+  })();
+  const passwordFieldClass = `${inputClasses} ${
+    passwordStrength === 'short' || (passwordStrength === 'empty' && error.password)
+      ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500'
+      : passwordStrength === 'fair'
+        ? '!border-amber-400 !ring-4 !ring-amber-50 focus:!border-amber-500'
+        : passwordStrength === 'strong'
+          ? '!border-emerald-400 !ring-4 !ring-emerald-50 focus:!border-emerald-500'
+          : ''
+  }`;
   const fieldClass = (hasError: boolean) =>
     `${inputClasses} ${hasError ? '!border-red-400 !ring-4 !ring-red-50 focus:!border-red-500' : ''}`;
   const validationMessage = (message?: string) => message ? (
@@ -267,7 +283,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         {...field}
                         type="text"
                         placeholder="Referral code"
-                        className={fieldClass(Boolean(error.password))}
+                        className={passwordFieldClass}
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
@@ -497,7 +513,20 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     )}
                   />
                 </div>
-                {validationMessage(error.password?.message as string | undefined)}
+                {passwordStrength === 'short' && validationMessage('Password must be at least 8 characters.')}
+                {passwordStrength === 'empty' && validationMessage(error.password?.message as string | undefined)}
+                {passwordStrength === 'fair' && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-500" role="status">
+                    <i className="fa-solid fa-circle-half-stroke text-[10px]" aria-hidden="true" />
+                    Valid password, but it could be stronger.
+                  </p>
+                )}
+                {passwordStrength === 'strong' && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-500" role="status">
+                    <i className="fa-solid fa-circle-check text-[10px]" aria-hidden="true" />
+                    Strong password.
+                  </p>
+                )}
               </div>
 
               {/* Confirm Password */}
