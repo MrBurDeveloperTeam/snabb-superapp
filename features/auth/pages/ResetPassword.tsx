@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SnabbbIcon } from '../../../public/icons/SnabbbIcon';
+import api from '@/services/api';
 
 interface ResetPasswordPageProps {
   navigate: (path: string) => void;
@@ -44,9 +45,7 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ navigate }) => {
 
     setIsLoading(true);
     try {
-      const res = await fetch('/api/web/reset_password/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await api.post('/api/web/reset_password/confirm', {
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'call',
@@ -55,7 +54,7 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ navigate }) => {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.data;
       const result = data?.result;
 
       if (result?.ok) {
