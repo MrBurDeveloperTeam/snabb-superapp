@@ -1,7 +1,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createReadStream, existsSync, statSync, unlinkSync } from 'fs';
-import { open } from 'fs/promises';
+import { open, readFile, writeFile } from 'fs/promises';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-function/scripts/vite-games.mjs';
@@ -64,6 +64,27 @@ function splitLargeGameWasmForCloudflare() {
       } finally {
         await source.close();
       }
+
+      const loaderPath = path.join(outDir, 'games', 'mole-game', 'index.js');
+      const loaderSource = await readFile(loaderPath, 'utf8');
+      const fetchStatement = 'return fetch(file).then(function (response) {';
+      const chunkFetchStatement = `const responsePromise = file.endsWith('index.wasm')
+\t\t\t? Promise.all([${Array.from({ length: Math.ceil(wasmSize / WASM_CHUNK_SIZE) }, (_, index) => `fetch(\`${'${file}'}.part${index}\`)`).join(', ')}]).then(async function (responses) {
+\t\t\t\tfor (const response of responses) {
+\t\t\t\t\tif (!response.ok) throw new Error(\`Failed loading WASM chunk '\${response.url}'\`);
+\t\t\t\t}
+\t\t\t\tconst chunks = await Promise.all(responses.map(function (response) { return response.arrayBuffer(); }));
+\t\t\t\treturn new Response(new Blob(chunks, { type: 'application/wasm' }), {
+\t\t\t\t\theaders: { 'Content-Type': 'application/wasm' },
+\t\t\t\t});
+\t\t\t})
+\t\t\t: fetch(file);
+\t\treturn responsePromise.then(function (response) {`;
+
+      if (!loaderSource.includes(fetchStatement)) {
+        throw new Error(`Unable to add chunk loading to ${path.relative(outDir, loaderPath)}`);
+      }
+      await writeFile(loaderPath, loaderSource.replace(fetchStatement, chunkFetchStatement));
 
       unlinkSync(wasmPath);
       console.log(`Split oversized Cloudflare asset: ${path.relative(outDir, wasmPath)}`);

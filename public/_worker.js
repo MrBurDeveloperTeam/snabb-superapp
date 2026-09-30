@@ -174,42 +174,30 @@ async function serveAssets(request, env) {
 }
 
 async function serveChunkedMoleGameWasm(request, env) {
-  if (!env.ASSETS || request.method !== 'GET') {
+  if (!env.ASSETS || !['GET', 'HEAD'].includes(request.method)) {
     return null;
   }
 
-  const partResponses = [];
+  const partBuffers = [];
   for (let part = 0; ; part += 1) {
     const partUrl = new URL(`/games/mole-game/index.wasm.part${part}`, request.url);
-    const response = await env.ASSETS.fetch(new Request(partUrl, request));
+    const response = await env.ASSETS.fetch(new Request(partUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/wasm' },
+    }));
     if (response.status === 404) break;
     if (!response.ok || !response.body) return response;
-    partResponses.push(response);
+    partBuffers.push(await response.arrayBuffer());
   }
 
-  if (partResponses.length === 0) return null;
+  if (partBuffers.length === 0) return null;
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        for (const response of partResponses) {
-          const reader = response.body.getReader();
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            controller.enqueue(value);
-          }
-        }
-        controller.close();
-      } catch (error) {
-        controller.error(error);
-      }
-    },
-  });
+  const body = new Blob(partBuffers, { type: 'application/wasm' });
 
-  return new Response(stream, {
+  return new Response(request.method === 'HEAD' ? null : body, {
     headers: {
       'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Length': String(body.size),
       'Content-Type': 'application/wasm',
     },
   });
