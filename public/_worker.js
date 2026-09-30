@@ -173,12 +173,59 @@ async function serveAssets(request, env) {
   return env.ASSETS.fetch(new Request(indexUrl, request));
 }
 
+async function serveChunkedMoleGameWasm(request, env) {
+  if (!env.ASSETS || request.method !== 'GET') {
+    return null;
+  }
+
+  const partResponses = [];
+  for (let part = 0; ; part += 1) {
+    const partUrl = new URL(`/games/mole-game/index.wasm.part${part}`, request.url);
+    const response = await env.ASSETS.fetch(new Request(partUrl, request));
+    if (response.status === 404) break;
+    if (!response.ok || !response.body) return response;
+    partResponses.push(response);
+  }
+
+  if (partResponses.length === 0) return null;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        for (const response of partResponses) {
+          const reader = response.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Type': 'application/wasm',
+    },
+  });
+}
+
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
 
     if (TICKETING_PATHS.has(pathname)) {
       return handleTicketingSso(request, env);
+    }
+
+    if (pathname === '/games/mole-game/index.wasm') {
+      const chunkedWasm = await serveChunkedMoleGameWasm(request, env);
+      if (chunkedWasm) return chunkedWasm;
     }
 
     return serveAssets(request, env);

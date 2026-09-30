@@ -1,5 +1,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createReadStream, existsSync, statSync, unlinkSync } from 'fs';
+import { open } from 'fs/promises';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-function/scripts/vite-games.mjs';
@@ -7,6 +9,67 @@ import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-functi
 // Fix for __dirname in ESM modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const CLOUDFLARE_ASSET_LIMIT = 25 * 1024 * 1024;
+const WASM_CHUNK_SIZE = 20 * 1024 * 1024;
+
+function splitLargeGameWasmForCloudflare() {
+  let outDir = '';
+
+  return {
+    name: 'split-large-game-wasm-for-cloudflare',
+    enforce: 'post' as const,
+    configResolved(config: { root: string; build: { outDir: string } }) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    async closeBundle() {
+      const wasmPath = path.join(outDir, 'games', 'mole-game', 'index.wasm');
+      if (!existsSync(wasmPath)) return;
+
+      const wasmSize = statSync(wasmPath).size;
+      if (wasmSize <= CLOUDFLARE_ASSET_LIMIT) return;
+
+      const source = await open(wasmPath, 'r');
+      try {
+        let offset = 0;
+        let part = 0;
+        while (offset < wasmSize) {
+          const partPath = `${wasmPath}.part${part}`;
+          await new Promise<void>((resolve, reject) => {
+            const stream = createReadStream(wasmPath, {
+              fd: source.fd,
+              autoClose: false,
+              start: offset,
+              end: Math.min(offset + WASM_CHUNK_SIZE, wasmSize) - 1,
+            });
+            const chunks: Buffer[] = [];
+            stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+            stream.on('error', reject);
+            stream.on('end', async () => {
+              try {
+                const target = await open(partPath, 'w');
+                try {
+                  await target.writeFile(Buffer.concat(chunks));
+                } finally {
+                  await target.close();
+                }
+                resolve();
+              } catch (error) {
+                reject(error);
+              }
+            });
+          });
+          offset += WASM_CHUNK_SIZE;
+          part += 1;
+        }
+      } finally {
+        await source.close();
+      }
+
+      unlinkSync(wasmPath);
+      console.log(`Split oversized Cloudflare asset: ${path.relative(outDir, wasmPath)}`);
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   
@@ -102,7 +165,7 @@ export default defineConfig(({ mode }) => {
           },
         }: undefined,
       },
-      plugins: [react(), sharedGamesPlugin()],
+      plugins: [react(), sharedGamesPlugin(), splitLargeGameWasmForCloudflare()],
         build: {
         rollupOptions: {
           input: {
