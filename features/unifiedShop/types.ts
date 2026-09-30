@@ -360,3 +360,15 @@ export interface PaymentStatusResponse {
   /** One entry per company order the payment.transaction covered — see checkout.py's payment/status route (mrbur repo). Always length 1 today. */
   companies: PaymentStatusCompany[];
 }
+
+/** A Smart Banner (Odoo: website_smart_banner) shown in the shop's slider. */
+export interface ShopBanner {
+  id: number;
+  name: string;
+  /** Absolute URL of the banner image, served by Odoo. */
+  imageUrl: string;
+  altText: string;
+  /** Where the banner links to ('' when it has no link). */
+  linkUrl: string;
+  openNewTab: boolean;
+}

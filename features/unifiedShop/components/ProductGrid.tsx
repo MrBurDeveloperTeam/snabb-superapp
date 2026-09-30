@@ -7,6 +7,7 @@ import { useUnifiedProducts, unifiedProductsQueryOptions } from '../hooks/useUni
 import { BRANDS, type ShopBrand, type SortOption, type UnifiedProduct } from '../types';
 import BrandFilterBar from './BrandFilterBar';
 import AttributeFilterBar from './AttributeFilterBar';
+import ShopBannerSlider from './ShopBannerSlider';
 import ProductCard from './ProductCard';
 import ProductPreviewModal from './ProductPreviewModal';
 import ProductDetailPage from './ProductDetailPage';
@@ -125,6 +126,8 @@ const ProductGrid: React.FC = () => {
         <ProductDetailPage product={detailProduct} onBack={() => setDetailProduct(null)} />
       ) : (
         <>
+      <ShopBannerSlider brand={brand} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
