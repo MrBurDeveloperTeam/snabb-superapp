@@ -173,14 +173,14 @@ async function serveAssets(request, env) {
   return env.ASSETS.fetch(new Request(indexUrl, request));
 }
 
-async function serveChunkedMoleGameWasm(request, env) {
+async function serveChunkedGameWasm(request, env, pathname) {
   if (!env.ASSETS || !['GET', 'HEAD'].includes(request.method)) {
     return null;
   }
 
   const partBuffers = [];
   for (let part = 0; ; part += 1) {
-    const partUrl = new URL(`/games/mole-game/index.wasm.part${part}`, request.url);
+    const partUrl = new URL(`${pathname}.part${part}`, request.url);
     const response = await env.ASSETS.fetch(new Request(partUrl, {
       method: 'GET',
       headers: { Accept: 'application/wasm' },
@@ -211,8 +211,8 @@ export default {
       return handleTicketingSso(request, env);
     }
 
-    if (pathname === '/games/mole-game/index.wasm') {
-      const chunkedWasm = await serveChunkedMoleGameWasm(request, env);
+    if (pathname.startsWith('/games/') && pathname.endsWith('.wasm')) {
+      const chunkedWasm = await serveChunkedGameWasm(request, env, pathname);
       if (chunkedWasm) return chunkedWasm;
     }
 
