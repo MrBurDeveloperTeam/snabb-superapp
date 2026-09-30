@@ -45,7 +45,7 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ navigate }) => {
 
     setIsLoading(true);
     try {
-      const res = await api.post('/api/web/reset_password/confirm', {
+      const res = await api.post('/web/reset_password/confirm', {
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'call',
