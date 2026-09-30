@@ -1,7 +1,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createReadStream, existsSync, statSync, unlinkSync } from 'fs';
-import { open } from 'fs/promises';
+import { createReadStream, statSync, unlinkSync } from 'fs';
+import { open, readFile, readdir, writeFile } from 'fs/promises';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-function/scripts/vite-games.mjs';
@@ -11,6 +11,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CLOUDFLARE_ASSET_LIMIT = 25 * 1024 * 1024;
 const WASM_CHUNK_SIZE = 20 * 1024 * 1024;
+
+async function findWasmFiles(directory: string): Promise<string[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = await Promise.all(entries.map(async (entry) => {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return findWasmFiles(entryPath);
+    return entry.isFile() && entry.name.endsWith('.wasm') ? [entryPath] : [];
+  }));
+  return files.flat();
+}
 
 function splitLargeGameWasmForCloudflare() {
   let outDir = '';
@@ -22,51 +32,75 @@ function splitLargeGameWasmForCloudflare() {
       outDir = path.resolve(config.root, config.build.outDir);
     },
     async closeBundle() {
-      const wasmPath = path.join(outDir, 'games', 'mole-game', 'index.wasm');
-      if (!existsSync(wasmPath)) return;
+      const gamesDir = path.join(outDir, 'games');
+      const wasmPaths = await findWasmFiles(gamesDir);
 
-      const wasmSize = statSync(wasmPath).size;
-      if (wasmSize <= CLOUDFLARE_ASSET_LIMIT) return;
+      for (const wasmPath of wasmPaths) {
+        const wasmSize = statSync(wasmPath).size;
+        if (wasmSize <= CLOUDFLARE_ASSET_LIMIT) continue;
 
-      const source = await open(wasmPath, 'r');
-      try {
-        let offset = 0;
-        let part = 0;
-        while (offset < wasmSize) {
-          const partPath = `${wasmPath}.part${part}`;
-          await new Promise<void>((resolve, reject) => {
-            const stream = createReadStream(wasmPath, {
-              fd: source.fd,
-              autoClose: false,
-              start: offset,
-              end: Math.min(offset + WASM_CHUNK_SIZE, wasmSize) - 1,
-            });
-            const chunks: Buffer[] = [];
-            stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-            stream.on('error', reject);
-            stream.on('end', async () => {
-              try {
-                const target = await open(partPath, 'w');
+        const source = await open(wasmPath, 'r');
+        try {
+          let offset = 0;
+          let part = 0;
+          while (offset < wasmSize) {
+            const partPath = `${wasmPath}.part${part}`;
+            await new Promise<void>((resolve, reject) => {
+              const stream = createReadStream(wasmPath, {
+                fd: source.fd,
+                autoClose: false,
+                start: offset,
+                end: Math.min(offset + WASM_CHUNK_SIZE, wasmSize) - 1,
+              });
+              const chunks: Buffer[] = [];
+              stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+              stream.on('error', reject);
+              stream.on('end', async () => {
                 try {
-                  await target.writeFile(Buffer.concat(chunks));
-                } finally {
-                  await target.close();
+                  const target = await open(partPath, 'w');
+                  try {
+                    await target.writeFile(Buffer.concat(chunks));
+                  } finally {
+                    await target.close();
+                  }
+                  resolve();
+                } catch (error) {
+                  reject(error);
                 }
-                resolve();
-              } catch (error) {
-                reject(error);
-              }
+              });
             });
-          });
-          offset += WASM_CHUNK_SIZE;
-          part += 1;
+            offset += WASM_CHUNK_SIZE;
+            part += 1;
+          }
+        } finally {
+          await source.close();
         }
-      } finally {
-        await source.close();
-      }
 
-      unlinkSync(wasmPath);
-      console.log(`Split oversized Cloudflare asset: ${path.relative(outDir, wasmPath)}`);
+        const wasmFileName = path.basename(wasmPath);
+        const loaderPath = path.join(path.dirname(wasmPath), `${path.basename(wasmPath, '.wasm')}.js`);
+        const loaderSource = await readFile(loaderPath, 'utf8');
+        const fetchStatement = 'return fetch(file).then(function (response) {';
+        const chunkFetchStatement = `const responsePromise = file.endsWith('${wasmFileName}')
+\t\t\t? Promise.all([${Array.from({ length: Math.ceil(wasmSize / WASM_CHUNK_SIZE) }, (_, index) => `fetch(\`${'${file}'}.part${index}\`)`).join(', ')}]).then(async function (responses) {
+\t\t\t\tfor (const response of responses) {
+\t\t\t\t\tif (!response.ok) throw new Error(\`Failed loading WASM chunk '\${response.url}'\`);
+\t\t\t\t}
+\t\t\t\tconst chunks = await Promise.all(responses.map(function (response) { return response.arrayBuffer(); }));
+\t\t\t\treturn new Response(new Blob(chunks, { type: 'application/wasm' }), {
+\t\t\t\t\theaders: { 'Content-Type': 'application/wasm' },
+\t\t\t\t});
+\t\t\t})
+\t\t\t: fetch(file);
+\t\treturn responsePromise.then(function (response) {`;
+
+        if (!loaderSource.includes(fetchStatement)) {
+          throw new Error(`Unable to add chunk loading to ${path.relative(outDir, loaderPath)}`);
+        }
+        await writeFile(loaderPath, loaderSource.replace(fetchStatement, chunkFetchStatement));
+
+        unlinkSync(wasmPath);
+        console.log(`Split oversized Cloudflare asset: ${path.relative(outDir, wasmPath)}`);
+      }
     },
   };
 }

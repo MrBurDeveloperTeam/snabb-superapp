@@ -173,43 +173,31 @@ async function serveAssets(request, env) {
   return env.ASSETS.fetch(new Request(indexUrl, request));
 }
 
-async function serveChunkedMoleGameWasm(request, env) {
-  if (!env.ASSETS || request.method !== 'GET') {
+async function serveChunkedGameWasm(request, env, pathname) {
+  if (!env.ASSETS || !['GET', 'HEAD'].includes(request.method)) {
     return null;
   }
 
-  const partResponses = [];
+  const partBuffers = [];
   for (let part = 0; ; part += 1) {
-    const partUrl = new URL(`/games/mole-game/index.wasm.part${part}`, request.url);
-    const response = await env.ASSETS.fetch(new Request(partUrl, request));
+    const partUrl = new URL(`${pathname}.part${part}`, request.url);
+    const response = await env.ASSETS.fetch(new Request(partUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/wasm' },
+    }));
     if (response.status === 404) break;
     if (!response.ok || !response.body) return response;
-    partResponses.push(response);
+    partBuffers.push(await response.arrayBuffer());
   }
 
-  if (partResponses.length === 0) return null;
+  if (partBuffers.length === 0) return null;
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        for (const response of partResponses) {
-          const reader = response.body.getReader();
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            controller.enqueue(value);
-          }
-        }
-        controller.close();
-      } catch (error) {
-        controller.error(error);
-      }
-    },
-  });
+  const body = new Blob(partBuffers, { type: 'application/wasm' });
 
-  return new Response(stream, {
+  return new Response(request.method === 'HEAD' ? null : body, {
     headers: {
       'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Length': String(body.size),
       'Content-Type': 'application/wasm',
     },
   });
@@ -223,8 +211,8 @@ export default {
       return handleTicketingSso(request, env);
     }
 
-    if (pathname === '/games/mole-game/index.wasm') {
-      const chunkedWasm = await serveChunkedMoleGameWasm(request, env);
+    if (pathname.startsWith('/games/') && pathname.endsWith('.wasm')) {
+      const chunkedWasm = await serveChunkedGameWasm(request, env, pathname);
       if (chunkedWasm) return chunkedWasm;
     }
 
