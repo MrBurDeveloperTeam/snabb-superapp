@@ -45,17 +45,20 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ navigate }) => {
 
     setIsLoading(true);
     try {
-      const res = await api.post('/web/reset_password/confirm', {
-        
+      const res = await fetch('https://mrbur.odoo.com/mrbur/reset_password/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'call',
           id: 1,
           params: { token, password },
+        }),
       });
-
-      const data = await res.data;
+    
+      const data = await res.json();
       const result = data?.result;
-
+    
       if (result?.ok) {
         setStage('success');
       } else {
