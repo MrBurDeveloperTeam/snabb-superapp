@@ -76,6 +76,10 @@ const CHECKOUT_API_PATHS = new Set([
   '/api/snabbb-shop/checkout/delivery-method',
   '/api/snabbb-shop/checkout/credit-toggle',
   '/api/snabbb-shop/checkout/reward-claim',
+  '/api/snabbb-shop/checkout/reward-release',
+  // Product-sequence admin: needs the Odoo session cookie (permission check is server-side).
+  '/api/snabbb-shop/admin/sequence',
+  '/api/snabbb-shop/admin/sequence/save',
   '/api/snabbb-shop/checkout/confirm',
   '/api/snabbb-shop/checkout/payment/methods',
   '/api/snabbb-shop/checkout/payment/init',

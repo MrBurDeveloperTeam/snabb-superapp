@@ -106,7 +106,9 @@ function clearRewardDeepLink() {
 const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn, isAdmin = false }) => {
   const [resume] = useState(readStripeResume);
   const [deepLink] = useState(readRewardDeepLink);
-  const [view, setView] = useState<UnifiedShopView>(resume.view);
+  const [view, setView] = useState<UnifiedShopView>(
+    window.location.pathname === '/snabbb-shop/admin/sequence' ? 'sequence' : resume.view
+  );
   const [claimingFromLink, setClaimingFromLink] = useState(Boolean(deepLink.claimCode));
   const handledDeepLink = useRef(false);
   const queryClient = useQueryClient();
@@ -155,7 +157,12 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn, isAdmin = f
           {isLoggedIn ? 'Adding your reward to your cart…' : 'Please log in to claim your reward.'}
         </main>
       ) : view === 'sequence' && isAdmin ? (
-        <SequenceAdminPage onBack={() => setView('shop')} />
+        <SequenceAdminPage
+          onBack={() => {
+            if (window.location.pathname !== '/snabbb-shop') window.history.replaceState(null, '', '/snabbb-shop');
+            setView('shop');
+          }}
+        />
       ) : view === 'checkout' ? (
         <main className="py-4">
           <CheckoutPage onBackToShop={() => setView('shop')} onProceedToPayment={() => setView('payment')} />
