@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { claimReward, releaseReward } from '../api/checkoutApi';
+import { CART_TOAST_STYLE } from './cartToastStyle';
 import { X, Minus, Plus, Trash2, Gift } from 'lucide-react';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
-import { useReservedRewards } from '../hooks/useReservedRewards';
+import { RESERVED_REWARDS_QUERY_KEY, useAvailableRewards, useReservedRewards } from '../hooks/useReservedRewards';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -71,6 +75,38 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   const reservedRewards = useReservedRewards();
   const rewards = isLoggedIn ? reservedRewards : [];
   const itemCount = lines.length + rewards.length;
+  const allAvailableRewards = useAvailableRewards();
+  const availableRewards = isLoggedIn ? allAvailableRewards : [];
+  const queryClient = useQueryClient();
+  const [removingCode, setRemovingCode] = useState<string | null>(null);
+
+  const handleAddReward = async (code: string) => {
+    setRemovingCode(code);
+    try {
+      await claimReward(code);
+      await queryClient.invalidateQueries({ queryKey: RESERVED_REWARDS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['snabbb-shop', 'checkout', 'state'] });
+      toast.success('Reward added to your cart!', { style: CART_TOAST_STYLE });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not add this reward.', { style: CART_TOAST_STYLE });
+    } finally {
+      setRemovingCode(null);
+    }
+  };
+
+  const handleRemoveReward = async (code: string) => {
+    setRemovingCode(code);
+    try {
+      await releaseReward(code);
+      await queryClient.invalidateQueries({ queryKey: RESERVED_REWARDS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['snabbb-shop', 'checkout', 'state'] });
+      toast.success('Reward removed — you can add it back under Available rewards.', { style: CART_TOAST_STYLE });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not remove this reward.', { style: CART_TOAST_STYLE });
+    } finally {
+      setRemovingCode(null);
+    }
+  };
 
   const currency = lines[0]?.currency ?? 'USD';
   const grandTotal = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
@@ -129,9 +165,21 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                 >
                   <RewardThumb src={reward.imageUrl} alt={reward.name} />
                   <div className="flex flex-1 flex-col gap-1">
-                    <span className="w-fit rounded-full bg-tiffany-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      Reward
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="w-fit rounded-full bg-tiffany-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        Reward
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveReward(reward.code)}
+                        disabled={removingCode === reward.code}
+                        aria-label={`Remove ${reward.name} from cart`}
+                        title="Don't use this reward in this order"
+                        className="text-slate-300 transition hover:text-red-500 disabled:opacity-40"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                     <p className="text-[12px] font-semibold leading-snug text-slate-800 line-clamp-2 dark:text-slate-100">
                       {reward.name}
                     </p>
@@ -213,6 +261,42 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                 );
               })}
             </ul>
+          )}
+
+          {availableRewards.length > 0 && (
+            <div className="mt-5">
+              <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                Available rewards
+              </h3>
+              <ul className="flex flex-col gap-3">
+                {availableRewards.map((reward) => (
+                  <li
+                    key={`available-${reward.id || reward.code}`}
+                    className="flex gap-3 rounded-xl border border-dashed border-tiffany-300 p-2.5 dark:border-tiffany-800"
+                  >
+                    <RewardThumb src={reward.imageUrl} alt={reward.name} />
+                    <div className="flex flex-1 flex-col gap-1">
+                      <p className="text-[12px] font-semibold leading-snug text-slate-800 line-clamp-2 dark:text-slate-100">
+                        {reward.name}
+                      </p>
+                      {reward.benefitSummary && (
+                        <p className="text-[11px] leading-snug text-slate-500 line-clamp-2 dark:text-slate-400">
+                          {reward.benefitSummary}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleAddReward(reward.code)}
+                        disabled={removingCode === reward.code}
+                        className="mt-auto w-fit rounded-full bg-tiffany-500 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-tiffany-600 disabled:opacity-50"
+                      >
+                        {removingCode === reward.code ? 'Adding…' : 'Add to cart'}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
 

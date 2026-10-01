@@ -139,6 +139,14 @@ export function claimReward(
   });
 }
 
+/** Takes a reserved reward out of the cart; it goes back to the shopper's active rewards. */
+export function releaseReward(code: string): Promise<{ ok: boolean }> {
+  return call(`/reward-release`, {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}
+
 export function confirmCheckout(): Promise<{ ok: boolean; ready_for_payment?: boolean }> {
   return call(`/confirm`, { method: 'POST' });
 }

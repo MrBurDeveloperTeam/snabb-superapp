@@ -8,6 +8,8 @@ import ProductGrid from './ProductGrid';
 import CartDrawer from './CartDrawer';
 import CheckoutPage from './checkout/CheckoutPage';
 import PaymentPage from './checkout/PaymentPage';
+import SequenceAdminPage from './SequenceAdminPage';
+import { ListOrdered } from 'lucide-react';
 
 export interface UnifiedShopAppProps {
   /**
@@ -20,9 +22,11 @@ export interface UnifiedShopAppProps {
   onBack?: () => void;
   /** Forwarded to CartDrawer — see its isLoggedIn prop doc comment. */
   isLoggedIn: boolean;
+  /** Shows the "Arrange products" entry (accountType === 'admin'; Odoo re-checks server-side). */
+  isAdmin?: boolean;
 }
 
-type UnifiedShopView = 'shop' | 'checkout' | 'payment';
+type UnifiedShopView = 'shop' | 'checkout' | 'payment' | 'sequence';
 
 /**
  * Stripe's own 3DS/bank-authentication redirect (see PaymentPage.tsx's
@@ -99,7 +103,7 @@ function clearRewardDeepLink() {
   }
 }
 
-const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
+const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn, isAdmin = false }) => {
   const [resume] = useState(readStripeResume);
   const [deepLink] = useState(readRewardDeepLink);
   const [view, setView] = useState<UnifiedShopView>(resume.view);
@@ -150,6 +154,8 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
         <main className="py-16 text-center text-[13px] text-slate-400">
           {isLoggedIn ? 'Adding your reward to your cart…' : 'Please log in to claim your reward.'}
         </main>
+      ) : view === 'sequence' && isAdmin ? (
+        <SequenceAdminPage onBack={() => setView('shop')} />
       ) : view === 'checkout' ? (
         <main className="py-4">
           <CheckoutPage onBackToShop={() => setView('shop')} onProceedToPayment={() => setView('payment')} />
@@ -165,6 +171,16 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
       ) : (
         <>
           <main className="mx-auto max-w-6xl px-4 py-4">
+            {isAdmin && (
+              <div className="mb-3 flex justify-end">
+                <button
+                  onClick={() => setView('sequence')}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-tiffany-300 bg-white px-3 py-1.5 text-[12px] font-medium text-tiffany-700 hover:bg-tiffany-50 dark:bg-slate-900 dark:text-tiffany-300"
+                >
+                  <ListOrdered size={14} /> Arrange products
+                </button>
+              </div>
+            )}
             <ProductGrid />
           </main>
           <CartDrawer onCheckout={() => setView('checkout')} isLoggedIn={isLoggedIn} />

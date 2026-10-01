@@ -16,6 +16,8 @@ export interface ReservedReward {
   validUntil: string;
   /** Product image of the reward (served by the Worker's /api/reward/image proxy); empty if none. */
   imageUrl: string;
+  /** 'reserved' (in the cart) or 'active' (redeemed, not in the cart — can be added). */
+  state: 'reserved' | 'active';
 }
 
 export const RESERVED_REWARDS_QUERY_KEY = ['snabbb-shop', 'reserved-rewards'] as const;
@@ -45,7 +47,7 @@ async function fetchReservedRewards(email: string): Promise<ReservedReward[]> {
   if (!res.ok || payload?.ok !== true || !Array.isArray(payload.redemptions)) return [];
 
   return (payload.redemptions as Record<string, unknown>[])
-    .filter((r) => (str(r.state) || str(r.status)).toLowerCase() === 'reserved')
+    .filter((r) => ['reserved', 'active'].includes((str(r.state) || str(r.status)).toLowerCase()))
     .filter((r) => str(r.code) && !isExpired(str(r.valid_until)))
     .map((r) => ({
       id: Number(r.id || 0),
@@ -54,11 +56,11 @@ async function fetchReservedRewards(email: string): Promise<ReservedReward[]> {
       benefitSummary: str(r.benefit_summary),
       validUntil: str(r.valid_until),
       imageUrl: str(r.image_url),
+      state: ((str(r.state) || str(r.status)).toLowerCase() === 'reserved' ? 'reserved' : 'active') as ReservedReward['state'],
     }));
 }
 
-/** Rewards already sitting in the shopper's Odoo cart (empty while signed out / on error). */
-export function useReservedRewards(): ReservedReward[] {
+function useAllRewards(): ReservedReward[] {
   const email = useUnifiedCartStore((s) => s.ownerId);
   const { data } = useQuery({
     queryKey: [...RESERVED_REWARDS_QUERY_KEY, email] as const,
@@ -69,6 +71,16 @@ export function useReservedRewards(): ReservedReward[] {
     retry: false,
   });
   return data ?? [];
+}
+
+/** Rewards already sitting in the shopper's Odoo cart (empty while signed out / on error). */
+export function useReservedRewards(): ReservedReward[] {
+  return useAllRewards().filter((r) => r.state === 'reserved');
+}
+
+/** Redeemed rewards not in the cart (e.g. removed from it) that can be added back. */
+export function useAvailableRewards(): ReservedReward[] {
+  return useAllRewards().filter((r) => r.state === 'active');
 }
 
 /** Header cart badge: local cart items plus rewards already reserved in the Odoo cart. */

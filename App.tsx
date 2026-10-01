@@ -1913,7 +1913,7 @@ useEffect(() => {
 
           {isUnifiedShopRoute && (
             <motion.div key="shop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <UnifiedShopApp onBack={() => navigate('/')} isLoggedIn={!!isLoggedIn} />
+              <UnifiedShopApp onBack={() => navigate('/')} isLoggedIn={!!isLoggedIn} isAdmin={accountType === 'admin'} />
             </motion.div>
           )}
 
