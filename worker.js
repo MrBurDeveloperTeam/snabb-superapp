@@ -69,17 +69,17 @@ const COUNTRY_SHOP_DOMAIN_MAP = {
 };
 
 const CHECKOUT_API_PATHS = new Set([
-  '/api/unified-shop/checkout/state',
-  '/api/unified-shop/checkout/countries',
-  '/api/unified-shop/checkout/states',
-  '/api/unified-shop/checkout/address',
-  '/api/unified-shop/checkout/delivery-method',
-  '/api/unified-shop/checkout/credit-toggle',
-  '/api/unified-shop/checkout/reward-claim',
-  '/api/unified-shop/checkout/confirm',
-  '/api/unified-shop/checkout/payment/methods',
-  '/api/unified-shop/checkout/payment/init',
-  '/api/unified-shop/checkout/payment/status',
+  '/api/snabbb-shop/checkout/state',
+  '/api/snabbb-shop/checkout/countries',
+  '/api/snabbb-shop/checkout/states',
+  '/api/snabbb-shop/checkout/address',
+  '/api/snabbb-shop/checkout/delivery-method',
+  '/api/snabbb-shop/checkout/credit-toggle',
+  '/api/snabbb-shop/checkout/reward-claim',
+  '/api/snabbb-shop/checkout/confirm',
+  '/api/snabbb-shop/checkout/payment/methods',
+  '/api/snabbb-shop/checkout/payment/init',
+  '/api/snabbb-shop/checkout/payment/status',
 ]);
  
 // EU-27 (post-Brexit) all share the eu.mrbur.shop storefront.
@@ -3486,7 +3486,7 @@ function copyResponseHeadersWithoutSetCookie(upstreamRes) {
                 })
             }
 
-            const isUnifiedShopCheckout = url.pathname.startsWith('/api/unified-shop/checkout/');
+            const isUnifiedShopCheckout = url.pathname.startsWith('/api/snabbb-shop/checkout/');
             
             if (isUnifiedShopCheckout) {
               const forwarded = new Request(ODOO_DEV_HOST + url.pathname + url.search, {
@@ -9262,7 +9262,7 @@ async function forwardTodoActivity(request, env, corsHeaders) {
 
 // ── UNIFIED SHOP: product catalog (MR.BUR + Kaneiko) ───────────────────
 // Proxies to the unified_shop_api Odoo module's public, read-only
-// /api/unified-shop/products endpoint. Plain JSON in, plain JSON out —
+// /api/snabbb-shop/products endpoint. Plain JSON in, plain JSON out —
 // same pass-through convention as the reward-api routes above.
 //
 // Includes CORS handling because the local dev server runs on a different
@@ -9270,7 +9270,7 @@ async function forwardTodoActivity(request, env, corsHeaders) {
 // so this is a genuine cross-origin call there even though it's same-origin
 // once deployed. credentials: 'include' on the frontend fetch means the
 // Allow-Origin header has to be the specific request origin, not "*".
-if (url.pathname === "/api/unified-shop/products") {
+if (url.pathname === "/api/snabbb-shop/products") {
   const origin = request.headers.get("Origin") || "";
   const unifiedShopCorsHeaders = {
     "Access-Control-Allow-Origin": origin || "*",
@@ -9288,7 +9288,7 @@ if (url.pathname === "/api/unified-shop/products") {
     try {
       const payload = await request.text(); // forward the raw JSON body as-is
 
-      const odooRes = await fetch(`https://${ODOO_SHOP_HOST}/api/unified-shop/products`, {
+      const odooRes = await fetch(`https://${ODOO_SHOP_HOST}/api/snabbb-shop/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: payload,
@@ -9307,6 +9307,53 @@ if (url.pathname === "/api/unified-shop/products") {
       return new Response(JSON.stringify({ error: String(err) }), {
         status: 502,
         headers: { "Content-Type": "application/json", ...unifiedShopCorsHeaders },
+      });
+    }
+  }
+}
+
+// ── UNIFIED SHOP: smart banners (sliding banner above the catalog) ─────
+// Proxies to website_smart_banner's POST /api/snabbb-shop/banners. Unlike
+// the products route above, this forwards the shopper's Odoo session cookie
+// (same as the checkout routes) so the banner targeting rules (customer
+// tags, exclusions, cross-sell) can be applied to the logged-in shopper.
+if (url.pathname === "/api/snabbb-shop/banners") {
+  const origin = request.headers.get("Origin") || "";
+  const bannerCorsHeaders = {
+    "Access-Control-Allow-Origin": origin || "https://app.snabbb.com",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
+  };
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: bannerCorsHeaders });
+  }
+
+  if (request.method === "POST") {
+    try {
+      const odooRes = await fetch(`https://${ODOO_SHOP_HOST}/api/snabbb-shop/banners`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Cookie": request.headers.get("Cookie") || "",
+        },
+        body: await request.text(),
+      });
+
+      return new Response((await odooRes.text()) || JSON.stringify({ banners: [] }), {
+        status: odooRes.status >= 200 && odooRes.status <= 599 ? odooRes.status : 502,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+          ...bannerCorsHeaders,
+        },
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: String(err), banners: [] }), {
+        status: 502,
+        headers: { "Content-Type": "application/json", ...bannerCorsHeaders },
       });
     }
   }

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { RESERVED_REWARDS_QUERY_KEY } from '../hooks/useReservedRewards';
 import { claimReward } from '../api/checkoutApi';
 import { CART_TOAST_STYLE } from './cartToastStyle';
 import ProductGrid from './ProductGrid';
@@ -103,6 +105,7 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
   const [view, setView] = useState<UnifiedShopView>(resume.view);
   const [claimingFromLink, setClaimingFromLink] = useState(Boolean(deepLink.claimCode));
   const handledDeepLink = useRef(false);
+  const queryClient = useQueryClient();
 
   // Wait until the shopper is signed in (the claim needs their Odoo session),
   // then claim once and land them in checkout with the reward applied.
@@ -113,6 +116,7 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
     handledDeepLink.current = true;
 
     const finish = () => {
+      queryClient.invalidateQueries({ queryKey: RESERVED_REWARDS_QUERY_KEY });
       clearRewardDeepLink();
       setClaimingFromLink(false);
       setView('checkout');
@@ -131,7 +135,7 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
         })
       )
       .finally(finish);
-  }, [isLoggedIn, deepLink]);
+  }, [isLoggedIn, deepLink, queryClient]);
 
   return (
     <div

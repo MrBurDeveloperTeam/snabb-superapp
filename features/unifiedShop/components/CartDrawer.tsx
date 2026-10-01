@@ -1,7 +1,8 @@
 import React from 'react';
-import { X, Minus, Plus, Trash2 } from 'lucide-react';
+import { X, Minus, Plus, Trash2, Gift } from 'lucide-react';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
+import { useReservedRewards } from '../hooks/useReservedRewards';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -45,11 +46,16 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   // alone, only what's rendered is gated.
   const lines = isLoggedIn ? storedLines : [];
 
+  // Redeemed rewards Odoo has already put in this shopper's cart (free lines).
+  const reservedRewards = useReservedRewards();
+  const rewards = isLoggedIn ? reservedRewards : [];
+  const itemCount = lines.length + rewards.length;
+
   const currency = lines[0]?.currency ?? 'USD';
   const grandTotal = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
 
   const handleCheckout = () => {
-    if (lines.length === 0) return;
+    if (itemCount === 0) return;
     close();
     onCheckout();
   };
@@ -76,7 +82,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5 dark:border-slate-800">
           <h2 className="text-[15px] font-bold text-slate-900 dark:text-white">
-            Your Cart {lines.length > 0 && `(${lines.length})`}
+            Your Cart {itemCount > 0 && `(${itemCount})`}
           </h2>
           <button
             type="button"
@@ -89,12 +95,39 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          {lines.length === 0 ? (
+          {itemCount === 0 ? (
             <p className="mt-10 text-center text-[13px] text-slate-400">
               {isLoggedIn ? 'Your cart is empty.' : 'Log in to see your cart.'}
             </p>
           ) : (
             <ul className="flex flex-col gap-3">
+              {rewards.map((reward) => (
+                <li
+                  key={`reward-${reward.id || reward.code}`}
+                  className="flex gap-3 rounded-xl border border-tiffany-200 bg-tiffany-50/60 p-2.5 dark:border-tiffany-900 dark:bg-tiffany-900/30"
+                >
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-tiffany-100 text-tiffany-600 dark:bg-tiffany-900/50 dark:text-tiffany-300">
+                    <Gift className="h-6 w-6" />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <span className="w-fit rounded-full bg-tiffany-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      Reward
+                    </span>
+                    <p className="text-[12px] font-semibold leading-snug text-slate-800 line-clamp-2 dark:text-slate-100">
+                      {reward.name}
+                    </p>
+                    {reward.benefitSummary && (
+                      <p className="text-[11px] leading-snug text-slate-500 line-clamp-2 dark:text-slate-400">
+                        {reward.benefitSummary}
+                      </p>
+                    )}
+                    <div className="mt-auto flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Qty 1</span>
+                      <span className="text-[13px] font-bold text-tiffany-600 dark:text-tiffany-300">Free</span>
+                    </div>
+                  </div>
+                </li>
+              ))}
               {lines.map((line) => {
                 const meta = BRAND_DISPLAY[line.brand];
                 return (
@@ -164,14 +197,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
           )}
         </div>
 
-        {lines.length > 0 && (
+        {itemCount > 0 && (
           <div className="border-t border-slate-100 px-4 py-3.5 dark:border-slate-800">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">
                 Total
               </span>
               <span className="text-[17px] font-bold text-slate-900 dark:text-white">
-                {formatPrice(grandTotal, currency)}
+                {lines.length > 0 ? formatPrice(grandTotal, currency) : 'Free'}
               </span>
             </div>
 

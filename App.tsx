@@ -4,7 +4,8 @@ import { MINI_APPS, CATEGORIES } from './constants';
 import AppCard from './components/AppCard';
 import UnifiedShopApp from './features/unifiedShop/components/UnifiedShopApp';
 import MyInvoicesPage from './features/invoices/MyInvoicesPage';
-import { useUnifiedCartCount, useUnifiedCartStore } from './features/unifiedShop/store/unifiedCartStore';
+import { useUnifiedCartStore } from './features/unifiedShop/store/unifiedCartStore';
+import { useUnifiedCartBadgeCount } from './features/unifiedShop/hooks/useReservedRewards';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import { AuthPage } from './features/auth/pages/AuthPage';
@@ -417,7 +418,7 @@ useEffect(() => {
   // Unified Shop's cart badge/trigger, surfaced in the shared header
   // (profile-menu entries below, plus a guest-visible icon) instead of
   // Unified Shop rendering its own separate header.
-  const unifiedCartCount = useUnifiedCartCount();
+  const unifiedCartCount = useUnifiedCartBadgeCount();
   const openUnifiedCart = useUnifiedCartStore((s) => s.open);
 
   useEffect(() => {
