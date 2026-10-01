@@ -144,15 +144,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <div className="flex items-center justify-between text-[13px]">
                 <span className="text-slate-500 dark:text-slate-400">Delivery</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-100">
-                  <span className="mr-1.5 font-normal text-slate-400 line-through">{formatPrice(amountDeliveryGross, currency)}</span>
+                  <span className="mr-1.5 whitespace-nowrap font-normal text-slate-400 line-through">{formatPrice(amountDeliveryGross, currency)}</span>
                   {formatPrice(amountDelivery, currency)}
                 </span>
               </div>
-              <div className="-mt-1 flex items-center justify-between text-[12px]">
-                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                  Free shipping{shippingRewardName && shippingRewardName.toLowerCase() !== 'free shipping' ? ` · ${shippingRewardName}` : ''}
-                </span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">-{formatPrice(shippingDiscount, currency)}</span>
+              <div className="-mt-1 flex items-center justify-between gap-3 text-[12px] text-emerald-600 dark:text-emerald-400">
+                <span>Free shipping applied</span>
+                <span className="whitespace-nowrap font-semibold">-{formatPrice(shippingDiscount, currency)}</span>
               </div>
             </>
           ) : (
