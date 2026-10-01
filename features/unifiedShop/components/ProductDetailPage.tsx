@@ -139,7 +139,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ product, onBack }
                 min={1}
                 value={qty}
                 onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-12 border-x border-slate-200 bg-transparent py-2 text-center text-[13px] text-slate-800 focus:outline-none dark:border-slate-700 dark:text-slate-100"
+                className="no-spinner w-12 border-x border-slate-200 bg-transparent py-2 text-center text-[13px] text-slate-800 focus:outline-none dark:border-slate-700 dark:text-slate-100"
               />
               <button
                 type="button"

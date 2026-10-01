@@ -179,7 +179,7 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({ product, onCl
                 min={1}
                 value={qty}
                 onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-[13px] text-slate-800 focus:border-tiffany-500 focus:outline-none focus:ring-1 focus:ring-tiffany-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="no-spinner w-20 rounded-lg border border-slate-200 px-3 py-2 text-[13px] text-slate-800 focus:border-tiffany-500 focus:outline-none focus:ring-1 focus:ring-tiffany-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
 
