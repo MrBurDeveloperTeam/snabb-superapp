@@ -326,7 +326,7 @@ const validateProfileField = (name: ValidatedProfileField, value: string) => {
   return "";
 };
 
-export default function ProfileSettingsPage() {
+export default function ProfileSettingsPage({ onProfileSaved }: { onProfileSaved?: () => void } = {}) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [form, setForm] = useState<ProfileForm>({
@@ -627,15 +627,26 @@ export default function ProfileSettingsPage() {
     }));
   };
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('profile-guide-progress', { detail: {
+      address: !!(form.street.trim() && form.city.trim() && form.stateId && form.postalCode.trim()),
+    } }));
+  }, [form.street, form.city, form.stateId, form.postalCode]);
+
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      alert('Please choose a JPG, PNG or GIF image.');
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) {
       alert("Image must be below 2MB");
       return;
     }
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
+    window.dispatchEvent(new CustomEvent('profile-guide-progress', { detail: { photo: true } }));
   };
 
   const addSpecialty = (specialtyId: string) => {
@@ -675,6 +686,7 @@ export default function ProfileSettingsPage() {
   const handleSave = async () => {
     setTouchedFields({ firstName: true, lastName: true, phone: true, dateOfBirth: true });
     if (Object.values(profileErrors).some(Boolean)) {
+      window.dispatchEvent(new CustomEvent('profile-guide-progress', { detail: { repair: true } }));
       return;
     }
 
@@ -840,6 +852,7 @@ export default function ProfileSettingsPage() {
       }
 
       await loadProfile();
+      onProfileSaved?.();
 
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -1009,7 +1022,7 @@ export default function ProfileSettingsPage() {
           </p>
         </div>
 
-        <div className="section-card">
+        <div className="section-card" data-profile-guide="photo">
           <div className="section-title">Profile Photo</div>
 
           <div className="flex items-center gap-5">
@@ -1074,7 +1087,7 @@ export default function ProfileSettingsPage() {
           </div>
         </div>
 
-        <div className="section-card">
+        <div className="section-card" data-profile-guide="personal">
           <div className="section-title">Personal Information</div>
 
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
@@ -1248,7 +1261,7 @@ export default function ProfileSettingsPage() {
           </div>
         )}
 
-        <div className="section-card">
+        <div className="section-card" data-profile-guide="address">
           <div className="section-title">Address</div>
 
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
@@ -1462,6 +1475,7 @@ export default function ProfileSettingsPage() {
             <button
               type="button"
               onClick={handleSave}
+              data-profile-guide="save"
               disabled={saving}
               className="rounded-lg bg-[#647294] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#52617f] disabled:cursor-not-allowed disabled:opacity-60"
             >
