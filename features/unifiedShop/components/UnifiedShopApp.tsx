@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { claimReward } from '../api/checkoutApi';
+import { CART_TOAST_STYLE } from './cartToastStyle';
 import ProductGrid from './ProductGrid';
 import CartDrawer from './CartDrawer';
 import CheckoutPage from './checkout/CheckoutPage';
@@ -68,9 +71,67 @@ function readStripeResume(): { view: UnifiedShopView; reference: string | null }
  * folded into it, so the page owns everything below that shared header —
  * just its own in-flow page space, not a `fixed inset-0` overlay.
  */
+/**
+ * Deep links from reward.snabbb.com:
+ *   /snabbb-shop?claim_reward=<code>  claim that redeemed reward into the cart, then open checkout
+ *   /snabbb-shop?open=checkout        open checkout directly (reward already reserved in the cart)
+ */
+function readRewardDeepLink(): { claimCode: string | null; openCheckout: boolean } {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const claimCode = params.get('claim_reward')?.trim() || null;
+    return { claimCode, openCheckout: params.get('open') === 'checkout' };
+  } catch {
+    return { claimCode: null, openCheckout: false };
+  }
+}
+
+function clearRewardDeepLink() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('claim_reward');
+    url.searchParams.delete('open');
+    window.history.replaceState(window.history.state, '', url.toString());
+  } catch {
+    // ignore — a leftover query string is harmless
+  }
+}
+
 const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
   const [resume] = useState(readStripeResume);
+  const [deepLink] = useState(readRewardDeepLink);
   const [view, setView] = useState<UnifiedShopView>(resume.view);
+  const [claimingFromLink, setClaimingFromLink] = useState(Boolean(deepLink.claimCode));
+  const handledDeepLink = useRef(false);
+
+  // Wait until the shopper is signed in (the claim needs their Odoo session),
+  // then claim once and land them in checkout with the reward applied.
+  useEffect(() => {
+    if (handledDeepLink.current) return;
+    if (!deepLink.claimCode && !deepLink.openCheckout) return;
+    if (!isLoggedIn) return;
+    handledDeepLink.current = true;
+
+    const finish = () => {
+      clearRewardDeepLink();
+      setClaimingFromLink(false);
+      setView('checkout');
+    };
+
+    if (!deepLink.claimCode) {
+      finish();
+      return;
+    }
+
+    claimReward(deepLink.claimCode)
+      .then(() => toast.success('Reward added to your cart!', { style: CART_TOAST_STYLE }))
+      .catch((err) =>
+        toast.error(err instanceof Error ? err.message : 'Could not claim this reward.', {
+          style: CART_TOAST_STYLE,
+        })
+      )
+      .finally(finish);
+  }, [isLoggedIn, deepLink]);
 
   return (
     <div
@@ -81,7 +142,11 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn }) => {
       // both themes, instead of a flat color.
       style={{ backgroundImage: 'var(--mesh-bg)', backgroundAttachment: 'fixed' }}
     >
-      {view === 'checkout' ? (
+      {claimingFromLink ? (
+        <main className="py-16 text-center text-[13px] text-slate-400">
+          {isLoggedIn ? 'Adding your reward to your cart…' : 'Please log in to claim your reward.'}
+        </main>
+      ) : view === 'checkout' ? (
         <main className="py-4">
           <CheckoutPage onBackToShop={() => setView('shop')} onProceedToPayment={() => setView('payment')} />
         </main>
