@@ -39,6 +39,7 @@ import { getActiveCompanyFromOdooSession } from './services/getCompanies';
 import { loadUserProfile } from './services/loadProfile';
 import { getWebsiteCodeForCountry } from './services/authOdoo';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
+import ProfileCompletionGuide from './components/profile-completion-guide/ProfileCompletionGuide';
 import { useProfileImage } from './hooks/useProfileImage';
 import ThemeToggle from './components/ThemeToggle';
 import { useThemeStore } from './store/themeStore';
@@ -1306,6 +1307,7 @@ useEffect(() => {
         isLoggedIn={!!user}
         profileComplete={(user as any)?.profileComplete}
       />
+    <ProfileCompletionGuide enabled={!!isLoggedIn && profileCompletionStatus === 'incomplete'} path={path} menuOpen={isProfileMenuOpen} owner={user?.email || ''} />
     {isToastBackdropOpen && (
         <div
           className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-[1px]"
@@ -1400,6 +1402,7 @@ useEffect(() => {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                   aria-label="Open profile menu"
+                  data-profile-guide="profile"
                   aria-expanded={isProfileMenuOpen}
                   className="block relative"
                 >
@@ -1622,6 +1625,7 @@ useEffect(() => {
 
                       {/* Settings */}
                       <button
+                        data-profile-guide="settings"
                         onClick={() => navigate('/profile-settings')}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
@@ -1842,7 +1846,7 @@ useEffect(() => {
           )}
           {path === '/profile-settings' && (
             <motion.div key="profile-settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ProfileSettingsPage />
+              <ProfileSettingsPage onProfileSaved={() => { void verifySession(); }} />
             </motion.div>
           )}
 
