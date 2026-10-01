@@ -69,7 +69,8 @@ export function buildLinesParam(lines: { productId: number; qty: number }[]): st
  * omit on subsequent refetches (e.g. after saving an address).
  */
 export function fetchCheckoutState(linesParam?: string): Promise<CheckoutStateResponse> {
-  const qs = linesParam ? `?lines=${encodeURIComponent(linesParam)}` : '';
+  // '' is meaningful: the local cart has no products, so the server order must be emptied of them too.
+  const qs = linesParam !== undefined ? `?lines=${encodeURIComponent(linesParam)}` : '';
   return call<CheckoutStateResponse>(`/state${qs}`, { method: 'GET' });
 }
 
