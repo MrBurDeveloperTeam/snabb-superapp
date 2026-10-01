@@ -14,6 +14,8 @@ export interface ReservedReward {
   name: string;
   benefitSummary: string;
   validUntil: string;
+  /** Product image of the reward (served by the Worker's /api/reward/image proxy); empty if none. */
+  imageUrl: string;
 }
 
 export const RESERVED_REWARDS_QUERY_KEY = ['snabbb-shop', 'reserved-rewards'] as const;
@@ -51,6 +53,7 @@ async function fetchReservedRewards(email: string): Promise<ReservedReward[]> {
       name: str(r.reward_name) || str(r.name) || 'Reward',
       benefitSummary: str(r.benefit_summary),
       validUntil: str(r.valid_until),
+      imageUrl: str(r.image_url),
     }));
 }
 

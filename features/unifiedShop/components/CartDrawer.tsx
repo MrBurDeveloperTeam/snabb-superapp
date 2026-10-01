@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Minus, Plus, Trash2, Gift } from 'lucide-react';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
@@ -34,6 +34,27 @@ interface CartDrawerProps {
    */
   isLoggedIn: boolean;
 }
+
+/** Reward thumbnail: the product image, falling back to a gift icon if it's missing or fails to load. */
+const RewardThumb: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-tiffany-100 text-tiffany-600 dark:bg-tiffany-900/50 dark:text-tiffany-300">
+        <Gift className="h-6 w-6" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="h-14 w-14 shrink-0 rounded-lg bg-slate-50 object-cover dark:bg-slate-800"
+    />
+  );
+};
 
 const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   const isOpen = useUnifiedCartStore((s) => s.isOpen);
@@ -106,9 +127,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                   key={`reward-${reward.id || reward.code}`}
                   className="flex gap-3 rounded-xl border border-tiffany-200 bg-tiffany-50/60 p-2.5 dark:border-tiffany-900 dark:bg-tiffany-900/30"
                 >
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-tiffany-100 text-tiffany-600 dark:bg-tiffany-900/50 dark:text-tiffany-300">
-                    <Gift className="h-6 w-6" />
-                  </div>
+                  <RewardThumb src={reward.imageUrl} alt={reward.name} />
                   <div className="flex flex-1 flex-col gap-1">
                     <span className="w-fit rounded-full bg-tiffany-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                       Reward
