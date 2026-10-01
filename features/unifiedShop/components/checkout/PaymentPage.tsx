@@ -362,6 +362,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
   const currency = methodsQuery.data?.currency ?? state?.currency ?? 'USD';
   const amountSubtotal = state?.amount_subtotal ?? 0;
   const amountDelivery = state?.amount_delivery ?? 0;
+  const amountDeliveryGross = state?.amount_delivery_gross ?? 0;
+  const shippingDiscount = state?.amount_shipping_discount ?? 0;
+  const shippingRewardName = state?.shipping_reward_name ?? '';
   const amountTax = state?.amount_tax ?? 0;
   const amountTotal = methodsQuery.data?.amount_total ?? state?.amount_total ?? 0;
   const earnCredits = methodsQuery.data?.earn_credits ?? 0;
@@ -509,12 +512,30 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-[13px]">
-                <span className="text-slate-500 dark:text-slate-400">Delivery</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-100">
-                  {formatPrice(amountDelivery, currency)}
-                </span>
-              </div>
+              {shippingDiscount > 0 ? (
+                <>
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className="text-slate-500 dark:text-slate-400">Delivery</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">
+                      <span className="mr-1.5 font-normal text-slate-400 line-through">{formatPrice(amountDeliveryGross, currency)}</span>
+                      {formatPrice(amountDelivery, currency)}
+                    </span>
+                  </div>
+                  <div className="-mt-1 flex items-center justify-between text-[12px]">
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      Free shipping{shippingRewardName && shippingRewardName.toLowerCase() !== 'free shipping' ? ` · ${shippingRewardName}` : ''}
+                    </span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">-{formatPrice(shippingDiscount, currency)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between text-[13px]">
+                  <span className="text-slate-500 dark:text-slate-400">Delivery</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">
+                    {formatPrice(amountDelivery, currency)}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-[13px]">
                 <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-100">

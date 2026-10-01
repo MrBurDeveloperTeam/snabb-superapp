@@ -248,6 +248,10 @@ export interface CheckoutStateResponse {
   amount_subtotal?: number;
   amount_tax?: number;
   amount_delivery?: number;
+  /** Delivery cost before a Free Shipping promotion; amount_shipping_discount is what the promotion took off. */
+  amount_delivery_gross?: number;
+  amount_shipping_discount?: number;
+  shipping_reward_name?: string;
   amount_total?: number;
   /**
    * One entry per brand/company represented in the cart — a backend/
