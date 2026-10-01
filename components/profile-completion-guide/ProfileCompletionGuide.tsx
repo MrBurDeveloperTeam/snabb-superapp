@@ -13,6 +13,7 @@ const readViewport = () => ({
 
 export default function ProfileCompletionGuide({ enabled, path, menuOpen, owner }: Props) {
   const [started, setStarted] = useState(false);
+  const [skipped, setSkipped] = useState(false);
   const [step, setStep] = useState(0);
   const [addressReady, setAddressReady] = useState(false);
   const [repair, setRepair] = useState(false);
@@ -20,9 +21,10 @@ export default function ProfileCompletionGuide({ enabled, path, menuOpen, owner 
   const [viewport, setViewport] = useState(readViewport);
   const cardRef = useRef<HTMLElement>(null);
   const [cardHeight, setCardHeight] = useState(200);
-  useEffect(() => { setStarted(false); setStep(0); setAddressReady(false); setRepair(false); }, [owner]);
+  // Skipping applies only to this login; changing or clearing the owner resets it.
+  useEffect(() => { setStarted(false); setSkipped(false); setStep(0); setAddressReady(false); setRepair(false); }, [owner]);
   useEffect(() => { if (enabled && path === '/') setStarted(true); }, [enabled, path]);
-  const active = enabled && started && (path === '/' || path === '/profile-settings');
+  const active = enabled && started && !skipped && (path === '/' || path === '/profile-settings');
   useEffect(() => {
     if (!active) return;
     if (path === '/profile-settings' && step < 2) setStep(2);
@@ -117,7 +119,10 @@ export default function ProfileCompletionGuide({ enabled, path, menuOpen, owner 
     <div style={{ ...shade, left: 0, top: bottom, right: 0, bottom: 0 }} />
     {rect && <div style={{ position: 'fixed', left, top, width: right - left, height: bottom - top, border: '3px solid #2dd4bf', borderRadius: 14, boxShadow: '0 0 0 3px rgba(255,255,255,.8)' }} />}
     <section ref={cardRef} data-profile-guide-card tabIndex={-1} role="dialog" aria-label="Profile completion guide" aria-describedby="profile-guide-instruction" style={{ position: 'fixed', boxSizing: 'border-box', left: cardLeft, top: cardTop, width: cardWidth, maxHeight: Math.max(80, Math.min(260, height * 0.42)), overflowY: 'auto', overflowWrap: 'anywhere', padding: width < 480 ? 14 : 20, borderRadius: 16, background: '#fff', color: '#0f172a', boxShadow: '0 16px 48px #0004', pointerEvents: 'auto' }}>
-      <p style={{ fontSize: 12, color: '#0f766e', fontWeight: 700, margin: '0 0 8px' }}>PROFILE COMPLETION · STEP {step + 1}/5</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <p style={{ fontSize: 12, color: '#0f766e', fontWeight: 700, margin: 0 }}>PROFILE COMPLETION · STEP {step + 1}/5</p>
+        <button type="button" onClick={() => setSkipped(true)} aria-label="Skip tutorial for this session" style={{ flexShrink: 0, padding: '4px 6px', border: 0, borderRadius: 6, background: 'transparent', color: '#0f766e', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Skip</button>
+      </div>
       <h2 id="profile-guide-instruction" style={{ fontSize: 18, fontWeight: 700, margin: '0 0 10px' }}>{rect ? repair ? 'Check your personal details' : titles[step] : 'Loading your profile…'}</h2>
       <p style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>Complete your profile to qualify for an extra platform coupon.{step === 3 && ' Enter your street, city, state and postal code.'}{step === 4 && ' Your guide will close once your completed profile is saved.'}</p>
       {step === 3 && <button disabled={!addressReady} onClick={() => setStep(4)} style={{ marginTop: 14, padding: '9px 14px', background: addressReady ? '#0f766e' : '#94a3b8', color: 'white', borderRadius: 8 }}>Continue to save →</button>}
