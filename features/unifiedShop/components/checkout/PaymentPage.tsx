@@ -55,6 +55,8 @@ interface PaymentPageProps {
   onBack: () => void;
   /** All the way back to the product grid. */
   onBackToShop: () => void;
+  /** Breadcrumb "Review Order": back to the shop with the cart drawer open. */
+  onReviewOrder?: () => void;
   /**
    * Set when this page was reached by a full-page reload back from Stripe's
    * own 3DS/bank-authentication redirect (see loadStripeJs's neighbor,
@@ -91,7 +93,7 @@ interface PaymentPageProps {
  * documented `payment.transaction.create()` + `_get_processing_values()`
  * entry point, never touches card data).
  */
-const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeReference }) => {
+const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onReviewOrder, resumeReference }) => {
   const { data: state } = useCheckoutState(undefined);
   const actions = useCheckoutActions();
   const { mutateAsync: createAppLink } = useCreateAppLink();
@@ -368,7 +370,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, resumeR
   return (
     <div className="mx-auto max-w-6xl px-4 py-4">
       <nav className="mb-5 flex items-center gap-2 text-[13px] font-semibold text-slate-400">
-        <button type="button" onClick={onBackToShop} className="text-tiffany-600 hover:underline dark:text-tiffany-400">
+        <button type="button" onClick={onReviewOrder ?? onBackToShop} className="text-tiffany-600 hover:underline dark:text-tiffany-400">
           Review Order
         </button>
         <span>›</span>

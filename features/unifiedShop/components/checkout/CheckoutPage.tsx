@@ -14,6 +14,8 @@ import { Switch } from '@mui/material';
 interface CheckoutPageProps {
   /** Returns to the product grid (see UnifiedShopApp's `view` state). */
   onBackToShop: () => void;
+  /** Breadcrumb "Review Order": back to the shop with the cart drawer open. */
+  onReviewOrder?: () => void;
   /**
    * Advances to the native Payment step (components/checkout/PaymentPage.tsx)
    * once /confirm has validated the order is ready. As of 2026-09-18 this
@@ -44,7 +46,7 @@ type AddressModalState =
  * native Payment step (see onProceedToPayment / PaymentPage.tsx) instead
  * of hopping off to Odoo's /shop/payment the way it used to.
  */
-const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPayment }) => {
+const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder, onProceedToPayment }) => {
   const lines = useUnifiedCartStore((s) => s.lines);
 
   // Computed once, at mount — the backend applies it idempotently, but
@@ -229,7 +231,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onProceedToPa
           checkout header. Review Order returns to the cart drawer; Payment
           stays inert since that step isn't built natively here yet. */}
       <nav className="mb-5 flex items-center gap-2 text-[13px] font-semibold text-slate-400">
-        <button type="button" onClick={onBackToShop} className="text-tiffany-600 hover:underline dark:text-tiffany-400">
+        <button type="button" onClick={onReviewOrder ?? onBackToShop} className="text-tiffany-600 hover:underline dark:text-tiffany-400">
           Review Order
         </button>
         <span>›</span>

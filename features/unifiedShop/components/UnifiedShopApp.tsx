@@ -10,6 +10,7 @@ import CheckoutPage from './checkout/CheckoutPage';
 import PaymentPage from './checkout/PaymentPage';
 import SequenceAdminPage from './SequenceAdminPage';
 import { ListOrdered } from 'lucide-react';
+import { useUnifiedCartStore } from '../store/unifiedCartStore';
 
 export interface UnifiedShopAppProps {
   /**
@@ -113,6 +114,12 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn, isAdmin = f
   const handledDeepLink = useRef(false);
   const queryClient = useQueryClient();
 
+  // Breadcrumb "Review Order": back to the shop with the cart drawer open.
+  const reviewOrder = () => {
+    setView('shop');
+    useUnifiedCartStore.getState().open();
+  };
+
   // Wait until the shopper is signed in (the claim needs their Odoo session),
   // then claim once and land them in checkout with the reward applied.
   useEffect(() => {
@@ -165,13 +172,14 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn, isAdmin = f
         />
       ) : view === 'checkout' ? (
         <main className="py-4">
-          <CheckoutPage onBackToShop={() => setView('shop')} onProceedToPayment={() => setView('payment')} />
+          <CheckoutPage onBackToShop={() => setView('shop')} onReviewOrder={reviewOrder} onProceedToPayment={() => setView('payment')} />
         </main>
       ) : view === 'payment' ? (
         <main className="py-4">
           <PaymentPage
             onBack={() => setView('checkout')}
             onBackToShop={() => setView('shop')}
+            onReviewOrder={reviewOrder}
             resumeReference={resume.view === 'payment' ? resume.reference : null}
           />
         </main>
