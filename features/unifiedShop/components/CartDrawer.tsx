@@ -7,7 +7,12 @@ import { X, Minus, Plus, Trash2, Gift } from 'lucide-react';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
 import { usePrefetchCheckoutState } from '../hooks/useCheckoutState';
-import { RESERVED_REWARDS_QUERY_KEY, useAvailableRewards, useReservedRewards } from '../hooks/useReservedRewards';
+import {
+  RESERVED_REWARDS_QUERY_KEY,
+  useAvailableRewards,
+  useReservedRewards,
+  type ReservedReward,
+} from '../hooks/useReservedRewards';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -72,14 +77,6 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   // alone, only what's rendered is gated.
   const lines = isLoggedIn ? storedLines : [];
 
-  // Warm up checkout while the drawer is open: ~1s after the last quantity
-  // edit, start the server-side order sync so it's (mostly) done by the time
-  // the shopper presses Checkout. See usePrefetchCheckoutState.
-  usePrefetchCheckoutState(
-    isOpen && isLoggedIn,
-    lines.map((l) => ({ productId: l.productId, qty: l.qty }))
-  );
-
   // Redeemed rewards Odoo has already put in this shopper's cart (free lines).
   const reservedRewards = useReservedRewards();
   const rewards = isLoggedIn ? reservedRewards : [];
@@ -89,11 +86,35 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   const queryClient = useQueryClient();
   const [removingCode, setRemovingCode] = useState<string | null>(null);
 
+  // Warm up checkout while the drawer is open: ~1s after the last quantity
+  // edit, start the server-side order sync so it's (mostly) done by the time
+  // the shopper presses Checkout. See usePrefetchCheckoutState.
+  // Paused while a reward is being added/removed: both requests rewrite the
+  // same Odoo order, and running them at once makes each wait on the other's
+  // database locks (the slow reward-claim + slow state calls seen together).
+  // It resumes (and re-syncs, since the order just changed) when that ends.
+  usePrefetchCheckoutState(
+    isOpen && isLoggedIn && removingCode === null,
+    lines.map((l) => ({ productId: l.productId, qty: l.qty }))
+  );
+
+  // Flip a reward's state in the cached list right away, so the drawer shows
+  // the result the moment the claim/release request succeeds instead of also
+  // waiting for the rewards list to be re-downloaded (a second slow call).
+  const markRewardState = (code: string, state: ReservedReward['state']) => {
+    queryClient.setQueriesData<ReservedReward[]>({ queryKey: RESERVED_REWARDS_QUERY_KEY }, (old) =>
+      old ? old.map((r) => (r.code === code ? { ...r, state } : r)) : old
+    );
+  };
+
   const handleAddReward = async (code: string) => {
     setRemovingCode(code);
     try {
       await claimReward(code);
-      await queryClient.invalidateQueries({ queryKey: RESERVED_REWARDS_QUERY_KEY });
+      markRewardState(code, 'reserved');
+      // Confirm against the server in the background — don't make the
+      // shopper wait for it.
+      void queryClient.invalidateQueries({ queryKey: RESERVED_REWARDS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ['snabbb-shop', 'checkout', 'state'] });
       toast.success('Reward added to your cart!', { style: CART_TOAST_STYLE });
     } catch (err) {
@@ -107,7 +128,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
     setRemovingCode(code);
     try {
       await releaseReward(code);
-      await queryClient.invalidateQueries({ queryKey: RESERVED_REWARDS_QUERY_KEY });
+      markRewardState(code, 'active');
+      void queryClient.invalidateQueries({ queryKey: RESERVED_REWARDS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ['snabbb-shop', 'checkout', 'state'] });
       toast.success('Reward removed — you can add it back under Available rewards.', { style: CART_TOAST_STYLE });
     } catch (err) {
