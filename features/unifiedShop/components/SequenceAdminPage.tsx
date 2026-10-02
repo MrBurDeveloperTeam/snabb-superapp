@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowUp, ArrowDown, ChevronsUp, GripVertical, Search, Save } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, ChevronsUp, Download, GripVertical, Search, Save, Upload } from 'lucide-react';
 import type { ShopBrand } from '../types';
 import { fetchSequenceProducts, saveSequence, type SequenceProduct } from '../api/sequenceAdminApi';
 import { CART_TOAST_STYLE } from './cartToastStyle';
+import { exportSequenceToExcel, importSequenceFromExcel } from '../utils/sequenceExcel';
 
 const BRANDS: { id: ShopBrand; label: string }[] = [
   { id: 'mrbur', label: 'MR.BUR' },
@@ -26,6 +27,8 @@ const SequenceAdminPage: React.FC<Props> = ({ onBack }) => {
   const [query, setQuery] = useState('');
   const [dragId, setDragId] = useState<number | null>(null);
   const [overId, setOverId] = useState<number | null>(null);
+  const [excelBusy, setExcelBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +84,44 @@ const SequenceAdminPage: React.FC<Props> = ({ onBack }) => {
     }
   };
 
+  const handleExport = async () => {
+    if (items.length === 0) return;
+    setExcelBusy(true);
+    try {
+      await exportSequenceToExcel(brand, items);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not export.', { style: CART_TOAST_STYLE });
+    } finally {
+      setExcelBusy(false);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-importing the same file
+    if (!file) return;
+    setExcelBusy(true);
+    try {
+      const result = await importSequenceFromExcel(file, items);
+      const byId = new Map(items.map((p) => [p.id, p]));
+      setItems(result.orderedIds.map((id) => byId.get(id)!).filter(Boolean));
+      const notes = [
+        result.unknownRows ? `${result.unknownRows} unknown row(s) skipped` : '',
+        result.duplicateRows ? `${result.duplicateRows} duplicate row(s) ignored` : '',
+        result.missingFromFile ? `${result.missingFromFile} product(s) not in file moved to the end` : '',
+      ].filter(Boolean);
+      toast.success(
+        `Imported order for ${result.matched} product(s). Press "Save order" to apply.` +
+          (notes.length ? ` (${notes.join('; ')})` : ''),
+        { style: CART_TOAST_STYLE, duration: 8000 }
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not import.', { style: CART_TOAST_STYLE });
+    } finally {
+      setExcelBusy(false);
+    }
+  };
+
   const q = query.trim().toLowerCase();
   const filtering = q.length > 0;
 
@@ -96,6 +137,30 @@ const SequenceAdminPage: React.FC<Props> = ({ onBack }) => {
         >
           <ArrowLeft size={15} /> Back to shop
         </button>
+        <div className="flex items-center gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx"
+          className="hidden"
+          onChange={handleImportFile}
+        />
+        <button
+          onClick={handleExport}
+          disabled={loading || items.length === 0 || excelBusy}
+          title="Download this brand's current order as an Excel file"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+        >
+          <Download size={14} /> Export
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={loading || items.length === 0 || excelBusy}
+          title="Load an order from an Excel file (not saved until you press Save order)"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+        >
+          <Upload size={14} /> Import
+        </button>
         <button
           onClick={handleSave}
           disabled={!dirty || saving}
@@ -103,6 +168,7 @@ const SequenceAdminPage: React.FC<Props> = ({ onBack }) => {
         >
           <Save size={14} /> {saving ? 'Saving…' : 'Save order'}
         </button>
+        </div>
       </div>
 
       <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Arrange products</h1>
