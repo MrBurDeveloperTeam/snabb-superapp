@@ -114,10 +114,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             already carries every line across every brand order flat.
           */}
           {lines.length > 0 && (
-            <div className="mb-2 flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+            <div className="mb-2 flex flex-col gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
               {lines.map((line) => (
-                <div key={line.id} className="flex items-center gap-3">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
+                <div key={line.id} className="flex items-center gap-4">
+                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
                     {line.image_url && (
                       <img
                         src={line.image_url}
@@ -127,11 +127,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">
+                    <p className="line-clamp-2 text-[13px] leading-snug font-semibold text-slate-800 dark:text-slate-100">
                       {line.qty} x {line.name}
                     </p>
                   </div>
-                  <span className="shrink-0 text-[12px] font-bold text-slate-900 dark:text-white">
+                  <span className="shrink-0 text-[13px] font-bold text-slate-900 dark:text-white">
                     {formatPrice(line.price_subtotal, currency)}
                   </span>
                 </div>

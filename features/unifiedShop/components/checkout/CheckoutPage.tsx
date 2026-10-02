@@ -240,7 +240,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
         <span className="text-slate-300 dark:text-slate-600">Payment</span>
       </nav>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_440px]">
         <div className="flex flex-col gap-8">
           <section>
             <h2 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">
