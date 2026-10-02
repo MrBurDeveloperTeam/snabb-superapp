@@ -5268,6 +5268,66 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 /* =========================================================
+      🖼️ PUBLIC PRODUCT / BANNER IMAGE EDGE CACHE
+      app.snabbb.com/web/image/product.template/<id>/<field>?unique=<ts>
+      (also shop banner images — see the regexes below)
+      → mrbur.odoo.com, cached at Cloudflare's edge.
+
+      The Unified Shop sends a `unique` (last-edit timestamp) on product
+      image URLs, so a URL's content never changes — safe to cache hard
+      (editing a product changes `unique`, i.e. a new URL). Without this
+      every shopper's first view of an image went Worker → Odoo and the
+      checkout page sat waiting on it.
+
+      Deliberately narrow so nothing private is ever cached:
+        - GET/HEAD only, and only when `unique` is present
+        - only product.template / product.product images, shop banner
+          images and /web/content/<id> links — never res.partner avatars
+          or other /web/image models
+        - the upstream request carries NO Cookie, so what's cached is
+          always the public response, never a logged-in variant
+        - only 200 responses are cached; errors pass through uncached
+========================================================= */
+if (
+    url.hostname === "app.snabbb.com" &&
+    (request.method === "GET" || request.method === "HEAD") &&
+    (
+        /^\/web\/image\/product\.(template|product)\/\d+\/image_\d+$/.test(url.pathname) ||
+        // Shop banners: smart.banner / snabbb.banner images, and the
+        // /web/content/<attachment id> links smart banners use. Safe: the
+        // upstream request below carries no cookie, so a private attachment
+        // answers 403/404 (never cached) and only public ones are stored.
+        /^\/web\/image\/(smart|snabbb)\.banner\/\d+\/(image|mobile_image)$/.test(url.pathname) ||
+        /^\/web\/content\/\d+$/.test(url.pathname)
+    ) &&
+    url.searchParams.get("unique")
+) {
+    const imgUpstream = new URL(request.url);
+    imgUpstream.protocol = "https:";
+    imgUpstream.hostname = ODOO_EVENT_HOST; // mrbur.odoo.com
+
+    try {
+        const imgRes = await fetch(imgUpstream.toString(), {
+            method: request.method,
+            headers: { Host: ODOO_EVENT_HOST, Accept: request.headers.get("Accept") || "*/*" },
+            cf: {
+                cacheEverything: true,
+                cacheTtlByStatus: { "200-299": 31536000, "300-599": 0 },
+            },
+        });
+
+        const imgHeaders = copyResponseHeadersWithoutSetCookie(imgRes);
+        if (imgRes.status === 200) {
+            imgHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
+        }
+        return new Response(imgRes.body, { status: imgRes.status, headers: imgHeaders });
+    } catch (err) {
+        // Fall through to the normal proxy below if the edge fetch fails.
+        console.warn("[image-cache] edge fetch failed, using normal proxy:", err);
+    }
+}
+
+/* =========================================================
       🌐 EVENT REVERSE PROXY
       app.snabbb.com/event → mrbur.odoo.com/event
 ========================================================= */
@@ -9346,7 +9406,26 @@ if (url.pathname === "/api/snabbb-shop/banners") {
         body: await request.text(),
       });
 
-      return new Response((await odooRes.text()) || JSON.stringify({ banners: [] }), {
+      let bannerBody = (await odooRes.text()) || JSON.stringify({ banners: [] });
+      // Odoo returns absolute image URLs on its own host, which bypasses
+      // Cloudflare. Point them at app.snabbb.com instead so the image edge
+      // cache above serves them (same-origin as the app, too).
+      try {
+        const parsed = JSON.parse(bannerBody);
+        if (parsed && Array.isArray(parsed.banners)) {
+          const odooOrigin = `https://${ODOO_SHOP_HOST}/web/`;
+          for (const b of parsed.banners) {
+            for (const key of ["image_url", "mobile_image_url"]) {
+              if (typeof b[key] === "string" && b[key].startsWith(odooOrigin)) {
+                b[key] = "https://app.snabbb.com/web/" + b[key].slice(odooOrigin.length);
+              }
+            }
+          }
+          bannerBody = JSON.stringify(parsed);
+        }
+      } catch (_) { /* not JSON — pass through untouched */ }
+
+      return new Response(bannerBody, {
         status: odooRes.status >= 200 && odooRes.status <= 599 ? odooRes.status : 502,
         headers: {
           "Content-Type": "application/json",
