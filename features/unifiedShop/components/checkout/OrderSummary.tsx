@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import type { CheckoutLine, ClaimableReward, CreditWalletState } from '../../types';
 
 function formatPrice(price: number, currency: string) {
@@ -44,6 +44,8 @@ interface OrderSummaryProps {
   confirmError: string | null;
   onConfirm: () => void;
   onBackToCart: () => void;
+  /** Removes a product line from the cart; omitted → no delete button. */
+  onRemoveLine?: (line: CheckoutLine) => void;
 }
 
 /**
@@ -80,6 +82,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   confirmError,
   onConfirm,
   onBackToCart,
+  onRemoveLine,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [codeInput, setCodeInput] = useState('');
@@ -134,6 +137,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <span className="shrink-0 text-[13px] font-bold text-slate-900 dark:text-white">
                     {formatPrice(line.price_subtotal, currency)}
                   </span>
+                  {onRemoveLine && line.product_template_id && line.price_subtotal >= 0 && !line.removable_discount && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveLine(line)}
+                      aria-label={`Remove ${line.name}`}
+                      title="Remove item"
+                      className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

@@ -436,6 +436,14 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
             confirmError={confirmError}
             onConfirm={handleConfirm}
             onBackToCart={onBackToShop}
+            onRemoveLine={(line) => {
+              if (!line.product_template_id) return;
+              const remaining = useUnifiedCartStore
+                .getState()
+                .lines.filter((l) => l.productId !== line.product_template_id);
+              useUnifiedCartStore.getState().removeItem(line.product_template_id);
+              if (remaining.length === 0) onBackToShop();
+            }}
           />
         </div>
       </div>
