@@ -114,9 +114,6 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         strictPort: false,
         allowedHosts: true,  // Changed to true instead of 'all'
-        hmr: {
-          clientPort: 3000,
-        },
         proxy: isDev ?{
           // '/api/v1/users': {
           //   target: 'http://localhost:8069',
