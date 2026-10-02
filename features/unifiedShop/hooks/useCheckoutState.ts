@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   buildLinesParam,
   claimReward,
@@ -79,6 +79,58 @@ export function usePrefetchCheckoutState(
     }, PREFETCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [enabled, hasLines, linesParam, queryClient]);
+}
+
+export interface CartDiscountSummary {
+  /** Discount / promo lines the server has applied (e.g. "30% on your order"), as negative amounts. */
+  discounts: { id: number | string; name: string; amount: number }[];
+  /** What the shopper will pay for the items after those discounts (delivery not included). */
+  totalAfterDiscounts: number;
+}
+
+/**
+ * The server-side discounts on the cart (typed promo codes, automatic
+ * promotions, free shipping), for the cart drawer to show. The drawer's own
+ * lines come from the local cart, which knows nothing about them.
+ *
+ * Read-only: it never fetches. It watches the same query usePrefetchCheckoutState
+ * fills (same key), so it shows whatever the latest background sync returned,
+ * and keeps showing the previous result while a new quantity is being synced
+ * so the line doesn't flicker off on every +/- click. Returns null while
+ * nothing is known or the cart has no discounts.
+ */
+export function useCartDiscountSummary(
+  enabled: boolean,
+  lines: { productId: number; qty: number }[]
+): CartDiscountSummary | null {
+  const linesParam = buildLinesParam(lines);
+  const { data } = useQuery({
+    queryKey: [...CHECKOUT_STATE_QUERY_KEY, linesParam] as const,
+    queryFn: () => fetchCheckoutState(linesParam),
+    enabled: false,
+    placeholderData: keepPreviousData,
+  });
+
+  if (!enabled || lines.length === 0 || !data || !data.ok || !data.authenticated || data.cart_empty) {
+    return null;
+  }
+
+  const discounts: CartDiscountSummary['discounts'] = (data.lines ?? [])
+    .filter((l) => l.price_subtotal < 0)
+    .map((l) => ({ id: l.id, name: l.name, amount: l.price_subtotal }));
+  if ((data.amount_shipping_discount ?? 0) > 0) {
+    discounts.push({
+      id: 'shipping',
+      name: data.shipping_reward_name || 'Free shipping',
+      amount: -(data.amount_shipping_discount ?? 0),
+    });
+  }
+  if (discounts.length === 0) return null;
+
+  return {
+    discounts,
+    totalAfterDiscounts: (data.amount_total ?? 0) - (data.amount_delivery ?? 0),
+  };
 }
 
 /**

@@ -6,7 +6,7 @@ import { CART_TOAST_STYLE } from './cartToastStyle';
 import { X, Minus, Plus, Trash2, Gift } from 'lucide-react';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
-import { usePrefetchCheckoutState } from '../hooks/useCheckoutState';
+import { useCartDiscountSummary, usePrefetchCheckoutState } from '../hooks/useCheckoutState';
 import {
   RESERVED_REWARDS_QUERY_KEY,
   useAvailableRewards,
@@ -95,6 +95,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   // It resumes (and re-syncs, since the order just changed) when that ends.
   usePrefetchCheckoutState(
     isOpen && isLoggedIn && removingCode === null,
+    lines.map((l) => ({ productId: l.productId, qty: l.qty }))
+  );
+  // Discounts the server has applied (typed promo code, automatic promos,
+  // free shipping). The drawer's lines are the local cart and don't include them.
+  const discountSummary = useCartDiscountSummary(
+    isOpen && isLoggedIn,
     lines.map((l) => ({ productId: l.productId, qty: l.qty }))
   );
 
@@ -333,12 +339,28 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
 
         {itemCount > 0 && (
           <div className="border-t border-slate-100 px-4 py-3.5 dark:border-slate-800">
+            {discountSummary && (
+              <ul className="mb-2 space-y-1">
+                {discountSummary.discounts.map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-3 text-[12px]">
+                    <span className="truncate font-medium text-emerald-700 dark:text-emerald-400">
+                      {d.name}
+                    </span>
+                    <span className="shrink-0 font-semibold text-emerald-700 dark:text-emerald-400">
+                      {formatPrice(d.amount, currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="mb-3 flex items-center justify-between">
               <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">
-                Total
+                {discountSummary ? 'Total after discounts' : 'Total'}
               </span>
               <span className="text-[17px] font-bold text-slate-900 dark:text-white">
-                {lines.length > 0 ? formatPrice(grandTotal, currency) : 'Free'}
+                {lines.length > 0
+                  ? formatPrice(discountSummary ? discountSummary.totalAfterDiscounts : grandTotal, currency)
+                  : 'Free'}
               </span>
             </div>
 
