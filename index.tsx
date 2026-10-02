@@ -1,7 +1,8 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+const isPetDesign = import.meta.env.DEV && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname) && new URLSearchParams(window.location.search).get('pet-design') === '1';
+const App = React.lazy<React.ComponentType>(() => isPetDesign ? import('./sharedPet/LocalPetDesign') : import('./App'));
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { TrackerProvider } from './lib/tracker';
@@ -28,7 +29,7 @@ root.render(
       <BrowserRouter>
         <ThemeBootstrap>
           <TrackerProvider>
-            <App />
+            <React.Suspense fallback={<div>Loading Superapp…</div>}><App /></React.Suspense>
           </TrackerProvider>
         </ThemeBootstrap>
       </BrowserRouter>
