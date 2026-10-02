@@ -8,6 +8,7 @@ import { CART_TOAST_STYLE } from '../cartToastStyle';
 import AddressFormModal from './AddressFormModal';
 import DeliveryMethodList from './DeliveryMethodList';
 import OrderSummary from './OrderSummary';
+import CheckoutSkeleton from './CheckoutSkeleton';
 import type { AddressFormValues, CheckoutAddress } from '../../types';
 import { Switch } from '@mui/material';
 
@@ -154,12 +155,11 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
     onProceedToPayment();
   };
 
+  // Don't make the shopper stare at a blank "Loading checkout…" while the
+  // server works out the order: render the page shell + the local cart now,
+  // and swap in the real thing when /checkout/state arrives.
   if (isLoading) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-[13px] text-slate-400">
-        Loading checkout…
-      </div>
-    );
+    return <CheckoutSkeleton lines={lines} onBackToShop={onBackToShop} onReviewOrder={onReviewOrder} />;
   }
 
   if (isError || !data?.ok) {
