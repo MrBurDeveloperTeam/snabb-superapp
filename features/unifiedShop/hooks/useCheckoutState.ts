@@ -36,7 +36,7 @@ export function useCheckoutState(linesParam: string | undefined) {
 }
 
 /** How long after the last quantity edit before the early sync starts. */
-const PREFETCH_DEBOUNCE_MS = 1000;
+const PREFETCH_DEBOUNCE_MS = 350;
 /** A prefetched state newer than this isn't re-requested (e.g. drawer re-opened). */
 const PREFETCH_FRESH_MS = 30_000;
 
