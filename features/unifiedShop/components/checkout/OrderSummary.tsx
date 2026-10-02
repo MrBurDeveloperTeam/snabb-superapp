@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Minus, Plus, Trash2 } from 'lucide-react';
 import type { CheckoutLine, ClaimableReward, CreditWalletState } from '../../types';
 
 function formatPrice(price: number, currency: string) {
@@ -46,6 +46,8 @@ interface OrderSummaryProps {
   onBackToCart: () => void;
   /** Removes a product line from the cart; omitted → no delete button. */
   onRemoveLine?: (line: CheckoutLine) => void;
+  /** Changes a product line's quantity; omitted → no +/- stepper. */
+  onChangeQty?: (line: CheckoutLine, qty: number) => void;
 }
 
 /**
@@ -83,6 +85,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   onConfirm,
   onBackToCart,
   onRemoveLine,
+  onChangeQty,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [codeInput, setCodeInput] = useState('');
@@ -131,8 +134,32 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-[13px] leading-snug font-semibold text-slate-800 dark:text-slate-100">
-                      {line.qty} x {line.name}
+                      {onChangeQty && line.product_template_id && line.price_subtotal >= 0 && !line.removable_discount ? line.name : `${line.qty} x ${line.name}`}
                     </p>
+                    {onChangeQty && line.product_template_id && line.price_subtotal >= 0 && !line.removable_discount && (
+                      <div className="mt-1.5 inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => onChangeQty(line, line.qty - 1)}
+                          disabled={line.qty <= 1}
+                          aria-label="Decrease quantity"
+                          className="p-1.5 text-slate-500 hover:text-slate-800 disabled:opacity-30 dark:text-slate-400 dark:hover:text-white"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="min-w-[1.75rem] text-center text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+                          {line.qty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onChangeQty(line, line.qty + 1)}
+                          aria-label="Increase quantity"
+                          className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <span className="shrink-0 text-[13px] font-bold text-slate-900 dark:text-white">
                     {formatPrice(line.price_subtotal, currency)}

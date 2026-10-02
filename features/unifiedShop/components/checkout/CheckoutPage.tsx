@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Pencil, Plus } from 'lucide-react';
 import { useUnifiedCartStore } from '../../store/unifiedCartStore';
@@ -52,7 +52,14 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
 
   // Follows the cart: it only changes here when an item is removed from the
   // summary, which re-syncs the server order with the remaining lines.
-  const linesParam = buildLinesParam(lines.map((l) => ({ productId: l.productId, qty: l.qty })));
+  const cartLinesParam = buildLinesParam(lines.map((l) => ({ productId: l.productId, qty: l.qty })));
+  // Debounced so a run of +/- clicks sends one sync, not one per click.
+  const [linesParam, setLinesParam] = useState(cartLinesParam);
+  useEffect(() => {
+    if (cartLinesParam === linesParam) return;
+    const t = window.setTimeout(() => setLinesParam(cartLinesParam), 350);
+    return () => window.clearTimeout(t);
+  }, [cartLinesParam, linesParam]);
   // Removed rows disappear immediately, before the refreshed state arrives.
   const [removedTemplateIds, setRemovedTemplateIds] = useState<number[]>([]);
 
@@ -407,9 +414,16 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
         <div>
           <OrderSummary
             itemCount={(data.lines ?? []).reduce((sum, l) => sum + l.qty, 0)}
-            lines={(data.lines ?? []).filter(
-              (l) => !(l.product_template_id && removedTemplateIds.includes(l.product_template_id))
-            )}
+            lines={(data.lines ?? [])
+              .filter((l) => !(l.product_template_id && removedTemplateIds.includes(l.product_template_id)))
+              .map((l) => {
+                // Show the cart's qty right away; the server's totals follow.
+                const cartLine = l.product_template_id
+                  ? lines.find((c) => c.productId === l.product_template_id)
+                  : undefined;
+                if (!cartLine || cartLine.qty === l.qty || l.qty <= 0) return l;
+                return { ...l, qty: cartLine.qty, price_subtotal: (l.price_subtotal / l.qty) * cartLine.qty };
+              })}
             currency={currency}
             amountSubtotal={data.amount_subtotal ?? 0}
             amountDelivery={data.amount_delivery ?? 0}
@@ -437,6 +451,10 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
             confirmError={confirmError}
             onConfirm={handleConfirm}
             onBackToCart={onBackToShop}
+            onChangeQty={(line, qty) => {
+              if (!line.product_template_id || qty < 1) return;
+              useUnifiedCartStore.getState().setQty(line.product_template_id, qty);
+            }}
             onRemoveLine={(line) => {
               if (!line.product_template_id) return;
               const remaining = useUnifiedCartStore
