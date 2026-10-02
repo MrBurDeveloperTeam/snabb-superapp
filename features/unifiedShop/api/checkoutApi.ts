@@ -148,6 +148,14 @@ export function releaseReward(code: string): Promise<{ ok: boolean }> {
   });
 }
 
+/** Removes a discount that was applied by typing a code, identified by its order line id. */
+export function releaseDiscountLine(lineId: number): Promise<{ ok: boolean }> {
+  return call(`/reward-release`, {
+    method: 'POST',
+    body: JSON.stringify({ line_id: lineId }),
+  });
+}
+
 export function confirmCheckout(): Promise<{ ok: boolean; ready_for_payment?: boolean }> {
   return call(`/confirm`, { method: 'POST' });
 }

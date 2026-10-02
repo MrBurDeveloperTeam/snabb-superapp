@@ -6,7 +6,11 @@ import { CART_TOAST_STYLE } from './cartToastStyle';
 import { X, Minus, Plus, Trash2, Gift } from 'lucide-react';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
-import { useCartDiscountSummary, usePrefetchCheckoutState } from '../hooks/useCheckoutState';
+import {
+  useCartDiscountSummary,
+  usePrefetchCheckoutState,
+  useRemoveCartDiscount,
+} from '../hooks/useCheckoutState';
 import {
   RESERVED_REWARDS_QUERY_KEY,
   useAvailableRewards,
@@ -103,6 +107,25 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
     isOpen && isLoggedIn,
     lines.map((l) => ({ productId: l.productId, qty: l.qty }))
   );
+
+  const removeCartDiscount = useRemoveCartDiscount(
+    lines.map((l) => ({ productId: l.productId, qty: l.qty }))
+  );
+  const [removingDiscountId, setRemovingDiscountId] = useState<number | string | null>(null);
+  const handleRemoveDiscount = async (id: number | string) => {
+    if (typeof id !== 'number') return;
+    setRemovingDiscountId(id);
+    try {
+      await removeCartDiscount(id);
+      toast.success('Discount removed.', { style: CART_TOAST_STYLE });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not remove this discount.', {
+        style: CART_TOAST_STYLE,
+      });
+    } finally {
+      setRemovingDiscountId(null);
+    }
+  };
 
   // Flip a reward's state in the cached list right away, so the drawer shows
   // the result the moment the claim/release request succeeds instead of also
@@ -346,8 +369,21 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                     <span className="truncate font-medium text-emerald-700 dark:text-emerald-400">
                       {d.name}
                     </span>
-                    <span className="shrink-0 font-semibold text-emerald-700 dark:text-emerald-400">
-                      {formatPrice(d.amount, currency)}
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                        {formatPrice(d.amount, currency)}
+                      </span>
+                      {d.removable && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDiscount(d.id)}
+                          disabled={removingDiscountId === d.id}
+                          aria-label={`Remove ${d.name}`}
+                          className="rounded-full p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-red-500 disabled:opacity-50 dark:hover:bg-slate-800"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </span>
                   </li>
                 ))}

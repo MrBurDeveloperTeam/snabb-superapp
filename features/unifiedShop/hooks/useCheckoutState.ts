@@ -5,12 +5,13 @@ import {
   claimReward,
   confirmCheckout,
   fetchCheckoutState,
+  releaseDiscountLine,
   saveAddress,
   selectDeliveryMethod,
   setBillingSameAsDelivery,
   toggleSnabbbCredit,
 } from '../api/checkoutApi';
-import type { AddressFormValues } from '../types';
+import type { AddressFormValues, CheckoutStateResponse } from '../types';
 
 const CHECKOUT_STATE_QUERY_KEY = ['snabbb-shop', 'checkout', 'state'] as const;
 
@@ -83,7 +84,7 @@ export function usePrefetchCheckoutState(
 
 export interface CartDiscountSummary {
   /** Discount / promo lines the server has applied (e.g. "30% on your order"), as negative amounts. */
-  discounts: { id: number | string; name: string; amount: number }[];
+  discounts: { id: number | string; name: string; amount: number; removable: boolean }[];
   /** What the shopper will pay for the items after those discounts (delivery not included). */
   totalAfterDiscounts: number;
 }
@@ -117,12 +118,18 @@ export function useCartDiscountSummary(
 
   const discounts: CartDiscountSummary['discounts'] = (data.lines ?? [])
     .filter((l) => l.price_subtotal < 0)
-    .map((l) => ({ id: l.id, name: l.name, amount: l.price_subtotal }));
+    .map((l) => ({
+      id: l.id,
+      name: l.name,
+      amount: l.price_subtotal,
+      removable: !!l.removable_discount,
+    }));
   if ((data.amount_shipping_discount ?? 0) > 0) {
     discounts.push({
       id: 'shipping',
       name: data.shipping_reward_name || 'Free shipping',
       amount: -(data.amount_shipping_discount ?? 0),
+      removable: false,
     });
   }
   if (discounts.length === 0) return null;
@@ -130,6 +137,38 @@ export function useCartDiscountSummary(
   return {
     discounts,
     totalAfterDiscounts: (data.amount_total ?? 0) - (data.amount_delivery ?? 0),
+  };
+}
+
+/**
+ * Removes a typed-in discount code from the cart. Updates the cached state
+ * straight away (drops the line and adds its amount back to the total) so the
+ * drawer reacts at once, then re-reads the real state from the server.
+ */
+export function useRemoveCartDiscount(lines: { productId: number; qty: number }[]) {
+  const queryClient = useQueryClient();
+  const linesParam = buildLinesParam(lines);
+  return async (lineId: number) => {
+    await releaseDiscountLine(lineId);
+    queryClient.setQueriesData<CheckoutStateResponse>(
+      { queryKey: CHECKOUT_STATE_QUERY_KEY },
+      (old) => {
+        if (!old || !old.lines) return old;
+        const gone = old.lines.find((l) => l.id === lineId);
+        return {
+          ...old,
+          lines: old.lines.filter((l) => l.id !== lineId),
+          amount_total: (old.amount_total ?? 0) - (gone?.price_subtotal ?? 0),
+        };
+      }
+    );
+    void queryClient
+      .fetchQuery({
+        queryKey: [...CHECKOUT_STATE_QUERY_KEY, linesParam] as const,
+        queryFn: () => fetchCheckoutState(linesParam),
+        staleTime: 0,
+      })
+      .catch(() => {});
   };
 }
 

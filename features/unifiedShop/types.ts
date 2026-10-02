@@ -147,6 +147,8 @@ export interface CheckoutLine {
   price_unit: number;
   price_subtotal: number;
   image_url: string | false;
+  /** True for a discount added by typing a code — it can be removed with releaseDiscountLine. */
+  removable_discount?: boolean;
   /**
    * Which company's own sale.order/invoice this line will land on — see
    * unified_shop_api's checkout.py `_resolve_line_company` in the mrbur
