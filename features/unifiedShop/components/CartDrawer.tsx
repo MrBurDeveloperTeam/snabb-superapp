@@ -6,6 +6,7 @@ import { CART_TOAST_STYLE } from './cartToastStyle';
 import { X, Minus, Plus, Trash2, Gift } from 'lucide-react';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
+import { usePrefetchCheckoutState } from '../hooks/useCheckoutState';
 import { RESERVED_REWARDS_QUERY_KEY, useAvailableRewards, useReservedRewards } from '../hooks/useReservedRewards';
 
 function formatPrice(price: number, currency: string) {
@@ -70,6 +71,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   // See isLoggedIn's doc comment above — the underlying cart is left
   // alone, only what's rendered is gated.
   const lines = isLoggedIn ? storedLines : [];
+
+  // Warm up checkout while the drawer is open: ~1s after the last quantity
+  // edit, start the server-side order sync so it's (mostly) done by the time
+  // the shopper presses Checkout. See usePrefetchCheckoutState.
+  usePrefetchCheckoutState(
+    isOpen && isLoggedIn,
+    lines.map((l) => ({ productId: l.productId, qty: l.qty }))
+  );
 
   // Redeemed rewards Odoo has already put in this shopper's cart (free lines).
   const reservedRewards = useReservedRewards();

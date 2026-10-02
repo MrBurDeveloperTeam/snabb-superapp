@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  buildLinesParam,
   claimReward,
   confirmCheckout,
   fetchCheckoutState,
@@ -31,6 +33,52 @@ export function useCheckoutState(linesParam: string | undefined) {
     staleTime: 0,
     retry: false,
   });
+}
+
+/** How long after the last quantity edit before the early sync starts. */
+const PREFETCH_DEBOUNCE_MS = 1000;
+/** A prefetched state newer than this isn't re-requested (e.g. drawer re-opened). */
+const PREFETCH_FRESH_MS = 30_000;
+
+/**
+ * Starts the checkout-state request in the background while the shopper is
+ * still looking at the cart drawer, so the server's order sync / promotion
+ * recalculation overlaps with them reading the cart instead of starting
+ * only when they press Checkout.
+ *
+ * Waits PREFETCH_DEBOUNCE_MS after the last quantity change (so a run of
+ * +/- clicks sends one request, not one per click). It uses exactly the
+ * query key CheckoutPage's useCheckoutState builds from the same cart, so
+ * opening checkout finds the data already cached (or joins the request
+ * still in flight) instead of starting a new one.
+ *
+ * Side effect to be aware of: like opening checkout, this makes the server
+ * sync the cart into its draft order — so only enable it for a signed-in
+ * shopper with the drawer open and something in the cart. Checkout always
+ * re-syncs with the final cart, so a stale or racing prefetch can never
+ * leave the order wrong. Errors are swallowed: it's an optimisation only.
+ */
+export function usePrefetchCheckoutState(
+  enabled: boolean,
+  lines: { productId: number; qty: number }[]
+) {
+  const queryClient = useQueryClient();
+  const linesParam = buildLinesParam(lines);
+  const hasLines = lines.length > 0;
+
+  useEffect(() => {
+    if (!enabled || !hasLines) return;
+    const timer = window.setTimeout(() => {
+      void queryClient
+        .prefetchQuery({
+          queryKey: [...CHECKOUT_STATE_QUERY_KEY, linesParam] as const,
+          queryFn: () => fetchCheckoutState(linesParam),
+          staleTime: PREFETCH_FRESH_MS,
+        })
+        .catch(() => {});
+    }, PREFETCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [enabled, hasLines, linesParam, queryClient]);
 }
 
 /**
