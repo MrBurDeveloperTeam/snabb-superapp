@@ -50,12 +50,11 @@ type AddressModalState =
 const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder, onProceedToPayment }) => {
   const lines = useUnifiedCartStore((s) => s.lines);
 
-  // Computed once, at mount — the backend applies it idempotently, but
-  // there's no reason to resend it on every refetch once the real Odoo
-  // order is in sync (see useCheckoutState's doc comment).
-  const [linesParam] = useState(() =>
-    buildLinesParam(lines.map((l) => ({ productId: l.productId, qty: l.qty })))
-  );
+  // Follows the cart: it only changes here when an item is removed from the
+  // summary, which re-syncs the server order with the remaining lines.
+  const linesParam = buildLinesParam(lines.map((l) => ({ productId: l.productId, qty: l.qty })));
+  // Removed rows disappear immediately, before the refreshed state arrives.
+  const [removedTemplateIds, setRemovedTemplateIds] = useState<number[]>([]);
 
   const { data, isLoading, isError, error } = useCheckoutState(linesParam);
   const actions = useCheckoutActions();
@@ -408,7 +407,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
         <div>
           <OrderSummary
             itemCount={(data.lines ?? []).reduce((sum, l) => sum + l.qty, 0)}
-            lines={data.lines ?? []}
+            lines={(data.lines ?? []).filter(
+              (l) => !(l.product_template_id && removedTemplateIds.includes(l.product_template_id))
+            )}
             currency={currency}
             amountSubtotal={data.amount_subtotal ?? 0}
             amountDelivery={data.amount_delivery ?? 0}
@@ -441,6 +442,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
               const remaining = useUnifiedCartStore
                 .getState()
                 .lines.filter((l) => l.productId !== line.product_template_id);
+              setRemovedTemplateIds((ids) => [...ids, line.product_template_id as number]);
               useUnifiedCartStore.getState().removeItem(line.product_template_id);
               if (remaining.length === 0) onBackToShop();
             }}

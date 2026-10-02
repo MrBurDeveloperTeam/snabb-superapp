@@ -33,6 +33,9 @@ export function useCheckoutState(linesParam: string | undefined) {
     // out — this isn't a browse-y list that benefits from staying stale.
     staleTime: 0,
     retry: false,
+    // The key changes when the cart does (item removed in checkout) — keep
+    // showing the current state until the refreshed one arrives.
+    placeholderData: keepPreviousData,
   });
 }
 
