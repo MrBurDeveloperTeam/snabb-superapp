@@ -63,7 +63,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
   // Removed rows disappear immediately, before the refreshed state arrives.
   const [removedTemplateIds, setRemovedTemplateIds] = useState<number[]>([]);
 
-  const { data, isLoading, isError, error } = useCheckoutState(linesParam);
+  const { data, isLoading, isError, error, isPlaceholderData } = useCheckoutState(linesParam);
+  // Totals are stale from the moment the cart is edited until the server's recalculated state arrives.
+  const updatingTotals = cartLinesParam !== linesParam || isPlaceholderData;
   const actions = useCheckoutActions();
 
   const [addressModal, setAddressModal] = useState<AddressModalState>({ open: false });
@@ -424,6 +426,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
                 if (!cartLine || cartLine.qty === l.qty || l.qty <= 0) return l;
                 return { ...l, qty: cartLine.qty, price_subtotal: (l.price_subtotal / l.qty) * cartLine.qty };
               })}
+            updatingTotals={updatingTotals}
             currency={currency}
             amountSubtotal={data.amount_subtotal ?? 0}
             amountDelivery={data.amount_delivery ?? 0}
@@ -445,7 +448,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
               !deliveryAddress ||
               !(billingSame || billingAddress) ||
               companies.length === 0 ||
-              !selectedCarrierId
+              !selectedCarrierId ||
+              updatingTotals
             }
             confirming={actions.confirm.isPending}
             confirmError={confirmError}

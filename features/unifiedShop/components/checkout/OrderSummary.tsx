@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Minus, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
 import type { CheckoutLine, ClaimableReward, CreditWalletState } from '../../types';
 
 function formatPrice(price: number, currency: string) {
@@ -48,6 +48,8 @@ interface OrderSummaryProps {
   onRemoveLine?: (line: CheckoutLine) => void;
   /** Changes a product line's quantity; omitted → no +/- stepper. */
   onChangeQty?: (line: CheckoutLine, qty: number) => void;
+  /** True while totals are being recalculated after a cart edit. */
+  updatingTotals?: boolean;
 }
 
 /**
@@ -86,6 +88,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   onBackToCart,
   onRemoveLine,
   onChangeQty,
+  updatingTotals = false,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [codeInput, setCodeInput] = useState('');
@@ -217,8 +220,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
           <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
             <span className="text-[14px] font-bold text-slate-900 dark:text-white">Total</span>
-            <span className="text-[17px] font-bold text-slate-900 dark:text-white">
-              {formatPrice(amountTotal, currency)}
+            <span
+              className="inline-flex items-center gap-2 text-[17px] font-bold text-slate-900 dark:text-white"
+              aria-busy={updatingTotals}
+            >
+              {updatingTotals && <Loader2 className="h-4 w-4 animate-spin text-tiffany-500" aria-label="Updating total" />}
+              <span className={updatingTotals ? 'opacity-40 transition-opacity' : 'transition-opacity'}>
+                {formatPrice(amountTotal, currency)}
+              </span>
             </span>
           </div>
         </div>
