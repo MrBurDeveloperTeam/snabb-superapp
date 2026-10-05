@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MINI_APPS, CATEGORIES } from './constants';
+import { MINI_APPS, CATEGORIES, ICON_VERSION } from './constants';
 import AppCard from './components/AppCard';
 import UnifiedShopApp from './features/unifiedShop/components/UnifiedShopApp';
 import MyInvoicesPage from './features/invoices/MyInvoicesPage';
@@ -1782,7 +1782,7 @@ useEffect(() => {
                   aria-label="Explore Tutorials"
                 >
                   <img
-                    src="/icons/tutorial-video.png"
+                    src={`/icons/tutorial-video.png?v=${ICON_VERSION}`}
                     alt=""
                     className="h-14 w-14 object-contain transition-transform duration-300 group-hover/tutorial:scale-105"
                   />

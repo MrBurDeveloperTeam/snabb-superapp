@@ -5347,9 +5347,17 @@ if (
 if (
     url.hostname === "app.snabbb.com" &&
     (request.method === "GET" || request.method === "HEAD") &&
-    /^\/(icons|images)\/.+\.(png|jpe?g|webp|avif|svg|gif)$/i.test(url.pathname) &&
-    url.searchParams.get("v")
+    /^\/(icons|images)\/.+\.(png|jpe?g|webp|avif|svg|gif)$/i.test(url.pathname)
 ) {
+    // Unversioned URL (no ?v=): not ours to cache hard. Once this Worker is
+    // bound to app.snabbb.com/icons/*, every /icons/* request lands here, so
+    // pass it straight through to the origin (Pages). Without this it falls
+    // through to the Worker's catch-all and returns the 19-byte
+    // "SSO Gateways Active" text/plain instead of the image.
+    if (!url.searchParams.get("v")) {
+        return fetch(request);
+    }
+
     try {
         const iconRes = await fetch(request.url, {
             method: request.method,
