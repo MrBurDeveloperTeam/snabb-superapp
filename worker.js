@@ -5328,6 +5328,50 @@ if (
 }
 
 /* =========================================================
+      🖼️ STATIC ICON EDGE CACHE
+      app.snabbb.com/icons/**?v=<ICON_VERSION>  (home page app icons)
+
+      The home page icons are ~800 KB PNGs served by Pages with
+      `max-age=14400, must-revalidate`, so every visit re-validated all of
+      them (CF-Cache-Status: REVALIDATED). Same approach as the product-image
+      cache above: cache hard at Cloudflare's edge AND in the browser.
+
+      Safe because the URL only gets this treatment when `v` is present —
+      constants.ts appends ?v=ICON_VERSION, so replacing an icon = bump the
+      version = new URL. Unversioned /icons/* requests are untouched.
+
+        - GET/HEAD only, image extensions only, 200 responses only
+        - no Cookie is forwarded, so only the public response is cached
+        - errors pass through uncached
+========================================================= */
+if (
+    url.hostname === "app.snabbb.com" &&
+    (request.method === "GET" || request.method === "HEAD") &&
+    /^\/(icons|images)\/.+\.(png|jpe?g|webp|avif|svg|gif)$/i.test(url.pathname) &&
+    url.searchParams.get("v")
+) {
+    try {
+        const iconRes = await fetch(request.url, {
+            method: request.method,
+            headers: { Accept: request.headers.get("Accept") || "*/*" },
+            cf: {
+                cacheEverything: true,
+                cacheTtlByStatus: { "200-299": 31536000, "300-599": 0 },
+            },
+        });
+
+        const iconHeaders = copyResponseHeadersWithoutSetCookie(iconRes);
+        if (iconRes.status === 200) {
+            iconHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
+        }
+        return new Response(iconRes.body, { status: iconRes.status, headers: iconHeaders });
+    } catch (err) {
+        // Fall through to the normal flow if the edge fetch fails.
+        console.warn("[icon-cache] edge fetch failed, using normal flow:", err);
+    }
+}
+
+/* =========================================================
       🌐 EVENT REVERSE PROXY
       app.snabbb.com/event → mrbur.odoo.com/event
 ========================================================= */
