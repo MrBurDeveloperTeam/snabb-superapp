@@ -1,4 +1,5 @@
 import api from "./api";
+import { PROFILE_GUIDE_DISMISSALS_KEY } from './profileGuideStorage';
 
 // localStorage also holds app state that has nothing to do with the login
 // session — most importantly the Zustand-persisted Unified Shop cart
@@ -7,6 +8,7 @@ import api from "./api";
 // disappear the moment the user logs out to log back in. Whitelist the
 // keys that must survive a logout, restore them after the clear.
 const KEYS_TO_PRESERVE_ON_LOGOUT = [
+  PROFILE_GUIDE_DISMISSALS_KEY, // Per-user profile guide dismissals
   'snabbb-unified-shop-cart', // Unified Shop cart (Zustand persist)
 ];
 
