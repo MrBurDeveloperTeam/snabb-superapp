@@ -7,7 +7,7 @@ const appGalleryPetRepository = createAppGalleryPetRepository(supabase);
 interface MeowdokuLauncherProps {
   isOpen: boolean;
   onClose: () => void;
-  userId: string;
+  userId: string | null;
 }
 
 export default function MeowdokuLauncher(props: MeowdokuLauncherProps) {
