@@ -44,4 +44,5 @@ assert.deepEqual(new Set(walk(join(host, 'dist/games')).map(file => relative(joi
 for (const game of ['flappy-cat', 'pac-cat', 'tetris', 'meowdoku', 'mole-game', 'stadium-football', 'stadium-hurdles']) {
   assert.ok(existsSync(join(host, 'dist/games', game, 'index.html')));
 }
-console.log(`Verified pet-function ${manifest.version}: ${files.length} canonical game files across seven games, including reconstructed WASM chunks.`);
+const gameCount = readdirSync(canonical, { withFileTypes: true }).filter(entry => entry.isDirectory()).length;
+console.log(`Verified pet-function ${manifest.version}: ${files.length} canonical game files across ${gameCount} games, including reconstructed WASM chunks.`);
