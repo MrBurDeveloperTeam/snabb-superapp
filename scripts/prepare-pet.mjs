@@ -7,6 +7,25 @@ import { readdirSync, existsSync, mkdirSync, copyFileSync, rmSync } from 'node:f
 const require = createRequire(import.meta.url);
 const host = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const root = dirname(require.resolve('@mrburdeveloperteam/pet-function/package.json'));
+// Use an explicitly enabled sibling build for local development fixes.
+if (process.env.SNABBB_USE_LOCAL_PET === '1') {
+  const local = resolve(host, '../pet-function');
+  const installedVersion = JSON.parse(readResource(join(root, 'package.json'))).version;
+  if (JSON.parse(readResource(join(local, 'package.json'))).version !== installedVersion) throw new Error('Local pet-function version must match the installed release.');
+  if (!existsSync(join(local, 'dist/pet.js'))) throw new Error('Build ../pet-function before enabling the local pet runtime.');
+  function copyBuild(dir = '') {
+    for (const entry of readdirSync(join(local, 'dist', dir), { withFileTypes: true })) {
+      const name = join(dir, entry.name);
+      if (entry.isDirectory()) copyBuild(name);
+      else { const target = join(root, 'dist', name); mkdirSync(dirname(target), { recursive: true }); copyFileSync(join(local, 'dist', name), target); }
+    }
+  }
+  copyBuild();
+  copyFileSync(join(local, 'public/games/stadium-football/index.html'), join(root, 'public/games/stadium-football/index.html'));
+  copyFileSync(join(local, 'public/games/stadium-football/index.pck'), join(root, 'public/games/stadium-football/index.pck'));
+  copyFileSync(join(local, 'public/pet-function/rooms-wide/sports-ground-kart.png'), join(root, 'public/pet-function/rooms-wide/sports-ground-kart.png'));
+  console.log('Using local pet-function build:', local);
+}
 if (!existsSync(join(root, 'public'))) throw new Error('Installed pet-function package has no public resources: ' + root);
 rmSync(join(host, 'public', 'molar-experience'), { recursive: true, force: true });
 rmSync(join(host, 'public', 'images', 'cat-meow.mp3'), { force: true });

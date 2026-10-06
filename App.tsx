@@ -197,7 +197,7 @@ const App: React.FC = () => {
   const [authFormData, setAuthFormData] = useState<AuthFormData>(initialFormData);
   const [user, setUser] = useState<AuthFormData | null>(null);
   const [, setLoggedInUser] = useState<AuthFormData | null>(null);
-  const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
+  const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(() => import.meta.env.DEV && new URLSearchParams(window.location.search).get('pet') === '1');
   const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false);
   const [userChatContext, setUserChatContext] = useState<string>('');
   // Molar user-context ownership — see reconcileSupabaseIdentity/verifySession
@@ -1758,14 +1758,14 @@ useEffect(() => {
             isOpen={isVirtualPetOpen}
             onClose={() => setIsVirtualPetOpen(false)}
             userId={petCatOwnerId}
-            extraGames={petCatOwnerId ? [
+            extraGames={[
               {
                 id: 'meowdoku',
                 title: 'Meowdoku',
                 iconUrl: '/games/meowdoku/cover-148.png',
                 onSelect: () => setIsMeowdokuOpen(true),
               },
-            ] : undefined}
+            ]}
           />
         )}
         {/* Meowdoku is already live/user-facing in Production (legacy
@@ -1774,7 +1774,7 @@ useEffect(() => {
             as a sibling ABOVE SharedVirtualPet's own z-[1000] overlay
             (z-[1100]) so it never renders invisibly behind it; closing it
             leaves SharedVirtualPet's Games room still open underneath. */}
-        {petCatOwnerId && (
+        {(
           <MeowdokuLauncher
             isOpen={isMeowdokuOpen}
             onClose={() => setIsMeowdokuOpen(false)}
