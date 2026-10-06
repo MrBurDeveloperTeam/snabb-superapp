@@ -22,12 +22,12 @@ for (const file of files) {
     const parts = [];
     for (let i = 0; existsSync(`${target}.part${i}`); i++) parts.push(readFileSync(`${target}.part${i}`));
     assert.ok(parts.length, `Missing WASM chunks: ${target}`);
-    assert.deepEqual(Buffer.concat(parts), readFileSync(file));
+    assert.ok(Buffer.concat(parts).equals(readFileSync(file)), `WASM content mismatch: ${target}`);
   } else if (file.endsWith('.js') && existsSync(`${target.slice(0, -3)}.wasm.part0`)) {
     const loader = readFileSync(target, 'utf8');
     assert.ok(loader.includes('Failed loading WASM chunk'), `Missing chunk loader: ${target}`);
   } else {
-    assert.deepEqual(readFileSync(target), readFileSync(file));
+    assert.ok(readFileSync(target).equals(readFileSync(file)), `Game content mismatch: ${target}`);
   }
 }
 const expected = new Set(files.flatMap(file => {
