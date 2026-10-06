@@ -103,6 +103,18 @@ const SequenceAdminPage: React.FC<Props> = ({ onBack }) => {
     setExcelBusy(true);
     try {
       const result = await importSequenceFromExcel(file, items);
+      // Same order as what is on screen -> nothing to apply. Tell the user
+      // instead of showing a misleading "Imported order" success message.
+      const unchanged =
+        result.orderedIds.length === items.length &&
+        result.orderedIds.every((id, i) => id === items[i].id);
+      if (unchanged) {
+        toast.info('No changes: the order in this file is the same as the current order.', {
+          style: CART_TOAST_STYLE,
+          duration: 6000,
+        });
+        return;
+      }
       const byId = new Map(items.map((p) => [p.id, p]));
       setItems(result.orderedIds.map((id) => byId.get(id)!).filter(Boolean));
       const notes = [
