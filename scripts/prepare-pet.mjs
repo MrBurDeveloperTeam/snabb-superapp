@@ -24,6 +24,11 @@ if (process.env.SNABBB_USE_LOCAL_PET === '1') {
   copyFileSync(join(local, 'public/games/stadium-football/index.html'), join(root, 'public/games/stadium-football/index.html'));
   copyFileSync(join(local, 'public/games/stadium-football/index.pck'), join(root, 'public/games/stadium-football/index.pck'));
   copyFileSync(join(local, 'public/pet-function/rooms-wide/sports-ground-kart.png'), join(root, 'public/pet-function/rooms-wide/sports-ground-kart.png'));
+  for (const file of readdirSync(join(local, 'public/games/cat-kart'))) {
+    const target = join(root, 'public/games/cat-kart', file);
+    mkdirSync(dirname(target), { recursive: true });
+    copyFileSync(join(local, 'public/games/cat-kart', file), target);
+  }
   console.log('Using local pet-function build:', local);
 }
 if (!existsSync(join(root, 'public'))) throw new Error('Installed pet-function package has no public resources: ' + root);
