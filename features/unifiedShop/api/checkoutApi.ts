@@ -179,3 +179,29 @@ export function removeWalletItem(
     body: JSON.stringify({ item_id: itemId }),
   });
 }
+
+/** A wallet item the shopper has been issued but has not acknowledged yet. */
+export interface WalletPopupItem {
+  id: number;
+  name: string;
+  /** Ready-to-show text: "Save MYR 40.46", "15% off (up to MYR 50.00)", "Free shipping". */
+  label: string;
+  min_order: string | false;
+  valid_until: string | false;
+}
+
+/**
+ * Wallet items to show in the "you received a wallet item" popup. Works with
+ * no cart, and returns an empty list when logged out (never throws for that).
+ */
+export function fetchUnclaimedWalletItems(): Promise<{ ok: boolean; items: WalletPopupItem[] }> {
+  return call(`/wallet-unclaimed`, { method: 'GET' });
+}
+
+/** Acknowledges ("claims") a wallet item; it stays Available in the wallet. */
+export function claimWalletItem(itemId: number): Promise<{ ok: boolean }> {
+  return call(`/wallet-claim`, {
+    method: 'POST',
+    body: JSON.stringify({ item_id: itemId }),
+  });
+}

@@ -6,6 +6,7 @@ import { claimReward } from '../api/checkoutApi';
 import { CART_TOAST_STYLE } from './cartToastStyle';
 import ProductGrid from './ProductGrid';
 import CartDrawer from './CartDrawer';
+import WalletClaimPopup from './WalletClaimPopup';
 import CheckoutPage from './checkout/CheckoutPage';
 import PaymentPage from './checkout/PaymentPage';
 import SequenceAdminPage from './SequenceAdminPage';
@@ -199,6 +200,7 @@ const UnifiedShopApp: React.FC<UnifiedShopAppProps> = ({ isLoggedIn, isAdmin = f
             <ProductGrid />
           </main>
           <CartDrawer onCheckout={() => setView('checkout')} isLoggedIn={isLoggedIn} />
+          <WalletClaimPopup isLoggedIn={isLoggedIn} />
         </>
       )}
     </div>
