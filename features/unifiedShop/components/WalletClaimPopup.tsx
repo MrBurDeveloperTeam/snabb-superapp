@@ -109,7 +109,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
       className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-[2px]"
       onClick={(e) => e.target === e.currentTarget && dismiss()}
     >
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-slate-900">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-slate-900">
         {!items.some((i) => i.image_url) && (
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-tiffany-100 text-tiffany-600 dark:bg-tiffany-900/50 dark:text-tiffany-300">
             <Gift size={28} />
@@ -137,7 +137,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                   <img
                     src={item.image_url}
                     alt={item.name}
-                    className="block max-h-48 w-full object-cover"
+                    className="block aspect-video max-h-80 w-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
