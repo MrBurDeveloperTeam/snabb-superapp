@@ -72,6 +72,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
   const [addressError, setAddressError] = useState<string | null>(null);
   const [claimingRewardId, setClaimingRewardId] = useState<number | null>(null);
   const [rewardError, setRewardError] = useState<string | null>(null);
+  const [walletBusyId, setWalletBusyId] = useState<number | null>(null);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
   // Turning the toggle OFF is purely a local UI reveal (show the billing
@@ -147,6 +149,23 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
         err instanceof Error ? err.message : 'Could not update Snabbb Credit.',
         { style: CART_TOAST_STYLE }
       );
+    }
+  };
+
+  const handleWalletAction = async (itemId: number, mode: 'apply' | 'remove') => {
+    setWalletError(null);
+    setWalletBusyId(itemId);
+    try {
+      if (mode === 'apply') {
+        await actions.applyWallet.mutateAsync(itemId);
+        toast.success('Wallet item applied!', { style: CART_TOAST_STYLE });
+      } else {
+        await actions.removeWallet.mutateAsync(itemId);
+      }
+    } catch (err) {
+      setWalletError(err instanceof Error ? err.message : 'Could not update your wallet item.');
+    } finally {
+      setWalletBusyId(null);
     }
   };
 
@@ -415,7 +434,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
 
         <div>
           <OrderSummary
-            itemCount={(data.lines ?? []).reduce((sum, l) => sum + l.qty, 0)}
+            itemCount={(data.lines ?? []).reduce((sum, l) => sum + (l.wallet_item_id ? 0 : l.qty), 0)}
             lines={(data.lines ?? [])
               .filter((l) => !(l.product_template_id && removedTemplateIds.includes(l.product_template_id)))
               .map((l) => {
@@ -437,6 +456,11 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
             amountTotal={data.amount_total ?? 0}
             rewards={data.rewards ?? []}
             credit={data.credit}
+            wallet={data.wallet ?? undefined}
+            walletBusyId={walletBusyId}
+            walletError={walletError}
+            onApplyWallet={(itemId) => handleWalletAction(itemId, 'apply')}
+            onRemoveWallet={(itemId) => handleWalletAction(itemId, 'remove')}
             claimingRewardId={claimingRewardId}
             rewardError={rewardError}
             onClaimReward={(reward) => handleClaimReward(reward.id, reward.code)}

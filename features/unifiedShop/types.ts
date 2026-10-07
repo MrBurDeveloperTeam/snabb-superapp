@@ -149,6 +149,8 @@ export interface CheckoutLine {
   image_url: string | false;
   /** True for a discount added by typing a code — it can be removed with releaseDiscountLine. */
   removable_discount?: boolean;
+  /** Set on a line created by a mrbur_wallet item (the line's name is the item's own name). */
+  wallet_item_id?: number | false;
   /**
    * Which company's own sale.order/invoice this line will land on — see
    * unified_shop_api's checkout.py `_resolve_line_company` in the mrbur
@@ -220,6 +222,35 @@ export interface CreditWalletState {
   redeemed_amount: number;
 }
 
+/** One mrbur_wallet item the shopper can apply to this cart (see the mrbur_wallet module). */
+export interface WalletAvailableItem {
+  id: number;
+  name: string;
+  /** Discount this item would give on the current cart, in the order currency. */
+  amount: number;
+  valid_until: string | false;
+}
+
+/** A wallet item already applied to this cart. */
+export interface WalletAppliedItem {
+  id: number;
+  name: string;
+  amount: number;
+}
+
+/** A wallet item the shopper owns but cannot use on this cart yet, with the reason. */
+export interface WalletUnavailableItem {
+  id: number;
+  name: string;
+  reason: string;
+}
+
+export interface WalletState {
+  available: WalletAvailableItem[];
+  applied: WalletAppliedItem[];
+  unavailable: WalletUnavailableItem[];
+}
+
 /** One reward the shopper can claim on this cart (see snabbb_discount_loyalty_reward_api). */
 export interface ClaimableReward {
   id: number;
@@ -280,6 +311,8 @@ export interface CheckoutStateResponse {
   delivery_methods?: DeliveryMethod[];
   selected_carrier_id?: number | false;
   credit?: CreditWalletState;
+  /** mrbur_wallet items (Fixed / Percentage discount, Free Shipping). Absent/null when the wallet module isn't installed. */
+  wallet?: WalletState | null;
   rewards?: ClaimableReward[];
 }
 

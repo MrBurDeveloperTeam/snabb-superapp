@@ -159,3 +159,23 @@ export function releaseDiscountLine(lineId: number): Promise<{ ok: boolean }> {
 export function confirmCheckout(): Promise<{ ok: boolean; ready_for_payment?: boolean }> {
   return call(`/confirm`, { method: 'POST' });
 }
+
+/** Applies a mrbur_wallet item (fixed / percentage discount, free shipping) to the cart. */
+export function applyWalletItem(
+  itemId: number
+): Promise<{ ok: boolean; amount_subtotal: number; amount_total: number }> {
+  return call(`/wallet-apply`, {
+    method: 'POST',
+    body: JSON.stringify({ item_id: itemId }),
+  });
+}
+
+/** Takes a wallet item off the cart; it goes back to the shopper's wallet. */
+export function removeWalletItem(
+  itemId: number
+): Promise<{ ok: boolean; amount_subtotal: number; amount_total: number }> {
+  return call(`/wallet-remove`, {
+    method: 'POST',
+    body: JSON.stringify({ item_id: itemId }),
+  });
+}

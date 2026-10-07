@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
-import type { CheckoutLine, ClaimableReward, CreditWalletState } from '../../types';
+import type { CheckoutLine, ClaimableReward, CreditWalletState, WalletState } from '../../types';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -32,6 +32,12 @@ interface OrderSummaryProps {
   amountTotal: number;
   rewards: ClaimableReward[];
   credit: CreditWalletState | undefined;
+  /** mrbur_wallet items for this cart; undefined when the wallet module isn't installed. */
+  wallet?: WalletState;
+  walletBusyId?: number | null;
+  walletError?: string | null;
+  onApplyWallet?: (itemId: number) => void;
+  onRemoveWallet?: (itemId: number) => void;
   claimingRewardId: number | null;
   rewardError: string | null;
   onClaimReward: (reward: ClaimableReward) => void;
@@ -74,6 +80,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   amountTotal,
   rewards,
   credit,
+  wallet,
+  walletBusyId = null,
+  walletError = null,
+  onApplyWallet,
+  onRemoveWallet,
   claimingRewardId,
   rewardError,
   onClaimReward,
@@ -286,6 +297,63 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           </button>
         </div>
       ))}
+
+      {wallet && (wallet.available.length > 0 || wallet.applied.length > 0 || wallet.unavailable.length > 0 || walletError) && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/60 dark:bg-amber-950/30">
+          <p className="text-[12px] font-bold text-amber-800 dark:text-amber-300">My Wallet</p>
+          {walletError && (
+            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              {walletError}
+            </p>
+          )}
+
+          {wallet.applied.map((item) => (
+            <div key={`applied-${item.id}`} className="mt-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold text-amber-900 dark:text-amber-100">{item.name}</p>
+                <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  -{formatPrice(item.amount, currency)} applied
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemoveWallet?.(item.id)}
+                disabled={walletBusyId === item.id}
+                className="shrink-0 text-[12px] font-semibold text-red-600 hover:underline disabled:opacity-50"
+              >
+                {walletBusyId === item.id ? 'Removing…' : 'Remove'}
+              </button>
+            </div>
+          ))}
+
+          {wallet.available.map((item) => (
+            <div key={`available-${item.id}`} className="mt-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold text-amber-900 dark:text-amber-100">{item.name}</p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                  Save {formatPrice(item.amount, currency)}
+                  {item.valid_until ? ` · valid until ${item.valid_until}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onApplyWallet?.(item.id)}
+                disabled={walletBusyId === item.id}
+                className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {walletBusyId === item.id ? 'Applying…' : 'Apply'}
+              </button>
+            </div>
+          ))}
+
+          {wallet.unavailable.map((item) => (
+            <div key={`unavailable-${item.id}`} className="mt-2 opacity-70">
+              <p className="truncate text-[13px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {confirmError && (
         <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">

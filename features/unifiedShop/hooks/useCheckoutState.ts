@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  applyWalletItem,
   buildLinesParam,
   claimReward,
   confirmCheckout,
   fetchCheckoutState,
   releaseDiscountLine,
+  removeWalletItem,
   saveAddress,
   selectDeliveryMethod,
   setBillingSameAsDelivery,
@@ -212,6 +214,16 @@ export function useCheckoutActions() {
     onSuccess: invalidate,
   });
 
+  const applyWalletMutation = useMutation({
+    mutationFn: (itemId: number) => applyWalletItem(itemId),
+    onSuccess: invalidate,
+  });
+
+  const removeWalletMutation = useMutation({
+    mutationFn: (itemId: number) => removeWalletItem(itemId),
+    onSuccess: invalidate,
+  });
+
   const claimRewardMutation = useMutation({
     mutationFn: (code: string) => claimReward(code),
     onSuccess: invalidate,
@@ -230,6 +242,8 @@ export function useCheckoutActions() {
     selectDeliveryMethod: selectDeliveryMethodMutation,
     toggleCredit: toggleCreditMutation,
     claimReward: claimRewardMutation,
+    applyWallet: applyWalletMutation,
+    removeWallet: removeWalletMutation,
     confirm: confirmMutation,
   };
 }
