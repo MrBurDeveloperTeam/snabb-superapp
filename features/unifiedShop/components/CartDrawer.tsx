@@ -10,6 +10,8 @@ import {
   useCartDiscountSummary,
   usePrefetchCheckoutState,
   useRemoveCartDiscount,
+  useCartWallet,
+  useCartWalletActions,
 } from '../hooks/useCheckoutState';
 import {
   RESERVED_REWARDS_QUERY_KEY,
@@ -112,6 +114,30 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
     lines.map((l) => ({ productId: l.productId, qty: l.qty }))
   );
   const [removingDiscountId, setRemovingDiscountId] = useState<number | string | null>(null);
+
+  // mrbur_wallet items (fixed / percentage discount, free shipping) the shopper owns.
+  const walletLines = lines.map((l) => ({ productId: l.productId, qty: l.qty }));
+  const wallet = useCartWallet(isOpen && isLoggedIn, walletLines);
+  const walletActions = useCartWalletActions(walletLines);
+  const [walletBusyId, setWalletBusyId] = useState<number | null>(null);
+  const handleWallet = async (itemId: number, mode: 'apply' | 'remove') => {
+    setWalletBusyId(itemId);
+    try {
+      if (mode === 'apply') {
+        await walletActions.apply(itemId);
+        toast.success('Wallet item applied!', { style: CART_TOAST_STYLE });
+      } else {
+        await walletActions.remove(itemId);
+        toast.success('Wallet item removed — it is back in your wallet.', { style: CART_TOAST_STYLE });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update your wallet item.', {
+        style: CART_TOAST_STYLE,
+      });
+    } finally {
+      setWalletBusyId(null);
+    }
+  };
   const handleRemoveDiscount = async (id: number | string) => {
     if (typeof id !== 'number') return;
     setRemovingDiscountId(id);
@@ -353,6 +379,65 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                         {removingCode === reward.code ? 'Adding…' : 'Add to cart'}
                       </button>
                     </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {wallet && (
+            <div className="mt-5">
+              <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                My wallet
+              </h3>
+              <ul className="flex flex-col gap-3">
+                {wallet.applied.map((item) => (
+                  <li
+                    key={`wallet-applied-${item.id}`}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 dark:border-emerald-900/60 dark:bg-emerald-950/30"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">{item.name}</p>
+                      <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        -{formatPrice(item.amount, currency)} applied
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleWallet(item.id, 'remove')}
+                      disabled={walletBusyId === item.id}
+                      className="shrink-0 text-[11px] font-semibold text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      {walletBusyId === item.id ? 'Removing…' : 'Remove'}
+                    </button>
+                  </li>
+                ))}
+                {wallet.available.map((item) => (
+                  <li
+                    key={`wallet-available-${item.id}`}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-amber-300 p-2.5 dark:border-amber-800"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">{item.name}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Save {formatPrice(item.amount, currency)}
+                        {item.valid_until ? ` · valid until ${item.valid_until}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleWallet(item.id, 'apply')}
+                      disabled={walletBusyId === item.id}
+                      className="shrink-0 rounded-full bg-amber-600 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      {walletBusyId === item.id ? 'Applying…' : 'Apply'}
+                    </button>
+                  </li>
+                ))}
+                {wallet.unavailable.map((item) => (
+                  <li key={`wallet-unavailable-${item.id}`} className="rounded-xl border border-slate-100 p-2.5 opacity-70 dark:border-slate-800">
+                    <p className="truncate text-[12px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
                   </li>
                 ))}
               </ul>

@@ -13,7 +13,7 @@ import {
   setBillingSameAsDelivery,
   toggleSnabbbCredit,
 } from '../api/checkoutApi';
-import type { AddressFormValues, CheckoutStateResponse } from '../types';
+import type { AddressFormValues, CheckoutStateResponse, WalletState } from '../types';
 
 const CHECKOUT_STATE_QUERY_KEY = ['snabbb-shop', 'checkout', 'state'] as const;
 
@@ -174,6 +174,54 @@ export function useRemoveCartDiscount(lines: { productId: number; qty: number }[
         staleTime: 0,
       })
       .catch(() => {});
+  };
+}
+
+/**
+ * mrbur_wallet items (Fixed / Percentage discount, Free Shipping) for the cart
+ * drawer. Read-only, same pattern as useCartDiscountSummary: it watches the
+ * query usePrefetchCheckoutState fills and never fetches on its own. Null while
+ * nothing is known, the wallet module isn't installed, or the shopper owns no items.
+ */
+export function useCartWallet(
+  enabled: boolean,
+  lines: { productId: number; qty: number }[]
+): WalletState | null {
+  const linesParam = buildLinesParam(lines);
+  const { data } = useQuery({
+    queryKey: [...CHECKOUT_STATE_QUERY_KEY, linesParam] as const,
+    queryFn: () => fetchCheckoutState(linesParam),
+    enabled: false,
+    placeholderData: keepPreviousData,
+  });
+  if (!enabled || lines.length === 0 || !data || !data.ok || !data.authenticated || data.cart_empty) {
+    return null;
+  }
+  const wallet = data.wallet;
+  if (!wallet) return null;
+  if (wallet.available.length + wallet.applied.length + wallet.unavailable.length === 0) return null;
+  return wallet;
+}
+
+/** Apply / remove a wallet item from the cart drawer, then re-read the real state from the server. */
+export function useCartWalletActions(lines: { productId: number; qty: number }[]) {
+  const queryClient = useQueryClient();
+  const linesParam = buildLinesParam(lines);
+  const refresh = () =>
+    queryClient.fetchQuery({
+      queryKey: [...CHECKOUT_STATE_QUERY_KEY, linesParam] as const,
+      queryFn: () => fetchCheckoutState(linesParam),
+      staleTime: 0,
+    });
+  return {
+    apply: async (itemId: number) => {
+      await applyWalletItem(itemId);
+      await refresh();
+    },
+    remove: async (itemId: number) => {
+      await removeWalletItem(itemId);
+      await refresh();
+    },
   };
 }
 

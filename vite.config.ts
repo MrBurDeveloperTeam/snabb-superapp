@@ -9,6 +9,10 @@ import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-functi
 // Fix for __dirname in ESM modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// Odoo.sh gives a staging branch a NEW hostname every time it is rebuilt
+// (mrbur-staging-2-<build id>.dev.odoo.com). Set ODOO_STAGING_URL in your shell /
+// .env.local instead of editing every proxy entry below.
+const ODOO_STAGING = process.env.ODOO_STAGING_URL || 'https://mrbur-staging-2-39203776.dev.odoo.com';
 const CLOUDFLARE_ASSET_LIMIT = 25 * 1024 * 1024;
 const WASM_CHUNK_SIZE = 20 * 1024 * 1024;
 
@@ -121,28 +125,28 @@ export default defineConfig(({ mode }) => {
           //   secure: false,
           // },
           "/web": {
-            target: "https://mrbur-staging-2-37426912.dev.odoo.com",
+            target: ODOO_STAGING,
             changeOrigin: true,
             secure: false,
           },
           '/odoo': {
-            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',  
+            target: ODOO_STAGING,  
             changeOrigin: true,
             secure: false,
           },
           '/api/web': {
-            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',  
+            target: ODOO_STAGING,  
             changeOrigin: true,
             secure: false,
             rewrite: (p) => p.replace(/^\/api/, ''),
           },
           '/api': {
-            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',  
+            target: ODOO_STAGING,  
             changeOrigin: true,
             secure: false,
           },
           '/web/session/get_session_info': {
-            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',  
+            target: ODOO_STAGING,  
             changeOrigin: true,
             secure: false,
           },
@@ -179,7 +183,7 @@ export default defineConfig(({ mode }) => {
             secure: false,
           },
           '/api/v1/users': {
-            target: 'https://mrbur-staging-2-37426912.dev.odoo.com',
+            target: ODOO_STAGING,
             changeOrigin: true,
             secure: false,
           },
