@@ -188,6 +188,8 @@ export interface WalletPopupItem {
   label: string;
   min_order: string | false;
   valid_until: string | false;
+  /** Same-origin URL of the item's popup image (uploaded in Odoo), or false when it has none. */
+  image_url?: string | false;
 }
 
 /**
