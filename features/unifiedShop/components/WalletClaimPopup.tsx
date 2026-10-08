@@ -105,7 +105,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Wallet item received"
+      aria-label="You receive an item"
       className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-[2px]"
       onClick={(e) => e.target === e.currentTarget && dismiss()}
     >
@@ -120,7 +120,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
           </div>
         )}
         <h3 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">
-          {items.length > 1 ? 'You received new wallet items!' : 'You received a wallet item!'}
+          {items.length > 1 ? 'You receive new items' : 'You receive an item'}
         </h3>
 
         <div className="flex flex-col gap-2.5">
@@ -135,7 +135,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
             return (
               <div
                 key={item.id}
-                className="overflow-hidden rounded-xl border border-dashed border-tiffany-300 bg-tiffany-50/60 text-left dark:border-tiffany-800 dark:bg-tiffany-900/30"
+                className="overflow-hidden rounded-xl bg-tiffany-50/60 text-center dark:bg-tiffany-900/30"
               >
                 {item.image_url && (
                   <img
@@ -147,31 +147,31 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                     }}
                   />
                 )}
-                <div className="flex items-center justify-between gap-3 p-3">
-                <div className="min-w-0">
-                  <div className="truncate text-[13px] font-bold text-slate-900 dark:text-slate-100">
-                    {item.name}
+                <div className="flex flex-col gap-3 p-4">
+                  <div className="min-w-0">
+                    <div className="truncate text-[15px] font-bold text-slate-900 dark:text-slate-100">
+                      {item.name}
+                    </div>
+                    {notes && (
+                      <div className="text-[12px] text-slate-500 dark:text-slate-400">{notes}</div>
+                    )}
                   </div>
-                  {notes && (
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{notes}</div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  disabled={done || busyId === item.id}
-                  onClick={() => claim(item)}
-                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-4 py-1.5 text-[12px] font-bold text-white transition disabled:opacity-60 ${
-                    done ? 'bg-emerald-500' : 'bg-tiffany-500 hover:bg-tiffany-600'
-                  }`}
-                >
-                  {done ? (
-                    <>
-                      <Check size={14} /> Claimed
-                    </>
-                  ) : (
-                    'Claim'
-                  )}
-                </button>
+                  <button
+                    type="button"
+                    disabled={done || busyId === item.id}
+                    onClick={() => claim(item)}
+                    className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-lg font-bold text-white shadow-sm transition disabled:opacity-60 ${
+                      done ? 'bg-emerald-500' : 'bg-tiffany-500 hover:bg-tiffany-600'
+                    }`}
+                  >
+                    {done ? (
+                      <>
+                        <Check size={20} /> Claimed
+                      </>
+                    ) : (
+                      'Claim'
+                    )}
+                  </button>
                 </div>
               </div>
             );
