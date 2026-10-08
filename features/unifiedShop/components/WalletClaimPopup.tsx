@@ -109,19 +109,19 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
       role="dialog"
       aria-modal="true"
       aria-label={heading}
-      className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/55 px-4 py-[72px] backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/55 px-3 pb-4 pt-[84px] backdrop-blur-sm sm:px-4 sm:py-[72px]"
       onClick={(e) => e.target === e.currentTarget && dismiss()}
     >
       <div
-        className={`relative m-auto flex w-full flex-col overflow-hidden rounded-3xl bg-white text-center shadow-[0_24px_80px_-12px_rgba(15,23,42,0.45)] ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10 ${
-          hasImage ? 'h-[min(800px,calc(100vh-144px))] min-h-[480px] max-w-[800px]' : 'max-w-md'
+        className={`relative m-auto flex max-h-[calc(100dvh-100px)] w-full flex-col overflow-hidden rounded-3xl sm:max-h-none bg-white text-center shadow-[0_24px_80px_-12px_rgba(15,23,42,0.45)] ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10 ${
+          hasImage ? 'max-w-[800px] sm:h-[min(800px,calc(100vh-144px))] sm:min-h-[480px]' : 'max-w-md'
         }`}
       >
         <button
           type="button"
           onClick={dismiss}
           aria-label="Close"
-          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md ring-1 ring-black/5 transition hover:bg-white hover:text-slate-900"
+          className="absolute right-3 top-3 z-10 flex h-10 w-10 sm:right-4 sm:top-4 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md ring-1 ring-black/5 transition hover:bg-white hover:text-slate-900"
         >
           <X size={18} />
         </button>
@@ -136,10 +136,10 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
             return (
               <section
                 key={item.id}
-                className={`flex flex-1 flex-col ${items.length > 1 ? 'min-h-[460px]' : 'min-h-full'}`}
+                className={`flex flex-1 flex-col ${items.length > 1 ? 'sm:min-h-[460px]' : 'sm:min-h-full'}`}
               >
                 {item.image_url ? (
-                  <div className="relative min-h-[160px] flex-1 bg-slate-100 dark:bg-slate-800">
+                  <div className="relative aspect-square max-h-[46dvh] w-full shrink-0 bg-slate-100 sm:aspect-auto sm:max-h-none sm:min-h-[160px] sm:flex-1 sm:shrink dark:bg-slate-800">
                     <img
                       src={item.image_url}
                       alt={item.name}
@@ -155,11 +155,11 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                   </div>
                 )}
 
-                <div className="shrink-0 px-6 pb-2 pt-6 sm:px-10">
+                <div className="shrink-0 px-5 pb-1 pt-5 sm:px-10 sm:pb-2 sm:pt-6">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-tiffany-600 dark:text-tiffany-300">
                     {heading}
                   </p>
-                  <h3 className="mt-1.5 text-2xl font-semibold leading-tight text-slate-900 dark:text-slate-50">
+                  <h3 className="mt-1.5 text-xl font-semibold sm:text-2xl leading-tight text-slate-900 dark:text-slate-50">
                     {item.name}
                   </h3>
                   {chips.length > 0 && (
@@ -178,7 +178,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                     type="button"
                     disabled={done || busyId === item.id}
                     onClick={() => claim(item)}
-                    className={`mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold text-white shadow-sm transition focus:outline-none focus-visible:ring-4 focus-visible:ring-tiffany-200 disabled:opacity-70 ${
+                    className={`mt-4 inline-flex h-12 w-full sm:mt-5 sm:h-14 items-center justify-center gap-2 rounded-2xl text-base font-semibold text-white shadow-sm transition focus:outline-none focus-visible:ring-4 focus-visible:ring-tiffany-200 disabled:opacity-70 ${
                       done ? 'bg-emerald-500' : 'bg-tiffany-600 hover:bg-tiffany-700'
                     }`}
                   >
@@ -198,7 +198,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
           })}
         </div>
 
-        <div className="shrink-0 px-6 pb-6 pt-3 sm:px-10">
+        <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pb-6">
           {error && <p className="mb-2 text-[12px] text-red-500">{error}</p>}
           <p className="text-[12px] leading-relaxed text-slate-500 dark:text-slate-400">
             Claimed items are kept in My Wallet. Apply them from your cart at checkout.
