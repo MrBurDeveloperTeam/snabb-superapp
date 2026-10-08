@@ -141,7 +141,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                   <img
                     src={item.image_url}
                     alt={item.name}
-                    className="mx-auto block aspect-square w-full object-cover lg:h-[800px] lg:w-[800px] lg:max-w-full"
+                    className="mx-auto block aspect-square w-[min(800px,100%,calc(100vh-300px))] min-w-[200px] max-w-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
