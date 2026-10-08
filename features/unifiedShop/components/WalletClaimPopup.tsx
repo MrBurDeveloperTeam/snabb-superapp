@@ -106,10 +106,14 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
       role="dialog"
       aria-modal="true"
       aria-label="Wallet item received"
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-[2px]"
       onClick={(e) => e.target === e.currentTarget && dismiss()}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-slate-900">
+      <div
+        className={`m-auto w-full rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-slate-900 ${
+          items.some((i) => i.image_url) ? 'max-w-[852px]' : 'max-w-lg'
+        }`}
+      >
         {!items.some((i) => i.image_url) && (
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-tiffany-100 text-tiffany-600 dark:bg-tiffany-900/50 dark:text-tiffany-300">
             <Gift size={28} />
@@ -137,7 +141,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                   <img
                     src={item.image_url}
                     alt={item.name}
-                    className="block aspect-video max-h-80 w-full object-cover"
+                    className="mx-auto block aspect-square w-full object-cover lg:h-[800px] lg:w-[800px] lg:max-w-full"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
@@ -147,9 +151,6 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                 <div className="min-w-0">
                   <div className="truncate text-[13px] font-bold text-slate-900 dark:text-slate-100">
                     {item.name}
-                  </div>
-                  <div className="text-[13px] font-semibold text-tiffany-600 dark:text-tiffany-300">
-                    {item.label}
                   </div>
                   {notes && (
                     <div className="text-[11px] text-slate-500 dark:text-slate-400">{notes}</div>
