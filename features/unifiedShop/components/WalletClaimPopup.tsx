@@ -110,8 +110,10 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
       onClick={(e) => e.target === e.currentTarget && dismiss()}
     >
       <div
-        className={`m-auto w-full rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-slate-900 ${
-          items.some((i) => i.image_url) ? 'max-w-[852px]' : 'max-w-lg'
+        className={`m-auto flex w-full flex-col rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-slate-900 ${
+          items.some((i) => i.image_url)
+            ? 'h-[min(800px,calc(100vh-144px))] min-h-[480px] max-w-[800px]'
+            : 'max-w-lg'
         }`}
       >
         {!items.some((i) => i.image_url) && (
@@ -119,11 +121,11 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
             <Gift size={28} />
           </div>
         )}
-        <h3 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">
+        <h3 className="mb-4 shrink-0 text-lg font-bold text-slate-900 dark:text-slate-100">
           {items.length > 1 ? 'You receive new items' : 'You receive an item'}
         </h3>
 
-        <div className="flex flex-col gap-2.5">
+        <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
           {items.map((item) => {
             const done = claimed.has(item.id);
             const notes = [
@@ -135,13 +137,13 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
             return (
               <div
                 key={item.id}
-                className="overflow-hidden rounded-xl bg-tiffany-50/60 text-center dark:bg-tiffany-900/30"
+                className="flex min-h-full flex-1 flex-col overflow-hidden rounded-xl bg-tiffany-50/60 text-center dark:bg-tiffany-900/30"
               >
                 {item.image_url && (
                   <img
                     src={item.image_url}
                     alt={item.name}
-                    className="mx-auto block aspect-square w-[min(800px,100%,calc(100vh-440px))] min-w-[200px] max-w-full object-cover"
+                    className="block min-h-[160px] w-full flex-1 object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
@@ -180,13 +182,13 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
 
         {error && <p className="mt-3 text-[12px] text-red-500">{error}</p>}
 
-        <p className="mb-1 mt-4 text-[11px] text-slate-500 dark:text-slate-400">
+        <p className="mb-1 mt-4 shrink-0 text-[11px] text-slate-500 dark:text-slate-400">
           Claimed items are kept in My Wallet. Apply them from your cart at checkout.
         </p>
         <button
           type="button"
           onClick={dismiss}
-          className="text-[12px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+          className="shrink-0 text-[12px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
         >
           Maybe later
         </button>
