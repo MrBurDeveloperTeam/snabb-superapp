@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Gift, Check } from 'lucide-react';
+import { Gift, Check, X } from 'lucide-react';
 import {
   claimWalletItem,
   fetchUnclaimedWalletItems,
@@ -101,97 +101,116 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
     }
   };
 
+  const hasImage = items.some((i) => i.image_url);
+  const heading = items.length > 1 ? 'You receive new items' : 'You receive an item';
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="You receive an item"
-      className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/60 px-4 py-[72px] backdrop-blur-[2px]"
+      aria-label={heading}
+      className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/55 px-4 py-[72px] backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && dismiss()}
     >
       <div
-        className={`m-auto flex w-full flex-col rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-slate-900 ${
-          items.some((i) => i.image_url)
-            ? 'h-[min(800px,calc(100vh-144px))] min-h-[480px] max-w-[800px]'
-            : 'max-w-lg'
+        className={`relative m-auto flex w-full flex-col overflow-hidden rounded-3xl bg-white text-center shadow-[0_24px_80px_-12px_rgba(15,23,42,0.45)] ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10 ${
+          hasImage ? 'h-[min(800px,calc(100vh-144px))] min-h-[480px] max-w-[800px]' : 'max-w-md'
         }`}
       >
-        {!items.some((i) => i.image_url) && (
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-tiffany-100 text-tiffany-600 dark:bg-tiffany-900/50 dark:text-tiffany-300">
-            <Gift size={28} />
-          </div>
-        )}
-        <h3 className="mb-4 shrink-0 text-lg font-bold text-slate-900 dark:text-slate-100">
-          {items.length > 1 ? 'You receive new items' : 'You receive an item'}
-        </h3>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Close"
+          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md ring-1 ring-black/5 transition hover:bg-white hover:text-slate-900"
+        >
+          <X size={18} />
+        </button>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {items.map((item) => {
             const done = claimed.has(item.id);
-            const notes = [
+            const chips = [
               item.min_order ? `Min. order ${item.min_order}` : '',
               item.valid_until ? `Valid until ${item.valid_until}` : '',
-            ]
-              .filter(Boolean)
-              .join(' · ');
+            ].filter(Boolean);
             return (
-              <div
+              <section
                 key={item.id}
-                className="flex min-h-full flex-1 flex-col overflow-hidden rounded-xl bg-tiffany-50/60 text-center dark:bg-tiffany-900/30"
+                className={`flex flex-1 flex-col ${items.length > 1 ? 'min-h-[460px]' : 'min-h-full'}`}
               >
-                {item.image_url && (
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className="block min-h-[160px] w-full flex-1 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                )}
-                <div className="flex flex-col gap-3 p-4">
-                  <div className="min-w-0">
-                    <div className="truncate text-[15px] font-bold text-slate-900 dark:text-slate-100">
-                      {item.name}
-                    </div>
-                    {notes && (
-                      <div className="text-[12px] text-slate-500 dark:text-slate-400">{notes}</div>
-                    )}
+                {item.image_url ? (
+                  <div className="relative min-h-[160px] flex-1 bg-slate-100 dark:bg-slate-800">
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                   </div>
+                ) : (
+                  <div className="mx-auto mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-tiffany-50 text-tiffany-600 dark:bg-tiffany-900/40 dark:text-tiffany-300">
+                    <Gift size={26} />
+                  </div>
+                )}
+
+                <div className="shrink-0 px-6 pb-2 pt-6 sm:px-10">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-tiffany-600 dark:text-tiffany-300">
+                    {heading}
+                  </p>
+                  <h3 className="mt-1.5 text-2xl font-semibold leading-tight text-slate-900 dark:text-slate-50">
+                    {item.name}
+                  </h3>
+                  {chips.length > 0 && (
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
+                      {chips.map((c) => (
+                        <span
+                          key={c}
+                          className="rounded-full bg-slate-100 px-3 py-1 text-[12px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <button
                     type="button"
                     disabled={done || busyId === item.id}
                     onClick={() => claim(item)}
-                    className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-lg font-bold text-white shadow-sm transition disabled:opacity-60 ${
-                      done ? 'bg-emerald-500' : 'bg-tiffany-500 hover:bg-tiffany-600'
+                    className={`mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold text-white shadow-sm transition focus:outline-none focus-visible:ring-4 focus-visible:ring-tiffany-200 disabled:opacity-70 ${
+                      done ? 'bg-emerald-500' : 'bg-tiffany-600 hover:bg-tiffany-700'
                     }`}
                   >
                     {done ? (
                       <>
                         <Check size={20} /> Claimed
                       </>
+                    ) : busyId === item.id ? (
+                      'Claiming…'
                     ) : (
                       'Claim'
                     )}
                   </button>
                 </div>
-              </div>
+              </section>
             );
           })}
         </div>
 
-        {error && <p className="mt-3 text-[12px] text-red-500">{error}</p>}
-
-        <p className="mb-1 mt-4 shrink-0 text-[11px] text-slate-500 dark:text-slate-400">
-          Claimed items are kept in My Wallet. Apply them from your cart at checkout.
-        </p>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="shrink-0 text-[12px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-        >
-          Maybe later
-        </button>
+        <div className="shrink-0 px-6 pb-6 pt-3 sm:px-10">
+          {error && <p className="mb-2 text-[12px] text-red-500">{error}</p>}
+          <p className="text-[12px] leading-relaxed text-slate-500 dark:text-slate-400">
+            Claimed items are kept in My Wallet. Apply them from your cart at checkout.
+          </p>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="mt-2 text-[13px] font-medium text-slate-500 underline-offset-4 hover:text-slate-800 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
+          >
+            Maybe later
+          </button>
+        </div>
       </div>
     </div>
   );
