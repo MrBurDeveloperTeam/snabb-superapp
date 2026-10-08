@@ -6,6 +6,7 @@ import {
   claimReward,
   confirmCheckout,
   fetchCheckoutState,
+  fetchWalletCart,
   releaseDiscountLine,
   removeWalletItem,
   saveAddress,
@@ -16,6 +17,7 @@ import {
 import type { AddressFormValues, CheckoutStateResponse, WalletState } from '../types';
 
 const CHECKOUT_STATE_QUERY_KEY = ['snabbb-shop', 'checkout', 'state'] as const;
+const WALLET_CART_QUERY_KEY = ['snabbb-shop', 'checkout', 'wallet-cart'] as const;
 
 /**
  * `linesParam` (from checkoutApi's buildLinesParam) should be built from
@@ -179,40 +181,77 @@ export function useRemoveCartDiscount(lines: { productId: number; qty: number }[
 
 /**
  * mrbur_wallet items (Fixed / Percentage discount, Free Shipping) for the cart
- * drawer. Read-only, same pattern as useCartDiscountSummary: it watches the
- * query usePrefetchCheckoutState fills and never fetches on its own. Null while
- * nothing is known, the wallet module isn't installed, or the shopper owns no items.
+ * drawer. Null while nothing is known, the wallet module isn't installed, or the
+ * shopper owns no items.
+ *
+ * Two sources, newest wins:
+ *  - a lightweight /wallet-cart read that fetches on its own as soon as the
+ *    drawer opens (fast: it skips the order sync / promotion recompute), and
+ *  - the full checkout state that usePrefetchCheckoutState fills in the
+ *    background (slow, but authoritative once it lands).
+ * Before this, the card waited for the slow one, so it popped in seconds late.
  */
 export function useCartWallet(
   enabled: boolean,
   lines: { productId: number; qty: number }[]
 ): WalletState | null {
   const linesParam = buildLinesParam(lines);
-  const { data } = useQuery({
+  const active = enabled && lines.length > 0;
+
+  const fast = useQuery({
+    queryKey: WALLET_CART_QUERY_KEY,
+    queryFn: fetchWalletCart,
+    enabled: active,
+    staleTime: 15_000,
+    retry: false,
+    placeholderData: keepPreviousData,
+  });
+  const { data, dataUpdatedAt } = useQuery({
     queryKey: [...CHECKOUT_STATE_QUERY_KEY, linesParam] as const,
     queryFn: () => fetchCheckoutState(linesParam),
     enabled: false,
     placeholderData: keepPreviousData,
   });
-  if (!enabled || lines.length === 0 || !data || !data.ok || !data.authenticated || data.cart_empty) {
-    return null;
-  }
-  const wallet = data.wallet;
+
+  if (!active) return null;
+
+  const fromState =
+    data && data.ok && data.authenticated && !data.cart_empty ? data.wallet ?? null : null;
+  const fromFast = fast.data?.ok ? fast.data.wallet : null;
+  const wallet =
+    fromState && fromFast
+      ? dataUpdatedAt >= fast.dataUpdatedAt
+        ? fromState
+        : fromFast
+      : fromState ?? fromFast;
+
   if (!wallet) return null;
   if (wallet.available.length + wallet.applied.length + wallet.unavailable.length === 0) return null;
   return wallet;
 }
 
-/** Apply / remove a wallet item from the cart drawer, then re-read the real state from the server. */
+/**
+ * Apply / remove a wallet item from the cart drawer. The wallet card is
+ * refreshed from the fast /wallet-cart read so the button un-sticks right away;
+ * the heavy full-state refresh (totals, discount summary) runs in the background.
+ */
 export function useCartWalletActions(lines: { productId: number; qty: number }[]) {
   const queryClient = useQueryClient();
   const linesParam = buildLinesParam(lines);
-  const refresh = () =>
-    queryClient.fetchQuery({
-      queryKey: [...CHECKOUT_STATE_QUERY_KEY, linesParam] as const,
-      queryFn: () => fetchCheckoutState(linesParam),
+  const refresh = async () => {
+    await queryClient.fetchQuery({
+      queryKey: WALLET_CART_QUERY_KEY,
+      queryFn: fetchWalletCart,
       staleTime: 0,
     });
+    void queryClient
+      .fetchQuery({
+        queryKey: [...CHECKOUT_STATE_QUERY_KEY, linesParam] as const,
+        queryFn: () => fetchCheckoutState(linesParam),
+        staleTime: 0,
+      })
+      .catch(() => {});
+  };
   return {
     apply: async (itemId: number) => {
       await applyWalletItem(itemId);

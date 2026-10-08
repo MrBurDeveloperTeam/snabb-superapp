@@ -2,6 +2,7 @@ import type {
   AddressFormValues,
   CheckoutCountry,
   CheckoutStateResponse,
+  WalletState,
 } from '../types';
 
 /**
@@ -178,6 +179,14 @@ export function removeWalletItem(
     method: 'POST',
     body: JSON.stringify({ item_id: itemId }),
   });
+}
+
+/**
+ * Just the cart drawer's wallet block, without the heavy order sync that
+ * fetchCheckoutState does - so the "My wallet" card can appear straight away.
+ */
+export function fetchWalletCart(): Promise<{ ok: boolean; wallet: WalletState | null }> {
+  return call(`/wallet-cart`, { method: 'GET' });
 }
 
 /** A wallet item the shopper has been issued but has not acknowledged yet. */
