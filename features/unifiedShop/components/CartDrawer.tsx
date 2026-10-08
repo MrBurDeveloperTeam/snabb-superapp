@@ -101,22 +101,22 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   // It resumes (and re-syncs, since the order just changed) when that ends.
   usePrefetchCheckoutState(
     isOpen && isLoggedIn && removingCode === null,
-    lines.map((l) => ({ productId: l.productId, qty: l.qty }))
+    lines.map((l) => ({ productId: l.productId, qty: l.qty, unitId: l.unitId }))
   );
   // Discounts the server has applied (typed promo code, automatic promos,
   // free shipping). The drawer's lines are the local cart and don't include them.
   const discountSummary = useCartDiscountSummary(
     isOpen && isLoggedIn,
-    lines.map((l) => ({ productId: l.productId, qty: l.qty }))
+    lines.map((l) => ({ productId: l.productId, qty: l.qty, unitId: l.unitId }))
   );
 
   const removeCartDiscount = useRemoveCartDiscount(
-    lines.map((l) => ({ productId: l.productId, qty: l.qty }))
+    lines.map((l) => ({ productId: l.productId, qty: l.qty, unitId: l.unitId }))
   );
   const [removingDiscountId, setRemovingDiscountId] = useState<number | string | null>(null);
 
   // mrbur_wallet items (fixed / percentage discount, free shipping) the shopper owns.
-  const walletLines = lines.map((l) => ({ productId: l.productId, qty: l.qty }));
+  const walletLines = lines.map((l) => ({ productId: l.productId, qty: l.qty, unitId: l.unitId }));
   const wallet = useCartWallet(isOpen && isLoggedIn, walletLines);
   const walletActions = useCartWalletActions(walletLines);
   const [walletBusyId, setWalletBusyId] = useState<number | null>(null);
@@ -285,7 +285,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                 const meta = BRAND_DISPLAY[line.brand];
                 return (
                   <li
-                    key={line.productId}
+                    key={`${line.productId}:${line.unitId ?? 0}`}
                     className="flex gap-3 rounded-xl border border-slate-100 p-2.5 dark:border-slate-800"
                   >
                     <div className="h-14 w-14 shrink-0 rounded-lg bg-slate-50 dark:bg-slate-800" >
@@ -307,12 +307,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                       <p className="text-[12px] font-semibold leading-snug text-slate-800 line-clamp-2 dark:text-slate-100">
                         {line.name}
                       </p>
+                      {line.unitName && (
+                        <p className="text-[11px] text-slate-400">{line.unitName}</p>
+                      )}
 
                       <div className="mt-auto flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => setQty(line.productId, line.qty - 1)}
+                            onClick={() => setQty(line.productId, line.qty - 1, line.unitId)}
                             className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
                           >
                             <Minus className="h-3 w-3" />
@@ -322,7 +325,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                           </span>
                           <button
                             type="button"
-                            onClick={() => setQty(line.productId, line.qty + 1)}
+                            onClick={() => setQty(line.productId, line.qty + 1, line.unitId)}
                             className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
                           >
                             <Plus className="h-3 w-3" />
@@ -337,7 +340,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
 
                     <button
                       type="button"
-                      onClick={() => removeItem(line.productId)}
+                      onClick={() => removeItem(line.productId, line.unitId)}
                       className="self-start text-slate-300 hover:text-red-500"
                       aria-label={`Remove ${line.name}`}
                     >

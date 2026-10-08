@@ -5,6 +5,8 @@ import type { UnifiedProduct } from '../types';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
 import { CART_TOAST_STYLE } from './cartToastStyle';
+import UnitSelect from './UnitSelect';
+import { useProductUnit } from '../hooks/useProductUnit';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -43,6 +45,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ product, onBack }
   const addItem = useUnifiedCartStore((s) => s.addItem);
   const openCart = useUnifiedCartStore((s) => s.open);
   const [qty, setQty] = useState(1);
+  const unit = useProductUnit(product);
 
   useEffect(() => {
     setQty(1);
@@ -56,8 +59,9 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ product, onBack }
   const meta = BRAND_DISPLAY[product.brand];
 
   const handleAddToCart = () => {
-    addItem(product, qty);
-    toast.success(`Added ${qty} × ${product.name} to cart`, { style: CART_TOAST_STYLE });
+    const chosen = unit.selected;
+    addItem(product, qty, chosen);
+    toast.success(`Added ${qty} × ${product.name}${chosen ? ` (${chosen.name})` : ''} to cart`, { style: CART_TOAST_STYLE });
     openCart();
   };
 
@@ -100,25 +104,22 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ product, onBack }
 
           <div className="flex items-baseline gap-2">
             <span className="text-[24px] font-bold text-slate-900 dark:text-white">
-              {formatPrice(product.price, product.currency)}
+              {formatPrice(unit.price, product.currency)}
             </span>
-            {product.compareAtPrice && product.compareAtPrice > product.price && (
+            {!unit.selected && product.compareAtPrice && product.compareAtPrice > product.price && (
               <span className="text-[14px] text-slate-400 line-through">
                 {formatPrice(product.compareAtPrice, product.currency)}
               </span>
             )}
           </div>
 
-          {product.unit && (
-            <div>
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                Unit
-              </label>
-              <div className="w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                {product.unit}
-              </div>
-            </div>
-          )}
+          <UnitSelect
+            options={unit.options}
+            value={unit.unitId}
+            onChange={unit.setUnitId}
+            fallbackLabel={product.unit}
+            loading={unit.loading}
+          />
 
           <div>
             <label className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-400">

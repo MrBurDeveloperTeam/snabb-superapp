@@ -24,9 +24,13 @@ interface UnifiedCartStore {
   open: () => void;
   close: () => void;
   toggle: () => void;
-  addItem: (product: UnifiedProduct, qty?: number) => void;
-  removeItem: (productId: number) => void;
-  setQty: (productId: number, qty: number) => void;
+  addItem: (
+    product: UnifiedProduct,
+    qty?: number,
+    unit?: { id: number; name: string; price: number }
+  ) => void;
+  removeItem: (productId: number, unitId?: number) => void;
+  setQty: (productId: number, qty: number, unitId?: number) => void;
   clear: () => void;
   /**
    * Call this whenever the signed-in identity is (re)established — on
@@ -57,12 +61,20 @@ export const useUnifiedCartStore = create<UnifiedCartStore>()(
       close: () => set({ isOpen: false }),
       toggle: () => set((s) => ({ isOpen: !s.isOpen })),
 
-      addItem: (product, qty = 1) => {
-        const existing = get().lines.find((l) => l.productId === product.id);
+      addItem: (product, qty = 1, unit) => {
+        // A line is a product in ONE unit; picking another unit adds a
+        // separate line (like mrbur.shop). Without an explicit pick the
+        // product's default unit is used (unitId stays as the catalog's).
+        const unitId = unit?.id ?? product.unitId;
+        const unitName = unit?.name ?? product.unit;
+        const price = unit?.price ?? product.price;
+        const existing = get().lines.find(
+          (l) => l.productId === product.id && l.unitId === unitId
+        );
         if (existing) {
           set({
             lines: get().lines.map((l) =>
-              l.productId === product.id ? { ...l, qty: l.qty + qty } : l
+              l === existing ? { ...l, qty: l.qty + qty } : l
             ),
           });
           return;
@@ -74,27 +86,35 @@ export const useUnifiedCartStore = create<UnifiedCartStore>()(
               productId: product.id,
               brand: product.brand,
               name: product.name,
-              price: product.price,
+              price,
               currency: product.currency,
               imageUrl: product.imageUrl,
               qty,
+              unitId,
+              unitName,
             },
           ],
         });
       },
 
-      removeItem: (productId) => {
-        set({ lines: get().lines.filter((l) => l.productId !== productId) });
+      removeItem: (productId, unitId) => {
+        set({
+          lines: get().lines.filter(
+            (l) => !(l.productId === productId && (unitId === undefined || l.unitId === unitId))
+          ),
+        });
       },
 
-      setQty: (productId, qty) => {
+      setQty: (productId, qty, unitId) => {
         if (qty <= 0) {
-          get().removeItem(productId);
+          get().removeItem(productId, unitId);
           return;
         }
         set({
           lines: get().lines.map((l) =>
-            l.productId === productId ? { ...l, qty } : l
+            l.productId === productId && (unitId === undefined || l.unitId === unitId)
+              ? { ...l, qty }
+              : l
           ),
         });
       },

@@ -68,7 +68,7 @@ const PREFETCH_FRESH_MS = 30_000;
  */
 export function usePrefetchCheckoutState(
   enabled: boolean,
-  lines: { productId: number; qty: number }[]
+  lines: { productId: number; qty: number; unitId?: number }[]
 ) {
   const queryClient = useQueryClient();
   const linesParam = buildLinesParam(lines);
@@ -109,7 +109,7 @@ export interface CartDiscountSummary {
  */
 export function useCartDiscountSummary(
   enabled: boolean,
-  lines: { productId: number; qty: number }[]
+  lines: { productId: number; qty: number; unitId?: number }[]
 ): CartDiscountSummary | null {
   const linesParam = buildLinesParam(lines);
   const { data } = useQuery({
@@ -152,7 +152,7 @@ export function useCartDiscountSummary(
  * straight away (drops the line and adds its amount back to the total) so the
  * drawer reacts at once, then re-reads the real state from the server.
  */
-export function useRemoveCartDiscount(lines: { productId: number; qty: number }[]) {
+export function useRemoveCartDiscount(lines: { productId: number; qty: number; unitId?: number }[]) {
   const queryClient = useQueryClient();
   const linesParam = buildLinesParam(lines);
   return async (lineId: number) => {
@@ -193,7 +193,7 @@ export function useRemoveCartDiscount(lines: { productId: number; qty: number }[
  */
 export function useCartWallet(
   enabled: boolean,
-  lines: { productId: number; qty: number }[]
+  lines: { productId: number; qty: number; unitId?: number }[]
 ): WalletState | null {
   const linesParam = buildLinesParam(lines);
   const active = enabled && lines.length > 0;
@@ -235,7 +235,7 @@ export function useCartWallet(
  * refreshed from the fast /wallet-cart read so the button un-sticks right away;
  * the heavy full-state refresh (totals, discount summary) runs in the background.
  */
-export function useCartWalletActions(lines: { productId: number; qty: number }[]) {
+export function useCartWalletActions(lines: { productId: number; qty: number; unitId?: number }[]) {
   const queryClient = useQueryClient();
   const linesParam = buildLinesParam(lines);
   const refresh = async () => {

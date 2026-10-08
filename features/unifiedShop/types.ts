@@ -39,6 +39,10 @@ export interface UnifiedProduct {
   websiteUrl?: string;
   /** Display label for the product's configured sale unit (e.g. "Box (10)") — a single value, not a list of choices; see ProductPreviewModal's doc comment. */
   unit?: string;
+  /** Id of the default sale unit (UoM) — the one `price` is quoted for. */
+  unitId?: number;
+  /** Units the shopper may pick (prices come from fetchUomPrices). */
+  uoms?: { id: number; name: string }[];
   inStock: boolean;
   description?: string;
 }
@@ -99,6 +103,9 @@ export interface CartLine {
   currency: string;
   imageUrl?: string;
   qty: number;
+  /** Chosen unit (UoM id) + label; the same product in two units is two lines. */
+  unitId?: number;
+  unitName?: string;
 }
 
 // Kaneiko isn't a separate res.company/website in Odoo today, but as of
@@ -144,6 +151,8 @@ export interface CheckoutLine {
   product_template_id: number | false;
   name: string;
   qty: number;
+  uom_id?: number | false;
+  uom_name?: string | false;
   price_unit: number;
   price_subtotal: number;
   image_url: string | false;

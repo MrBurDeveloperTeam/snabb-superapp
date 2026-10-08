@@ -52,7 +52,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
 
   // Follows the cart: it only changes here when an item is removed from the
   // summary, which re-syncs the server order with the remaining lines.
-  const cartLinesParam = buildLinesParam(lines.map((l) => ({ productId: l.productId, qty: l.qty })));
+  const cartLinesParam = buildLinesParam(lines.map((l) => ({ productId: l.productId, qty: l.qty, unitId: l.unitId })));
   // Debounced so a run of +/- clicks sends one sync, not one per click.
   const [linesParam, setLinesParam] = useState(cartLinesParam);
   useEffect(() => {
@@ -440,7 +440,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
               .map((l) => {
                 // Show the cart's qty right away; the server's totals follow.
                 const cartLine = l.product_template_id
-                  ? lines.find((c) => c.productId === l.product_template_id)
+                  ? lines.find((c) => c.productId === l.product_template_id && (!c.unitId || !l.uom_id || c.unitId === l.uom_id))
                   : undefined;
                 if (!cartLine || cartLine.qty === l.qty || l.qty <= 0) return l;
                 return { ...l, qty: cartLine.qty, price_subtotal: (l.price_subtotal / l.qty) * cartLine.qty };
@@ -481,7 +481,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
             onBackToCart={onBackToShop}
             onChangeQty={(line, qty) => {
               if (!line.product_template_id || qty < 1) return;
-              useUnifiedCartStore.getState().setQty(line.product_template_id, qty);
+              useUnifiedCartStore.getState().setQty(line.product_template_id, qty, line.uom_id || undefined);
             }}
             onRemoveLine={(line) => {
               if (!line.product_template_id) return;
@@ -489,7 +489,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
                 .getState()
                 .lines.filter((l) => l.productId !== line.product_template_id);
               setRemovedTemplateIds((ids) => [...ids, line.product_template_id as number]);
-              useUnifiedCartStore.getState().removeItem(line.product_template_id);
+              useUnifiedCartStore.getState().removeItem(line.product_template_id, line.uom_id || undefined);
               if (remaining.length === 0) onBackToShop();
             }}
           />

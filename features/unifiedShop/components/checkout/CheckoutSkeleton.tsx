@@ -94,7 +94,7 @@ const CheckoutSkeleton: React.FC<CheckoutSkeletonProps> = ({ lines, onBackToShop
             {lines.length > 0 && (
               <div className="mb-3 flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
                 {lines.map((line) => (
-                  <div key={line.productId} className="flex items-center gap-3">
+                  <div key={`${line.productId}:${line.unitId ?? 0}`} className="flex items-center gap-3">
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
                       {line.imageUrl && (
                         <img src={line.imageUrl} alt={line.name} className="h-full w-full object-cover" />

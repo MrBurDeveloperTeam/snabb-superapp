@@ -57,8 +57,20 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /** Matches unified_shop_api's checkout.py `_sync_lines_to_order` param format. */
-export function buildLinesParam(lines: { productId: number; qty: number }[]): string {
-  return lines.map((l) => `${l.productId}:${l.qty}`).join(',');
+export function buildLinesParam(lines: { productId: number; qty: number; unitId?: number }[]): string {
+  return lines.map((l) => `${l.productId}:${l.qty}${l.unitId ? `:${l.unitId}` : ''}`).join(',');
+}
+
+export interface UomPrices {
+  ok: boolean;
+  defaultId: number;
+  currency: string;
+  uoms: { id: number; name: string; price: number }[];
+}
+
+/** Units a product can be bought in, with the pricelist price of ONE of each. */
+export function fetchUomPrices(templateId: number): Promise<UomPrices> {
+  return call<UomPrices>(`/uom-prices/${templateId}`, { method: 'GET' });
 }
 
 /**

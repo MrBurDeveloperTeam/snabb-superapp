@@ -6,6 +6,8 @@ import type { UnifiedProduct } from '../types';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
 import { BRAND_DISPLAY } from './brandMeta';
 import { CART_TOAST_STYLE } from './cartToastStyle';
+import UnitSelect from './UnitSelect';
+import { useProductUnit } from '../hooks/useProductUnit';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -35,17 +37,14 @@ interface ProductPreviewModalProps {
  * inside the product grid would put it below both. z-[90]/[100] here clears
  * everything else in the feature.
  *
- * "Unit" is shown read-only, not as a real dropdown: despite the
- * select-styled box on mrbur.shop's own popup, the underlying Odoo field
- * (product.template.x_default_sale_uom) is a single value per product, not
- * a list of selectable pack sizes with their own prices — nothing in this
- * catalog has more than one option there today. Rendering it as a fake,
- * does-nothing dropdown would be worse than a plain label.
+ * "Unit" is a real select when the product has several allowed units
+ * (prices fetched lazily, see useProductUnit); a plain label otherwise.
  */
 const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({ product, onClose, onViewDetails }) => {
   const addItem = useUnifiedCartStore((s) => s.addItem);
   const openCart = useUnifiedCartStore((s) => s.open);
   const [qty, setQty] = useState(1);
+  const unit = useProductUnit(product);
 
   // Fresh qty each time a different product opens, not carried over from
   // whatever was last typed for a previous one.
@@ -72,8 +71,9 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({ product, onCl
   const meta = BRAND_DISPLAY[product.brand];
 
   const handleAddToCart = () => {
-    addItem(product, qty);
-    toast.success(`Added ${qty} × ${product.name} to cart`, { style: CART_TOAST_STYLE });
+    const chosen = unit.selected;
+    addItem(product, qty, chosen);
+    toast.success(`Added ${qty} × ${product.name}${chosen ? ` (${chosen.name})` : ''} to cart`, { style: CART_TOAST_STYLE });
     onClose();
     openCart();
   };
@@ -127,10 +127,10 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({ product, onCl
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5 sm:flex-row">
-          <div className="flex aspect-square w-full shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800 sm:w-64">
+        <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5 sm:flex-row sm:items-start">
+          <div className="flex aspect-square w-full max-w-[260px] shrink-0 items-center justify-center self-center overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800 sm:w-60 sm:self-start">
             {product.imageUrl ? (
-              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-contain" />
             ) : (
               <span className="text-[12px] text-slate-400">No image</span>
             )}
@@ -150,25 +150,22 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({ product, onCl
 
             <div className="flex items-baseline gap-2">
               <span className="text-[20px] font-bold text-slate-900 dark:text-white">
-                {formatPrice(product.price, product.currency)}
+                {formatPrice(unit.price, product.currency)}
               </span>
-              {product.compareAtPrice && product.compareAtPrice > product.price && (
+              {!unit.selected && product.compareAtPrice && product.compareAtPrice > product.price && (
                 <span className="text-[13px] text-slate-400 line-through">
                   {formatPrice(product.compareAtPrice, product.currency)}
                 </span>
               )}
             </div>
 
-            {product.unit && (
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  Unit
-                </label>
-                <div className="w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  {product.unit}
-                </div>
-              </div>
-            )}
+            <UnitSelect
+              options={unit.options}
+              value={unit.unitId}
+              onChange={unit.setUnitId}
+              fallbackLabel={product.unit}
+              loading={unit.loading}
+            />
 
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
