@@ -29,6 +29,11 @@ if (process.env.SNABBB_USE_LOCAL_PET === '1') {
     mkdirSync(dirname(target), { recursive: true });
     copyFileSync(join(local, 'public/games/cat-kart', file), target);
   }
+  for (const file of readdirSync(join(local, 'public/games/air-strike'))) {
+    const target = join(root, 'public/games/air-strike', file);
+    mkdirSync(dirname(target), { recursive: true });
+    copyFileSync(join(local, 'public/games/air-strike', file), target);
+  }
   console.log('Using local pet-function build:', local);
 }
 if (!existsSync(join(root, 'public'))) throw new Error('Installed pet-function package has no public resources: ' + root);

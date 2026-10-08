@@ -15,8 +15,8 @@ importers:
         specifier: ^11.14.1
         version: 11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.0)(supports-color@7.2.0)
       '@mrburdeveloperteam/pet-function':
-        specifier: github:mrburdeveloperteam/pet-function#v0.9.50
-        version: https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/a2c2aeeb6cb999450aeea41067880962370c057d(@emotion/is-prop-valid@1.4.0)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
+        specifier: github:mrburdeveloperteam/pet-function#v0.9.53
+        version: https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/64a0440621812097147b6689bc9d841f86c21c80(@emotion/is-prop-valid@1.4.0)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
       '@mui/icons-material':
         specifier: ^7.3.7
         version: 7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@7.2.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.0)(supports-color@7.2.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
@@ -500,9 +500,9 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/a2c2aeeb6cb999450aeea41067880962370c057d':
-    resolution: {gitHosted: true, integrity: sha512-iJOpRq8/ZVwk7TEjI+wHZ+4OU2H68jYGQd+y2NrFuIl1KBQtlFSPi9CtajmsPRzKepdBwBWIFC6jQQhWWtLDgQ==, tarball: https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/a2c2aeeb6cb999450aeea41067880962370c057d}
-    version: 0.9.50
+  '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/64a0440621812097147b6689bc9d841f86c21c80':
+    resolution: {gitHosted: true, integrity: sha512-dCcTXiGvLNoImuI4xXMFp0Zt4Uud9tuOvv/GLTEs+xLyRCOM5MPa1TiiXSeOMUbplWPFeMYlIMFceNrDMCxA5w==, tarball: https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/64a0440621812097147b6689bc9d841f86c21c80}
+    version: 0.9.53
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
@@ -3083,7 +3083,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/a2c2aeeb6cb999450aeea41067880962370c057d(@emotion/is-prop-valid@1.4.0)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
+  '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/64a0440621812097147b6689bc9d841f86c21c80(@emotion/is-prop-valid@1.4.0)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
       framer-motion: 12.43.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       lucide-react: 0.576.0(react@19.3.0)
