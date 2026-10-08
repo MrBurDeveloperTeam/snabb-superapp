@@ -18,14 +18,18 @@ const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isD
 const files = walk(canonical);
 for (const file of files) {
   const target = join(host, 'dist/games', relative(canonical, file));
-  if (file.endsWith('.wasm') && !existsSync(target)) {
+  if ((file.endsWith('.wasm') || file.endsWith('.pck')) && !existsSync(target)) {
     const parts = [];
     for (let i = 0; existsSync(`${target}.part${i}`); i++) parts.push(readFileSync(`${target}.part${i}`));
-    assert.ok(parts.length, `Missing WASM chunks: ${target}`);
-    assert.ok(Buffer.concat(parts).equals(readFileSync(file)), `WASM content mismatch: ${target}`);
-  } else if (file.endsWith('.js') && existsSync(`${target.slice(0, -3)}.wasm.part0`)) {
+    assert.ok(parts.length, `Missing game asset chunks: ${target}`);
+    assert.ok(Buffer.concat(parts).equals(readFileSync(file)), `Game asset content mismatch: ${target}`);
+  } else if (file.endsWith('.js') && readFileSync(file, 'utf8').includes('return fetch(file).then(function (response) {')) {
     const loader = readFileSync(target, 'utf8');
-    assert.ok(loader.includes('Failed loading WASM chunk'), `Missing chunk loader: ${target}`);
+    assert.ok(loader.includes('Failed loading game asset chunk'), `Missing chunk loader: ${target}`);
+    const original = readFileSync(file, 'utf8');
+    const start = loader.indexOf('const chunkCounts = ');
+    const end = loader.indexOf('return responsePromise.then(function (response) {', start);
+    assert.equal(loader.slice(0, start) + 'return fetch(file).then(function (response) {' + loader.slice(end + 'return responsePromise.then(function (response) {'.length), original, `Unexpected loader changes: ${target}`);
   } else {
     assert.ok(readFileSync(target).equals(readFileSync(file)), `Game content mismatch: ${target}`);
   }
@@ -33,7 +37,7 @@ for (const file of files) {
 const expected = new Set(files.flatMap(file => {
   const name = relative(canonical, file);
   const target = join(host, 'dist/games', name);
-  if (file.endsWith('.wasm') && !existsSync(target)) {
+  if ((file.endsWith('.wasm') || file.endsWith('.pck')) && !existsSync(target)) {
     const chunks = [];
     for (let i = 0; existsSync(`${target}.part${i}`); i++) chunks.push(`${name}.part${i}`);
     return chunks;
@@ -45,4 +49,8 @@ for (const game of ['flappy-cat', 'pac-cat', 'tetris', 'meowdoku', 'mole-game', 
   assert.ok(existsSync(join(host, 'dist/games', game, 'index.html')));
 }
 const gameCount = readdirSync(canonical, { withFileTypes: true }).filter(entry => entry.isDirectory()).length;
-console.log(`Verified pet-function ${manifest.version}: ${files.length} canonical game files across ${gameCount} games, including reconstructed WASM chunks.`);
+console.log(`Verified pet-function ${manifest.version}: ${files.length} canonical game files across ${gameCount} games, including reconstructed WASM and PCK chunks.`);
+
+for (const file of walk(join(host, 'dist'))) {
+  assert.ok(readFileSync(file).length <= 25 * 1024 * 1024, `Cloudflare asset exceeds 25 MiB: ${file}`);
+}

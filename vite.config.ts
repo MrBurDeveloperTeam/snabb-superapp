@@ -10,30 +10,31 @@ import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-functi
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CLOUDFLARE_ASSET_LIMIT = 25 * 1024 * 1024;
-const WASM_CHUNK_SIZE = 20 * 1024 * 1024;
+const GAME_CHUNK_SIZE = 20 * 1024 * 1024;
 
-async function findWasmFiles(directory: string): Promise<string[]> {
+async function findGameFiles(directory: string, extensions: string[]): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = await Promise.all(entries.map(async (entry) => {
     const entryPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return findWasmFiles(entryPath);
-    return entry.isFile() && entry.name.endsWith('.wasm') ? [entryPath] : [];
+    if (entry.isDirectory()) return findGameFiles(entryPath, extensions);
+    return entry.isFile() && extensions.some(extension => entry.name.endsWith(extension)) ? [entryPath] : [];
   }));
   return files.flat();
 }
 
-function splitLargeGameWasmForCloudflare() {
+function splitLargeGameAssetsForCloudflare() {
   let outDir = '';
 
   return {
-    name: 'split-large-game-wasm-for-cloudflare',
+    name: 'split-large-game-assets-for-cloudflare',
     enforce: 'post' as const,
     configResolved(config: { root: string; build: { outDir: string } }) {
       outDir = path.resolve(config.root, config.build.outDir);
     },
     async closeBundle() {
       const gamesDir = path.join(outDir, 'games');
-      const wasmPaths = await findWasmFiles(gamesDir);
+      const wasmPaths = await findGameFiles(gamesDir, ['.wasm', '.pck']);
+      const chunkCounts: Record<string, number> = {};
 
       for (const wasmPath of wasmPaths) {
         const wasmSize = statSync(wasmPath).size;
@@ -50,7 +51,7 @@ function splitLargeGameWasmForCloudflare() {
                 fd: source.fd,
                 autoClose: false,
                 start: offset,
-                end: Math.min(offset + WASM_CHUNK_SIZE, wasmSize) - 1,
+                end: Math.min(offset + GAME_CHUNK_SIZE, wasmSize) - 1,
               });
               const chunks: Buffer[] = [];
               stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
@@ -69,38 +70,45 @@ function splitLargeGameWasmForCloudflare() {
                 }
               });
             });
-            offset += WASM_CHUNK_SIZE;
+            offset += GAME_CHUNK_SIZE;
             part += 1;
           }
         } finally {
           await source.close();
         }
 
-        const wasmFileName = path.basename(wasmPath);
-        const loaderPath = path.join(path.dirname(wasmPath), `${path.basename(wasmPath, '.wasm')}.js`);
-        const loaderSource = await readFile(loaderPath, 'utf8');
-        const fetchStatement = 'return fetch(file).then(function (response) {';
-        const chunkFetchStatement = `const responsePromise = file.endsWith('${wasmFileName}')
-\t\t\t? Promise.all([${Array.from({ length: Math.ceil(wasmSize / WASM_CHUNK_SIZE) }, (_, index) => `fetch(\`${'${file}'}.part${index}\`)`).join(', ')}]).then(async function (responses) {
-\t\t\t\tfor (const response of responses) {
-\t\t\t\t\tif (!response.ok) throw new Error(\`Failed loading WASM chunk '\${response.url}'\`);
-\t\t\t\t}
-\t\t\t\tconst chunks = await Promise.all(responses.map(function (response) { return response.arrayBuffer(); }));
-\t\t\t\treturn new Response(new Blob(chunks, { type: 'application/wasm' }), {
-\t\t\t\t\theaders: { 'Content-Type': 'application/wasm' },
-\t\t\t\t});
-\t\t\t})
-\t\t\t: fetch(file);
-\t\treturn responsePromise.then(function (response) {`;
-
-        if (!loaderSource.includes(fetchStatement)) {
-          throw new Error(`Unable to add chunk loading to ${path.relative(outDir, loaderPath)}`);
-        }
-        await writeFile(loaderPath, loaderSource.replace(fetchStatement, chunkFetchStatement));
+        chunkCounts['/games/' + path.relative(gamesDir, wasmPath).split(path.sep).join('/')] = Math.ceil(wasmSize / GAME_CHUNK_SIZE);
 
         unlinkSync(wasmPath);
         console.log(`Split oversized Cloudflare asset: ${path.relative(outDir, wasmPath)}`);
       }
+      // Every Godot loader can load another game's pack through the shared engine.
+      const fetchStatement = 'return fetch(file).then(function (response) {';
+      const chunkFetchStatement = `const chunkCounts = ${JSON.stringify(chunkCounts)};
+        const assetUrl = new URL(file, location.href);
+        const partCount = assetUrl.origin === location.origin ? chunkCounts[assetUrl.pathname] : 0;
+        const responsePromise = partCount
+          ? Promise.all(Array.from({ length: partCount }, function (_, index) {
+              const partUrl = new URL(assetUrl.href);
+              partUrl.pathname += '.part' + index;
+              return fetch(partUrl.href).then(function (response) {
+                if (!response.ok) throw new Error('Failed loading game asset chunk: ' + response.url);
+                return response.arrayBuffer();
+              });
+            })).then(function (chunks) {
+              const type = assetUrl.pathname.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream';
+              const blob = new Blob(chunks, { type: type });
+              return new Response(blob, { headers: { 'Content-Type': type, 'Content-Length': String(blob.size) } });
+            })
+          : fetch(file);
+        return responsePromise.then(function (response) {`;
+      for (const loaderPath of await findGameFiles(gamesDir, ['.js'])) {
+        const loaderSource = await readFile(loaderPath, 'utf8');
+        if (loaderSource.includes(fetchStatement)) {
+          await writeFile(loaderPath, loaderSource.replace(fetchStatement, chunkFetchStatement));
+        }
+      }
+
     },
   };
 }
@@ -196,7 +204,7 @@ export default defineConfig(({ mode }) => {
           },
         }: undefined,
       },
-      plugins: [react(), sharedGamesPlugin(), splitLargeGameWasmForCloudflare()],
+      plugins: [react(), sharedGamesPlugin(), splitLargeGameAssetsForCloudflare()],
         build: {
         rollupOptions: {
           input: {
