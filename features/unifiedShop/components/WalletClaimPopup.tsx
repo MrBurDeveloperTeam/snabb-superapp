@@ -106,7 +106,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
       role="dialog"
       aria-modal="true"
       aria-label="You receive an item"
-      className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/60 px-4 py-[72px] backdrop-blur-[2px]"
       onClick={(e) => e.target === e.currentTarget && dismiss()}
     >
       <div
@@ -141,7 +141,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                   <img
                     src={item.image_url}
                     alt={item.name}
-                    className="mx-auto block aspect-square w-[min(800px,100%,calc(100vh-300px))] min-w-[200px] max-w-full object-cover"
+                    className="mx-auto block aspect-square w-[min(800px,100%,calc(100vh-440px))] min-w-[200px] max-w-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
