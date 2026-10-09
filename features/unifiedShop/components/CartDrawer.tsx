@@ -117,7 +117,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
 
   // mrbur_wallet items (fixed / percentage discount, free shipping) the shopper owns.
   const walletLines = lines.map((l) => ({ productId: l.productId, qty: l.qty, unitId: l.unitId }));
-  const wallet = useCartWallet(isOpen && isLoggedIn, walletLines);
+  // Not gated on isOpen: the cheap /wallet-cart read starts as soon as the
+  // shopper is signed in with something in the cart, so the card is already
+  // there when the drawer slides open instead of starting its request then.
+  const wallet = useCartWallet(isLoggedIn, walletLines);
   const walletActions = useCartWalletActions(walletLines);
   const [walletBusyId, setWalletBusyId] = useState<number | null>(null);
   const handleWallet = async (itemId: number, mode: 'apply' | 'remove') => {
