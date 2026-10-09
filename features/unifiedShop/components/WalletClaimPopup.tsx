@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Gift, Check, X } from 'lucide-react';
+import { Gift, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   claimWalletItem,
   fetchUnclaimedWalletItems,
@@ -83,6 +83,16 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
     return () => clearTimeout(t);
   }, [open, items, claimed]);
 
+  useEffect(() => {
+    if (!open || items.length < 2) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') setIdx((i) => Math.min(i + 1, items.length - 1));
+      if (e.key === 'ArrowLeft') setIdx((i) => Math.max(i - 1, 0));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, items.length]);
+
   if (!open) return null;
 
   const dismiss = () => {
@@ -131,6 +141,29 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
         >
           <X size={18} />
         </button>
+
+        {items.length > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous item"
+              disabled={idx <= 0}
+              onClick={() => setIdx((i) => Math.max(i - 1, 0))}
+              className="absolute left-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:left-4 sm:top-[32%]"
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <button
+              type="button"
+              aria-label="Next item"
+              disabled={idx >= items.length - 1}
+              onClick={() => setIdx((i) => Math.min(i + 1, items.length - 1))}
+              className="absolute right-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:right-4 sm:top-[32%]"
+            >
+              <ChevronRight size={22} />
+            </button>
+          </>
+        )}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {[current].map((item) => {
@@ -206,21 +239,25 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
 
         <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pb-6">
           {items.length > 1 && (
-            <div className="mb-3 flex items-center justify-center gap-2">
+            <div className="mb-2 flex items-center justify-center">
               {items.map((it, n) => (
                 <button
                   key={it.id}
                   type="button"
                   aria-label={`Show ${it.name}`}
                   onClick={() => setIdx(n)}
-                  className={`h-2.5 rounded-full transition-all ${
-                    n === Math.min(idx, items.length - 1)
-                      ? 'w-6 bg-tiffany-600'
-                      : claimed.has(it.id)
-                        ? 'w-2.5 bg-emerald-400'
-                        : 'w-2.5 bg-slate-300 dark:bg-slate-600'
-                  }`}
-                />
+                  className="flex h-8 items-center px-1.5"
+                >
+                  <span
+                    className={`block h-2.5 rounded-full transition-all ${
+                      n === Math.min(idx, items.length - 1)
+                        ? 'w-6 bg-tiffany-600'
+                        : claimed.has(it.id)
+                          ? 'w-2.5 bg-emerald-400'
+                          : 'w-2.5 bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           )}
