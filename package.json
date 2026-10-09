@@ -14,7 +14,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.54",
+    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.55",
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
     "@supabase/supabase-js": "^2.49.4",
@@ -58,6 +58,7 @@
     "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0"
   },
   "allowScripts": {
+    "github:mrburdeveloperteam/pet-function#96ce0a3ed06edfc53f793c1cbc731ba9e0b78e47": true,
     "github:mrburdeveloperteam/pet-function#3eeb9149d4ea6fa1765bf20a47ad9d0739d3bc2e": true,
     "github:mrburdeveloperteam/pet-function#64a0440621812097147b6689bc9d841f86c21c80": true,
     "github:mrburdeveloperteam/pet-function#bf115dbf8dce96d40a11f90561997f24cd940a92": true,
