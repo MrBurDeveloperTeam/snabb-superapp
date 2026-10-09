@@ -133,7 +133,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         )}
       </button>
 
-      {expanded && (
+      {(
         <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
           {/*
             One flat item list for the whole cart ("unified checkout
@@ -142,7 +142,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             scenes (see CompanyCheckoutBreakdown in types.ts). `lines`
             already carries every line across every brand order flat.
           */}
-          {lines.length > 0 && (
+          {expanded && lines.length > 0 && (
             <div className="mb-2 flex flex-col gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
               {lines.map((line) => (
                 <div key={line.id} className="flex items-center gap-4">
