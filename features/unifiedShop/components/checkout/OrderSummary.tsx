@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
+import { isWalletItemUnclaimed } from '../../api/checkoutApi';
 import type { CheckoutLine, ClaimableReward, CreditWalletState, WalletState } from '../../types';
 
 function formatPrice(price: number, currency: string) {
@@ -351,13 +352,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           {wallet.unavailable.map((item) => (
             <div
               key={`unavailable-${item.id}`}
-              className={`mt-2 flex items-center justify-between gap-3 ${item.unclaimed ? '' : 'opacity-70'}`}
+              className={`mt-2 flex items-center justify-between gap-3 ${isWalletItemUnclaimed(item) ? '' : 'opacity-70'}`}
             >
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
               </div>
-              {item.unclaimed && (
+              {isWalletItemUnclaimed(item) && (
                 <button
                   type="button"
                   onClick={() => onClaimWallet?.(item.id)}

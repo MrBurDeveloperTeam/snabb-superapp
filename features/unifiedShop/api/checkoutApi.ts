@@ -201,6 +201,15 @@ export function fetchWalletCart(): Promise<{ ok: boolean; wallet: WalletState | 
   return call(`/wallet-cart`, { method: 'GET' });
 }
 
+/**
+ * Whether a wallet item still needs claiming. Newer backends send `unclaimed`;
+ * older ones only say so in the reason text ('Claim "X" first to reveal ...'),
+ * so fall back to that and the Claim button works either way.
+ */
+export function isWalletItemUnclaimed(item: { unclaimed?: boolean; reason: string }): boolean {
+  return item.unclaimed ?? /^Claim ".*" first/.test(item.reason);
+}
+
 /** A wallet item the shopper has been issued but has not acknowledged yet. */
 export interface WalletPopupItem {
   id: number;

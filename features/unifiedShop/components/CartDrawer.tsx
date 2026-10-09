@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { claimReward, releaseReward } from '../api/checkoutApi';
+import { claimReward, isWalletItemUnclaimed, releaseReward } from '../api/checkoutApi';
 import { CART_TOAST_STYLE } from './cartToastStyle';
 import { X, Minus, Plus, Trash2, Gift } from 'lucide-react';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
@@ -447,14 +447,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                   <li
                     key={`wallet-unavailable-${item.id}`}
                     className={`flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-2.5 dark:border-slate-800 ${
-                      item.unclaimed ? '' : 'opacity-70'
+                      isWalletItemUnclaimed(item) ? '' : 'opacity-70'
                     }`}
                   >
                     <div className="min-w-0">
                       <p className="truncate text-[12px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
                     </div>
-                    {item.unclaimed && (
+                    {isWalletItemUnclaimed(item) && (
                       <button
                         type="button"
                         onClick={() => handleWallet(item.id, 'claim')}
