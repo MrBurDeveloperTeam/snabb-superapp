@@ -128,9 +128,10 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
       className="fixed inset-0 z-[90] flex overflow-y-auto bg-slate-900/55 px-3 pb-4 pt-[84px] backdrop-blur-sm sm:px-4 sm:py-[72px]"
       onClick={(e) => e.target === e.currentTarget && dismiss()}
     >
+      <div className="relative m-auto flex w-full flex-col items-center xl:w-auto">
       <div
-        className={`relative m-auto flex max-h-[calc(100dvh-100px)] w-full flex-col overflow-hidden rounded-3xl sm:max-h-none bg-white text-center shadow-[0_24px_80px_-12px_rgba(15,23,42,0.45)] ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10 ${
-          hasImage ? 'max-w-[800px] sm:w-[800px] sm:max-w-none sm:shrink-0 lg:grid lg:h-[800px] lg:w-[1180px] lg:grid-cols-[800px_380px] lg:grid-rows-[1fr_auto]' : 'max-w-md'
+        className={`relative flex max-h-[calc(100dvh-100px)] w-full flex-col overflow-hidden rounded-3xl sm:max-h-none bg-white text-center shadow-[0_24px_80px_-12px_rgba(15,23,42,0.45)] ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10 ${
+          hasImage ? 'max-w-[800px] sm:w-[800px] sm:max-w-none sm:shrink-0 xl:grid xl:h-[800px] xl:w-[1180px] xl:grid-cols-[800px_380px] xl:grid-rows-[1fr_auto_auto_1fr]' : 'max-w-md'
         }`}
       >
         <button
@@ -142,30 +143,8 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
           <X size={18} />
         </button>
 
-        {items.length > 1 && (
-          <>
-            <button
-              type="button"
-              aria-label="Previous item"
-              disabled={idx <= 0}
-              onClick={() => setIdx((i) => Math.max(i - 1, 0))}
-              className="absolute left-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:left-4 sm:top-[32%] lg:top-[380px]"
-            >
-              <ChevronLeft size={22} />
-            </button>
-            <button
-              type="button"
-              aria-label="Next item"
-              disabled={idx >= items.length - 1}
-              onClick={() => setIdx((i) => Math.min(i + 1, items.length - 1))}
-              className="absolute right-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:right-4 sm:top-[32%] lg:right-[396px] lg:top-[380px]"
-            >
-              <ChevronRight size={22} />
-            </button>
-          </>
-        )}
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:contents">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto xl:contents">
           {[current].map((item) => {
             const done = claimed.has(item.id);
             const chips = [
@@ -175,10 +154,10 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
             return (
               <section
                 key={item.id}
-                className="flex min-h-0 flex-1 flex-col sm:min-h-full lg:contents"
+                className="flex min-h-0 flex-1 flex-col sm:min-h-full xl:contents"
               >
                 {item.image_url ? (
-                  <div className="relative aspect-square max-h-[46dvh] w-full shrink-0 bg-slate-100 sm:max-h-none lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:h-[800px] lg:w-[800px] dark:bg-slate-800">
+                  <div className="relative aspect-square max-h-[46dvh] w-full shrink-0 bg-slate-100 sm:max-h-none xl:col-start-1 xl:row-span-4 xl:row-start-1 xl:h-[800px] xl:w-[800px] dark:bg-slate-800">
                     <img
                       src={item.image_url}
                       alt={item.name}
@@ -194,7 +173,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                   </div>
                 )}
 
-                <div className="shrink-0 px-5 pb-1 pt-5 sm:px-10 sm:pb-2 sm:pt-6 lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:justify-end lg:px-8 lg:pb-4">
+                <div className="shrink-0 px-5 pb-1 pt-5 sm:px-10 sm:pb-2 sm:pt-6 xl:col-start-2 xl:row-start-2 xl:px-8 xl:pb-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-tiffany-600 dark:text-tiffany-300">
                     {heading}
                   </p>
@@ -237,9 +216,9 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
           })}
         </div>
 
-        <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pb-6 lg:col-start-2 lg:row-start-2 lg:px-8 lg:pb-8">
+        <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pb-6 xl:col-start-2 xl:row-start-3 xl:px-8">
           {items.length > 1 && (
-            <div className="mb-2 flex items-center justify-center">
+            <div className="mb-2 flex xl:hidden items-center justify-center">
               {items.map((it, n) => (
                 <button
                   key={it.id}
@@ -273,6 +252,52 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
             Maybe later
           </button>
         </div>
+      </div>
+      {items.length > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Previous item"
+            disabled={idx <= 0}
+            onClick={() => setIdx((i) => Math.max(i - 1, 0))}
+            className="absolute left-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:left-4 sm:top-[32%] xl:top-[380px] min-[1340px]:left-[-56px]"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <button
+            type="button"
+            aria-label="Next item"
+            disabled={idx >= items.length - 1}
+            onClick={() => setIdx((i) => Math.min(i + 1, items.length - 1))}
+            className="absolute right-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:right-4 sm:top-[32%] xl:right-[396px] xl:top-[380px] min-[1340px]:right-[-56px]"
+          >
+            <ChevronRight size={22} />
+          </button>
+        </>
+      )}
+      {items.length > 1 && (
+            <div className="mt-3 hidden items-center justify-center rounded-full bg-slate-900/40 px-2 xl:flex">
+              {items.map((it, n) => (
+                <button
+                  key={it.id}
+                  type="button"
+                  aria-label={`Show ${it.name}`}
+                  onClick={() => setIdx(n)}
+                  className="flex h-8 items-center px-1.5"
+                >
+                  <span
+                    className={`block h-2.5 rounded-full transition-all ${
+                      n === Math.min(idx, items.length - 1)
+                        ? 'w-6 bg-tiffany-600'
+                        : claimed.has(it.id)
+                          ? 'w-2.5 bg-emerald-400'
+                          : 'w-2.5 bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
       </div>
     </div>
   );
