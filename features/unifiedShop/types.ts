@@ -252,6 +252,8 @@ export interface WalletUnavailableItem {
   id: number;
   name: string;
   reason: string;
+  /** True until the shopper claims the item (claiming reveals its amount). */
+  unclaimed?: boolean;
 }
 
 export interface WalletState {

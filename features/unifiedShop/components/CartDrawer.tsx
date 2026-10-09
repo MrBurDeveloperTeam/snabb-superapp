@@ -123,12 +123,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
   const wallet = useCartWallet(isLoggedIn, walletLines);
   const walletActions = useCartWalletActions(walletLines);
   const [walletBusyId, setWalletBusyId] = useState<number | null>(null);
-  const handleWallet = async (itemId: number, mode: 'apply' | 'remove') => {
+  const handleWallet = async (itemId: number, mode: 'apply' | 'remove' | 'claim') => {
     setWalletBusyId(itemId);
     try {
       if (mode === 'apply') {
         await walletActions.apply(itemId);
         toast.success('Wallet item applied!', { style: CART_TOAST_STYLE });
+      } else if (mode === 'claim') {
+        await walletActions.claim(itemId);
+        toast.success('Claimed! You can apply it to your cart now.', { style: CART_TOAST_STYLE });
       } else {
         await walletActions.remove(itemId);
         toast.success('Wallet item removed — it is back in your wallet.', { style: CART_TOAST_STYLE });
@@ -441,9 +444,26 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout, isLoggedIn }) => {
                   </li>
                 ))}
                 {wallet.unavailable.map((item) => (
-                  <li key={`wallet-unavailable-${item.id}`} className="rounded-xl border border-slate-100 p-2.5 opacity-70 dark:border-slate-800">
-                    <p className="truncate text-[12px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
+                  <li
+                    key={`wallet-unavailable-${item.id}`}
+                    className={`flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-2.5 dark:border-slate-800 ${
+                      item.unclaimed ? '' : 'opacity-70'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[12px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
+                    </div>
+                    {item.unclaimed && (
+                      <button
+                        type="button"
+                        onClick={() => handleWallet(item.id, 'claim')}
+                        disabled={walletBusyId === item.id}
+                        className="shrink-0 rounded-full bg-tiffany-600 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-tiffany-700 disabled:opacity-50"
+                      >
+                        {walletBusyId === item.id ? 'Claiming…' : 'Claim'}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

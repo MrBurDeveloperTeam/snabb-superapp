@@ -4,6 +4,7 @@ import {
   applyWalletItem,
   buildLinesParam,
   claimReward,
+  claimWalletItem,
   confirmCheckout,
   fetchCheckoutState,
   fetchWalletCart,
@@ -259,6 +260,10 @@ export function useCartWalletActions(lines: { productId: number; qty: number; un
     },
     remove: async (itemId: number) => {
       await removeWalletItem(itemId);
+      await refresh();
+    },
+    claim: async (itemId: number) => {
+      await claimWalletItem(itemId);
       await refresh();
     },
   };
