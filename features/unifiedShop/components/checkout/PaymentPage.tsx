@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Pencil, ShieldCheck } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, ShieldCheck } from 'lucide-react';
 import { useCheckoutState, useCheckoutActions } from '../../hooks/useCheckoutState';
 import { fetchPaymentMethods, fetchPaymentStatus, initPayment } from '../../api/paymentApi';
 import { CheckoutApiError } from '../../api/checkoutApi';
@@ -108,6 +108,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
   });
 
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(true);
   const [saveInfo, setSaveInfo] = useState(true);
   const [txReference, setTxReference] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
@@ -483,10 +484,26 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
 
         <div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <span className="block text-[15px] font-bold text-slate-900 dark:text-white">Order summary</span>
+            <button
+              type="button"
+              onClick={() => setSummaryOpen((v) => !v)}
+              aria-expanded={summaryOpen}
+              className="flex w-full items-center justify-between"
+            >
+              <span className="text-left">
+                <span className="block text-[15px] font-bold text-slate-900 dark:text-white">Order summary</span>
+                <span className="block text-[12px] text-slate-400">
+                  {(state?.lines ?? []).length} item{(state?.lines ?? []).length === 1 ? '' : 's'}
+                </span>
+              </span>
+              <span className="flex items-center gap-1 text-[12px] font-semibold text-slate-400">
+                {summaryOpen ? 'Hide items' : 'Show items'}
+                {summaryOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </span>
+            </button>
 
             <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-              {(state?.lines ?? []).length > 0 && (
+              {summaryOpen && (state?.lines ?? []).length > 0 && (
                 <div className="mb-2 flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
                   {(state?.lines ?? []).map((line) => (
                     <div key={line.id} className="flex items-center gap-3">
