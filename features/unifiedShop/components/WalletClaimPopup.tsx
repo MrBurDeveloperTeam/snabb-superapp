@@ -47,6 +47,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
+  const [idx, setIdx] = useState(0);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -63,6 +64,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
         if (cancelled || !res.items?.length) return;
         setItems(res.items);
         setClaimed(new Set());
+        setIdx(0);
         setError('');
         setOpen(true);
       })
@@ -94,6 +96,9 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
     try {
       await claimWalletItem(item.id);
       setClaimed((prev) => new Set(prev).add(item.id));
+      // Several items: move on to the next unclaimed one after a short beat.
+      const nextIdx = items.findIndex((i) => i.id !== item.id && !claimed.has(i.id));
+      if (nextIdx >= 0) setTimeout(() => setIdx(nextIdx), 700);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not claim this item. Please try again.');
     } finally {
@@ -102,7 +107,8 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
   };
 
   const hasImage = items.some((i) => i.image_url);
-  const heading = items.length > 1 ? 'You receive new items' : 'You receive an item';
+  const heading = items.length > 1 ? `You receive new items · ${Math.min(idx, items.length - 1) + 1} of ${items.length}` : 'You receive an item';
+  const current = items[Math.min(idx, items.length - 1)];
 
   return (
     <div
@@ -127,7 +133,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
         </button>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          {items.map((item) => {
+          {[current].map((item) => {
             const done = claimed.has(item.id);
             const chips = [
               item.min_order ? `Min. order ${item.min_order}` : '',
@@ -136,7 +142,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
             return (
               <section
                 key={item.id}
-                className={`flex flex-1 flex-col ${items.length > 1 ? 'sm:min-h-[460px]' : 'sm:min-h-full'}`}
+                className="flex min-h-0 flex-1 flex-col sm:min-h-full"
               >
                 {item.image_url ? (
                   <div className="relative aspect-square max-h-[46dvh] w-full shrink-0 bg-slate-100 sm:aspect-auto sm:max-h-none sm:min-h-[160px] sm:flex-1 sm:shrink dark:bg-slate-800">
@@ -199,6 +205,25 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
         </div>
 
         <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pb-6">
+          {items.length > 1 && (
+            <div className="mb-3 flex items-center justify-center gap-2">
+              {items.map((it, n) => (
+                <button
+                  key={it.id}
+                  type="button"
+                  aria-label={`Show ${it.name}`}
+                  onClick={() => setIdx(n)}
+                  className={`h-2.5 rounded-full transition-all ${
+                    n === Math.min(idx, items.length - 1)
+                      ? 'w-6 bg-tiffany-600'
+                      : claimed.has(it.id)
+                        ? 'w-2.5 bg-emerald-400'
+                        : 'w-2.5 bg-slate-300 dark:bg-slate-600'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
           {error && <p className="mb-2 text-[12px] text-red-500">{error}</p>}
           <p className="text-[12px] leading-relaxed text-slate-500 dark:text-slate-400">
             Claimed items are kept in My Wallet. Apply them from your cart at checkout.
