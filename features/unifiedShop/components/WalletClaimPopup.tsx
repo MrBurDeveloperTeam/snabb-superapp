@@ -130,7 +130,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
     >
       <div
         className={`relative m-auto flex max-h-[calc(100dvh-100px)] w-full flex-col overflow-hidden rounded-3xl sm:max-h-none bg-white text-center shadow-[0_24px_80px_-12px_rgba(15,23,42,0.45)] ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10 ${
-          hasImage ? 'max-w-[800px] sm:h-[min(800px,calc(100vh-144px))] sm:min-h-[480px]' : 'max-w-md'
+          hasImage ? 'max-w-[800px] sm:h-[800px] sm:w-[800px] sm:max-w-none sm:shrink-0' : 'max-w-md'
         }`}
       >
         <button
