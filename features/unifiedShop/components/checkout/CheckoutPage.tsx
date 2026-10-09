@@ -404,10 +404,12 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
                   }`}
                 />
               </button> */}
-              <Switch aria-checked={billingSame}
+              <Switch
+                checked={billingSame}
                 disabled={actions.setBillingSame.isPending}
-                onClick={() => handleToggleBillingSame(!billingSame)}
-                 />
+                onChange={(_, checked) => handleToggleBillingSame(checked)}
+                inputProps={{ 'aria-label': 'Billing address same as delivery address' }}
+              />
               Same as delivery address
             </label>
 
