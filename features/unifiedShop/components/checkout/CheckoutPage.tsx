@@ -268,6 +268,10 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
   const deliveryAddress = data.delivery_address ?? null;
   const billingAddress = data.billing_address ?? null;
   const billingSame = billingSameOverride ?? (data.billing_same_as_delivery ?? true);
+  const firstIssue = (addr: { issues?: Record<string, string> } | null) =>
+    addr?.issues ? Object.values(addr.issues)[0] ?? '' : '';
+  const deliveryIssue = firstIssue(deliveryAddress);
+  const billingIssue = firstIssue(billingAddress);
   const otherSavedAddresses = (data.saved_addresses ?? []).filter(
     (a) => a.id !== deliveryAddress?.id
   );
@@ -308,6 +312,11 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
                     <br />
                     {deliveryAddress.country_name}
                   </p>
+                  {deliveryIssue && (
+                    <p className="mt-2 rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                      Incomplete: {deliveryIssue} Please edit this address.
+                    </p>
+                  )}
                   <button
                     type="button"
                     onClick={() =>
@@ -429,6 +438,11 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
                       <br />
                       {billingAddress.country_name}
                     </p>
+                    {billingIssue && (
+                      <p className="mt-2 rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                        Incomplete: {billingIssue} Please edit this address.
+                      </p>
+                    )}
                     <button
                       type="button"
                       onClick={() =>
@@ -496,6 +510,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
             onToggleCredit={handleToggleCredit}
             confirmDisabled={
               !deliveryAddress ||
+              !!deliveryIssue ||
+              (!billingSame && !!billingIssue) ||
               !(billingSame || billingAddress) ||
               companies.length === 0 ||
               !selectedCarrierId ||

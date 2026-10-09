@@ -87,11 +87,30 @@ const AddressFormModal: React.FC<AddressFormModalProps> = ({
     };
   }, [values.country_id]);
 
-  const canSubmit =
-    values.street.trim().length > 0 &&
-    values.city.trim().length > 0 &&
-    !!values.country_id &&
-    !saving;
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (field: string) => setTouched((t) => ({ ...t, [field]: true }));
+
+  // Same rules as unified_shop_api's _address_issues (the server re-checks,
+  // including the country-specific postcode format).
+  const fieldErrors: Record<string, string> = {};
+  if (values.name.trim().length < 2) fieldErrors.name = "Enter the recipient's full name.";
+  if (values.street.trim().length < 5) fieldErrors.street = 'Enter a full street address.';
+  if (values.city.trim().length < 2) fieldErrors.city = 'Enter the city.';
+  if (!values.country_id) fieldErrors.country_id = 'Select a country.';
+  else if (states.length > 0 && !values.state_id) fieldErrors.state_id = 'Select a state / province.';
+  if (!values.zip.trim()) fieldErrors.zip = 'Enter the postcode.';
+  const phoneDigits = (values.phone ?? '').replace(/\D/g, '');
+  if (!(values.phone ?? '').trim()) fieldErrors.phone = 'Enter a phone number the courier can call.';
+  else if (!/^\+?[\d\s\-().]+$/.test(values.phone ?? '') || phoneDigits.length < 7 || phoneDigits.length > 15)
+    fieldErrors.phone = 'Enter a valid phone number (e.g. +60123456789).';
+  if ((values.email ?? '').trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((values.email ?? '').trim()))
+    fieldErrors.email = 'Enter a valid email address.';
+
+  const canSubmit = Object.keys(fieldErrors).length === 0 && !saving;
+  const fieldError = (field: string) =>
+    touched[field] && fieldErrors[field] ? (
+      <p className="mt-1 text-[11px] font-medium text-red-600 dark:text-red-400">{fieldErrors[field]}</p>
+    ) : null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,8 +155,10 @@ const AddressFormModal: React.FC<AddressFormModalProps> = ({
               className={inputClass}
               value={values.name}
               onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
+              onBlur={() => touch('name')}
               placeholder="Full name"
             />
+            {fieldError('name')}
           </div>
 
           <div>
@@ -147,9 +168,11 @@ const AddressFormModal: React.FC<AddressFormModalProps> = ({
               className={inputClass}
               value={values.street}
               onChange={(e) => setValues((v) => ({ ...v, street: e.target.value }))}
+              onBlur={() => touch('street')}
               placeholder="Street address"
               required
             />
+            {fieldError('street')}
           </div>
 
           <div>
@@ -169,17 +192,22 @@ const AddressFormModal: React.FC<AddressFormModalProps> = ({
                 className={inputClass}
                 value={values.city}
                 onChange={(e) => setValues((v) => ({ ...v, city: e.target.value }))}
+                onBlur={() => touch('city')}
                 required
               />
+              {fieldError('city')}
             </div>
             <div>
-              <label className={labelClass} htmlFor="addr-zip">Postcode</label>
+              <label className={labelClass} htmlFor="addr-zip">Postcode *</label>
               <input
                 id="addr-zip"
                 className={inputClass}
                 value={values.zip}
                 onChange={(e) => setValues((v) => ({ ...v, zip: e.target.value }))}
+                onBlur={() => touch('zip')}
+                required
               />
+              {fieldError('zip')}
             </div>
           </div>
 
@@ -220,7 +248,9 @@ const AddressFormModal: React.FC<AddressFormModalProps> = ({
                     state_id: e.target.value ? Number(e.target.value) : false,
                   }))
                 }
+                onBlur={() => touch('state_id')}
                 disabled={!values.country_id || states.length === 0}
+                required={states.length > 0}
               >
                 <option value="">{states.length === 0 ? 'N/A' : 'Select state'}</option>
                 {states.map((s) => (
@@ -229,18 +259,24 @@ const AddressFormModal: React.FC<AddressFormModalProps> = ({
                   </option>
                 ))}
               </select>
+              {fieldError('state_id')}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass} htmlFor="addr-phone">Phone</label>
+              <label className={labelClass} htmlFor="addr-phone">Phone *</label>
               <input
                 id="addr-phone"
                 className={inputClass}
                 value={values.phone}
                 onChange={(e) => setValues((v) => ({ ...v, phone: e.target.value }))}
+                onBlur={() => touch('phone')}
+                inputMode="tel"
+                placeholder="+60123456789"
+                required
               />
+              {fieldError('phone')}
             </div>
             <div>
               <label className={labelClass} htmlFor="addr-email">Email</label>
@@ -250,7 +286,9 @@ const AddressFormModal: React.FC<AddressFormModalProps> = ({
                 className={inputClass}
                 value={values.email}
                 onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))}
+                onBlur={() => touch('email')}
               />
+              {fieldError('email')}
             </div>
           </div>
 

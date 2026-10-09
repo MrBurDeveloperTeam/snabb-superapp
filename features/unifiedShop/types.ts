@@ -138,6 +138,8 @@ export interface CheckoutAddress {
   country_name: string;
   phone: string;
   email: string;
+  /** Problems with this saved address ({ field: message }); empty/absent = valid. */
+  issues?: Record<string, string>;
 }
 
 /** A partner's saved address (parent partner itself, or a delivery/invoice child contact). */
