@@ -4,6 +4,7 @@ import {
   applyWalletItem,
   buildLinesParam,
   claimReward,
+  claimPromoReward,
   claimWalletItem,
   confirmCheckout,
   fetchCheckoutState,
@@ -326,6 +327,12 @@ export function useCheckoutActions() {
     onSuccess: invalidate,
   });
 
+  const claimPromoRewardMutation = useMutation({
+    mutationFn: (v: { rewardId: number; couponId: number }) =>
+      claimPromoReward(v.rewardId, v.couponId),
+    onSuccess: invalidate,
+  });
+
   // Not invalidated — Confirm is a one-shot readiness check right before
   // the SSO hand-off to Odoo's own /shop/payment (see
   // handOffToOdooPayment), not a state change worth refetching for.
@@ -339,6 +346,7 @@ export function useCheckoutActions() {
     selectDeliveryMethod: selectDeliveryMethodMutation,
     toggleCredit: toggleCreditMutation,
     claimReward: claimRewardMutation,
+    claimPromoReward: claimPromoRewardMutation,
     applyWallet: applyWalletMutation,
     removeWallet: removeWalletMutation,
     claimWallet: claimWalletMutation,

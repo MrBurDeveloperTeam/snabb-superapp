@@ -9,7 +9,7 @@ import AddressFormModal from './AddressFormModal';
 import DeliveryMethodList from './DeliveryMethodList';
 import OrderSummary from './OrderSummary';
 import CheckoutSkeleton from './CheckoutSkeleton';
-import type { AddressFormValues, CheckoutAddress } from '../../types';
+import type { AddressFormValues, CheckoutAddress, PromoClaimableReward } from '../../types';
 import { Switch } from '@mui/material';
 
 interface CheckoutPageProps {
@@ -72,6 +72,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
   const [addressError, setAddressError] = useState<string | null>(null);
   const [claimingRewardId, setClaimingRewardId] = useState<number | null>(null);
   const [rewardError, setRewardError] = useState<string | null>(null);
+  const [claimingPromoKey, setClaimingPromoKey] = useState<string | null>(null);
   const [walletBusyId, setWalletBusyId] = useState<number | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -134,6 +135,22 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
       setRewardError(err instanceof Error ? err.message : 'Could not claim this reward.');
     } finally {
       setClaimingRewardId(null);
+    }
+  };
+
+  const handleClaimPromoReward = async (reward: PromoClaimableReward) => {
+    setRewardError(null);
+    setClaimingPromoKey(reward.key);
+    try {
+      await actions.claimPromoReward.mutateAsync({
+        rewardId: reward.reward_id,
+        couponId: reward.coupon_id,
+      });
+      toast.success('Reward claimed!', { style: CART_TOAST_STYLE });
+    } catch (err) {
+      setRewardError(err instanceof Error ? err.message : 'Could not claim this reward.');
+    } finally {
+      setClaimingPromoKey(null);
     }
   };
 
@@ -458,6 +475,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
             amountTax={data.amount_tax ?? 0}
             amountTotal={data.amount_total ?? 0}
             rewards={data.rewards ?? []}
+            promoRewards={data.promo_rewards ?? []}
+            claimingPromoKey={claimingPromoKey}
+            onClaimPromoReward={handleClaimPromoReward}
             credit={data.credit}
             wallet={data.wallet ?? undefined}
             walletBusyId={walletBusyId}

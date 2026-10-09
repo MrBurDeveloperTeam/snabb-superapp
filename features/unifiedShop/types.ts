@@ -272,6 +272,15 @@ export interface ClaimableReward {
   valid_until: string;
 }
 
+/** A native Odoo reward claimable on this cart (loyalty points, free shipping, "10% on your order"). */
+export interface PromoClaimableReward {
+  key: string;
+  reward_id: number;
+  coupon_id: number;
+  name: string;
+  program_name: string;
+}
+
 export interface CheckoutCountry {
   id: number;
   name: string;
@@ -325,6 +334,7 @@ export interface CheckoutStateResponse {
   /** mrbur_wallet items (Fixed / Percentage discount, Free Shipping). Absent/null when the wallet module isn't installed. */
   wallet?: WalletState | null;
   rewards?: ClaimableReward[];
+  promo_rewards?: PromoClaimableReward[];
 }
 
 /** Editable fields in the add/edit address form — mirrors checkout.py's `address` POST body. */

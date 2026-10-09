@@ -153,6 +153,17 @@ export function claimReward(
   });
 }
 
+/** Claims a native Odoo reward (the Claim cards on /shop/cart). */
+export function claimPromoReward(
+  rewardId: number,
+  couponId: number
+): Promise<{ ok: boolean; amount_subtotal: number; amount_total: number }> {
+  return call(`/promo-reward-claim`, {
+    method: 'POST',
+    body: JSON.stringify({ reward_id: rewardId, coupon_id: couponId }),
+  });
+}
+
 /** Takes a reserved reward out of the cart; it goes back to the shopper's active rewards. */
 export function releaseReward(code: string): Promise<{ ok: boolean }> {
   return call(`/reward-release`, {

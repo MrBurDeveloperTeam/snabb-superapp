@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
 import { isWalletItemUnclaimed } from '../../api/checkoutApi';
-import type { CheckoutLine, ClaimableReward, CreditWalletState, WalletState } from '../../types';
+import type { CheckoutLine, ClaimableReward, PromoClaimableReward, CreditWalletState, WalletState } from '../../types';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -32,6 +32,9 @@ interface OrderSummaryProps {
   amountTax: number;
   amountTotal: number;
   rewards: ClaimableReward[];
+  promoRewards?: PromoClaimableReward[];
+  claimingPromoKey?: string | null;
+  onClaimPromoReward?: (reward: PromoClaimableReward) => void;
   credit: CreditWalletState | undefined;
   /** mrbur_wallet items for this cart; undefined when the wallet module isn't installed. */
   wallet?: WalletState;
@@ -81,6 +84,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   amountTax,
   amountTotal,
   rewards,
+  promoRewards = [],
+  claimingPromoKey = null,
+  onClaimPromoReward,
   credit,
   wallet,
   walletBusyId = null,
@@ -297,6 +303,23 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             className="mt-2 w-full rounded-lg bg-emerald-600 py-2 text-[13px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {claimingRewardId === reward.id ? 'Claiming…' : 'Claim'}
+          </button>
+        </div>
+      ))}
+
+      {promoRewards.map((reward) => (
+        <div
+          key={reward.key}
+          className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/30"
+        >
+          <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200">{reward.name}</p>
+          <button
+            type="button"
+            onClick={() => onClaimPromoReward?.(reward)}
+            disabled={claimingPromoKey === reward.key}
+            className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {claimingPromoKey === reward.key ? 'Claiming…' : 'Claim'}
           </button>
         </div>
       ))}
