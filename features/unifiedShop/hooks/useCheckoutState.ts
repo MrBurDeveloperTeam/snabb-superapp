@@ -316,6 +316,11 @@ export function useCheckoutActions() {
     onSuccess: invalidate,
   });
 
+  const claimWalletMutation = useMutation({
+    mutationFn: (itemId: number) => claimWalletItem(itemId),
+    onSuccess: invalidate,
+  });
+
   const claimRewardMutation = useMutation({
     mutationFn: (code: string) => claimReward(code),
     onSuccess: invalidate,
@@ -336,6 +341,7 @@ export function useCheckoutActions() {
     claimReward: claimRewardMutation,
     applyWallet: applyWalletMutation,
     removeWallet: removeWalletMutation,
+    claimWallet: claimWalletMutation,
     confirm: confirmMutation,
   };
 }

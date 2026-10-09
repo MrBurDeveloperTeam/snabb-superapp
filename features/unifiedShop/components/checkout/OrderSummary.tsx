@@ -38,6 +38,7 @@ interface OrderSummaryProps {
   walletError?: string | null;
   onApplyWallet?: (itemId: number) => void;
   onRemoveWallet?: (itemId: number) => void;
+  onClaimWallet?: (itemId: number) => void;
   claimingRewardId: number | null;
   rewardError: string | null;
   onClaimReward: (reward: ClaimableReward) => void;
@@ -85,6 +86,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   walletError = null,
   onApplyWallet,
   onRemoveWallet,
+  onClaimWallet,
   claimingRewardId,
   rewardError,
   onClaimReward,
@@ -347,9 +349,24 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           ))}
 
           {wallet.unavailable.map((item) => (
-            <div key={`unavailable-${item.id}`} className="mt-2 opacity-70">
-              <p className="truncate text-[13px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
+            <div
+              key={`unavailable-${item.id}`}
+              className={`mt-2 flex items-center justify-between gap-3 ${item.unclaimed ? '' : 'opacity-70'}`}
+            >
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
+              </div>
+              {item.unclaimed && (
+                <button
+                  type="button"
+                  onClick={() => onClaimWallet?.(item.id)}
+                  disabled={walletBusyId === item.id}
+                  className="shrink-0 rounded-lg bg-tiffany-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-tiffany-700 disabled:opacity-50"
+                >
+                  {walletBusyId === item.id ? 'Claiming…' : 'Claim'}
+                </button>
+              )}
             </div>
           ))}
         </div>

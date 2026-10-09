@@ -152,13 +152,16 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
     }
   };
 
-  const handleWalletAction = async (itemId: number, mode: 'apply' | 'remove') => {
+  const handleWalletAction = async (itemId: number, mode: 'apply' | 'remove' | 'claim') => {
     setWalletError(null);
     setWalletBusyId(itemId);
     try {
       if (mode === 'apply') {
         await actions.applyWallet.mutateAsync(itemId);
         toast.success('Wallet item applied!', { style: CART_TOAST_STYLE });
+      } else if (mode === 'claim') {
+        await actions.claimWallet.mutateAsync(itemId);
+        toast.success('Claimed! You can apply it to your order now.', { style: CART_TOAST_STYLE });
       } else {
         await actions.removeWallet.mutateAsync(itemId);
       }
@@ -461,6 +464,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBackToShop, onReviewOrder
             walletError={walletError}
             onApplyWallet={(itemId) => handleWalletAction(itemId, 'apply')}
             onRemoveWallet={(itemId) => handleWalletAction(itemId, 'remove')}
+            onClaimWallet={(itemId) => handleWalletAction(itemId, 'claim')}
             claimingRewardId={claimingRewardId}
             rewardError={rewardError}
             onClaimReward={(reward) => handleClaimReward(reward.id, reward.code)}
