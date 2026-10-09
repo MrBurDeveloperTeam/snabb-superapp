@@ -130,7 +130,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
     >
       <div
         className={`relative m-auto flex max-h-[calc(100dvh-100px)] w-full flex-col overflow-hidden rounded-3xl sm:max-h-none bg-white text-center shadow-[0_24px_80px_-12px_rgba(15,23,42,0.45)] ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10 ${
-          hasImage ? 'max-w-[800px] sm:w-[800px] sm:max-w-none sm:shrink-0' : 'max-w-md'
+          hasImage ? 'max-w-[800px] sm:w-[800px] sm:max-w-none sm:shrink-0 lg:grid lg:h-[800px] lg:w-[1180px] lg:grid-cols-[800px_380px] lg:grid-rows-[1fr_auto]' : 'max-w-md'
         }`}
       >
         <button
@@ -149,7 +149,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
               aria-label="Previous item"
               disabled={idx <= 0}
               onClick={() => setIdx((i) => Math.max(i - 1, 0))}
-              className="absolute left-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:left-4 sm:top-[32%]"
+              className="absolute left-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:left-4 sm:top-[32%] lg:top-[380px]"
             >
               <ChevronLeft size={22} />
             </button>
@@ -158,14 +158,14 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
               aria-label="Next item"
               disabled={idx >= items.length - 1}
               onClick={() => setIdx((i) => Math.min(i + 1, items.length - 1))}
-              className="absolute right-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:right-4 sm:top-[32%]"
+              className="absolute right-3 top-[28%] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-white disabled:opacity-30 sm:right-4 sm:top-[32%] lg:right-[396px] lg:top-[380px]"
             >
               <ChevronRight size={22} />
             </button>
           </>
         )}
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:contents">
           {[current].map((item) => {
             const done = claimed.has(item.id);
             const chips = [
@@ -175,10 +175,10 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
             return (
               <section
                 key={item.id}
-                className="flex min-h-0 flex-1 flex-col sm:min-h-full"
+                className="flex min-h-0 flex-1 flex-col sm:min-h-full lg:contents"
               >
                 {item.image_url ? (
-                  <div className="relative aspect-square max-h-[46dvh] w-full shrink-0 bg-slate-100 sm:max-h-none dark:bg-slate-800">
+                  <div className="relative aspect-square max-h-[46dvh] w-full shrink-0 bg-slate-100 sm:max-h-none lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:h-[800px] lg:w-[800px] dark:bg-slate-800">
                     <img
                       src={item.image_url}
                       alt={item.name}
@@ -194,7 +194,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
                   </div>
                 )}
 
-                <div className="shrink-0 px-5 pb-1 pt-5 sm:px-10 sm:pb-2 sm:pt-6">
+                <div className="shrink-0 px-5 pb-1 pt-5 sm:px-10 sm:pb-2 sm:pt-6 lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:justify-end lg:px-8 lg:pb-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-tiffany-600 dark:text-tiffany-300">
                     {heading}
                   </p>
@@ -237,7 +237,7 @@ const WalletClaimPopup: React.FC<WalletClaimPopupProps> = ({ isLoggedIn }) => {
           })}
         </div>
 
-        <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pb-6">
+        <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pb-6 lg:col-start-2 lg:row-start-2 lg:px-8 lg:pb-8">
           {items.length > 1 && (
             <div className="mb-2 flex items-center justify-center">
               {items.map((it, n) => (
