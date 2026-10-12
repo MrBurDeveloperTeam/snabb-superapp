@@ -17,6 +17,29 @@
 /* ------------------------------------------------------------------ *
  * Page chrome (body, mesh gradient, scrollbar)
  * ------------------------------------------------------------------ */
+/* Password visibility control follows the app's active theme. */
+.password-visibility-toggle {
+  color: #64748b;
+}
+.password-visibility-toggle:hover,
+.password-visibility-toggle:focus-visible {
+  color: #0a7a78;
+}
+.password-visibility-toggle:focus-visible {
+  outline: 2px solid #0a7a78;
+  outline-offset: -2px;
+}
+.dark .password-visibility-toggle {
+  color: #94a3b8;
+}
+.dark .password-visibility-toggle:hover,
+.dark .password-visibility-toggle:focus-visible {
+  color: #5eead4;
+}
+.dark .password-visibility-toggle:focus-visible {
+  outline-color: #5eead4;
+}
+
 .dark {
   --mesh-bg: radial-gradient(at 0% 0%, hsla(210, 50%, 12%, 1) 0, transparent 50%),
              radial-gradient(at 50% 0%, hsla(225, 45%, 10%, 1) 0, transparent 50%),

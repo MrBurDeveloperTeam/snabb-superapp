@@ -76,6 +76,7 @@ const LoginForm: React.FC<Props> = ({
 }) => {
   const loginMutation = useLoginMutation(onAuthSuccess);
   const isLoading = loginMutation.isPending;
+  const [showPassword, setShowPassword] = useState(false);
 
   // ── Forgot-password state ─────────────────────────────────────────────────
   const [showForgot, setShowForgot] = useState(false);
@@ -244,7 +245,8 @@ const LoginForm: React.FC<Props> = ({
                         render={({ field }) => (
                           <input
                             {...field}
-                            type="password"
+                            type={showPassword ? "text" : "password"}
+                            id="login-password"
                             name="password"
                             autoComplete="current-password"
                             placeholder="••••••••"
@@ -257,6 +259,20 @@ const LoginForm: React.FC<Props> = ({
                           />
                         )}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((visible) => !visible)}
+                        onMouseDown={(event) => event.preventDefault()}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-controls="login-password"
+                        title={showPassword ? "Hide password" : "Show password"}
+                        className="password-visibility-toggle absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
+                      >
+                        <i
+                          className={`fa-regular ${showPassword ? "fa-eye" : "fa-eye-slash"} text-base`}
+                          aria-hidden="true"
+                        />
+                      </button>
                     </div>
                   </div>
 

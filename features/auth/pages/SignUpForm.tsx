@@ -28,6 +28,8 @@ interface Props {
 export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNavigate, handleSubmit, setToastMsg }) => {
   const [isLoginMode] = useState('login');
   const [showTermsError, setShowTermsError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isOtherMode, setIsOtherMode] = useState(false);
   const [accountType, setAccountType] = useState<'individual' | 'company'>('individual');
 
@@ -503,7 +505,9 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     render={({ field }) => (
                       <input
                         {...field}
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
+                        id="signup-password"
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         className={inputClasses}
                         style={passwordFieldStyle}
@@ -512,6 +516,17 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                       />
                     )}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-controls="signup-password"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    className="password-visibility-toggle absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
+                  >
+                    <i className={`fa-regular ${showPassword ? 'fa-eye' : 'fa-eye-slash'} text-base`} aria-hidden="true" />
+                  </button>
                 </div>
                 {passwordStrength === 'short' && validationMessage('Password must be at least 8 characters.')}
                 {passwordStrength === 'empty' && validationMessage(error.password?.message as string | undefined)}
@@ -544,7 +559,9 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     render={({ field }) => (
                       <input
                         {...field}
-                        type="password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        id="signup-confirm-password"
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         className={fieldClass(Boolean(error.confirmPassword))}
                         required
@@ -552,6 +569,17 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                       />
                     )}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((visible) => !visible)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    aria-controls="signup-confirm-password"
+                    title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    className="password-visibility-toggle absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
+                  >
+                    <i className={`fa-regular ${showConfirmPassword ? 'fa-eye' : 'fa-eye-slash'} text-base`} aria-hidden="true" />
+                  </button>
                 </div>
                 {validationMessage(error.confirmPassword?.message as string | undefined)}
               </div>
