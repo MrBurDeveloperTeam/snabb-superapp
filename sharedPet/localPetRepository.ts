@@ -40,8 +40,9 @@ export const localPetRepository: PetRepository = {
   },
   async addXP(_, delta) {
     const save = read(); const stats = save.snapshot.stats; stats.xp += delta;
-    const levelsGained = stats.xp >= 100 ? 1 : 0;
-    if (levelsGained) { stats.xp -= 100; stats.level++; stats.coins += 50; }
+    let levelsGained = 0;
+    const needed = () => 100 + 20*(stats.level-1) + 2*(stats.level-1)**2;
+    while (stats.xp >= needed()) { stats.xp -= needed(); stats.level++; stats.coins += 50; levelsGained++; }
     write(save); return { xp: stats.xp, level: stats.level, coins: stats.coins, levelsGained };
   },
   async loadCatalog() { return []; },
