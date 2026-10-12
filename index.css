@@ -24,7 +24,6 @@
 .password-visibility-toggle:hover,
 .password-visibility-toggle:focus-visible {
   color: #0a7a78;
-  background-color: #f0fdfb;
 }
 .password-visibility-toggle:focus-visible {
   outline: 2px solid #0a7a78;
@@ -36,7 +35,6 @@
 .dark .password-visibility-toggle:hover,
 .dark .password-visibility-toggle:focus-visible {
   color: #5eead4;
-  background-color: #1e293b;
 }
 .dark .password-visibility-toggle:focus-visible {
   outline-color: #5eead4;
