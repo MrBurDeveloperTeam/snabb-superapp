@@ -1,0 +1,11 @@
+{
+  "id": "/?pet=1",
+  "name": "Snabbb Cat Games",
+  "short_name": "Snabbb",
+  "start_url": "/?pet=1",
+  "scope": "/",
+  "display": "fullscreen",
+  "background_color": "#0a1418",
+  "theme_color": "#0a1418",
+  "icons": [{"src": "/icons/favicon.png", "sizes": "any", "type": "image/png", "purpose": "any"}]
+}
