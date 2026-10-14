@@ -413,7 +413,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
 
           {isComingSoon && (
             <div className="absolute bottom-2 left-0 right-0 flex justify-center z-30">
-              <span className="text-[8px] font-black uppercase tracking-[0.14em] bg-white/80 text-slate-500 px-2.5 py-1 rounded-full border border-slate-200/80 shadow-sm">
+              <span className="text-[8px] font-black uppercase tracking-[0.14em] bg-white/80 text-slate-500 px-1 py-1 rounded-full border border-slate-200/80 shadow-sm">
                 Coming Soon
               </span>
             </div>)}
