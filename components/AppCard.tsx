@@ -224,7 +224,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
   const iconInsetClass = 'absolute inset-[3px]';
 
   const cardClass =
-    'relative z-10 w-21 h-21 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-150';
+    'relative z-10 w-24 h-24 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-150';
 
   const wrapperClass =
     'group flex flex-col items-center gap-3 sm:gap-4 w-full pb-4 pt-2';
