@@ -1457,9 +1457,9 @@ export default function ProfileSettingsPage({ onProfileSaved }: { onProfileSaved
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-[#e5e7eb] bg-white/90 px-6 py-3.5 backdrop-blur-md">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-[#e5e7eb] bg-white/90 py-3.5 pl-6 pr-24 backdrop-blur-md sm:pr-6">
         <div className="mx-auto flex max-w-[760px] items-center justify-between">
-          <p className="text-xs text-[#9ca3af]">
+          <p className="mr-3 min-w-0 text-xs text-[#9ca3af]">
             Changes are saved to your account
           </p>
 
