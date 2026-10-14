@@ -1991,7 +1991,7 @@ useEffect(() => {
                 </div>
               </div>
 
-              <div className="mt-12">
+              <div className="mt-0 sm:mt-12">
                 {activeCategory === 'All' ? (
                   ['Shops', 'Productivity', 'Value Added'].map((cat) => {
                     const appsInCategory = filteredApps.filter((app) => app.category === cat);
