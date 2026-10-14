@@ -1509,11 +1509,21 @@ useEffect(() => {
                               name: authUser?.name,
                             });
 
-                            const supabaseUserId = res.result?.supabase_user_id;
-                            if (supabaseUserId && w) {
-                              w.location.href = `https://reward.snabbb.com`;
+                            // Use the SSO link Odoo returns. supabase_user_id can be null
+                            // (the reward app creates/syncs the Supabase session itself),
+                            // so it must not gate the launch.
+                            const ssoUrl = res.result?.url;
+                            if (res.error || !ssoUrl) {
+                              throw new Error(
+                                res.error?.data?.message ||
+                                  res.error?.message ||
+                                  'Could not open Snabbb Credit. Please try again.'
+                              );
+                            }
+                            if (w) {
+                              w.location.href = ssoUrl;
                             } else {
-                              w?.close();
+                              window.location.href = ssoUrl;
                             }
                           } catch (e: any) {
                             w?.close();
