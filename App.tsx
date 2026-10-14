@@ -901,11 +901,15 @@ useEffect(() => {
     useEffect(() => {
       if (!user?.email) return;
 
+      // localStorage + expiry (not sessionStorage): sessionStorage is lost in
+      // some browsers/in-app webviews across the cross-domain SSO bounce,
+      // which made this redirect re-fire forever.
       const syncedKey = `snabbb_sso_synced_${user.email}`;
+      let last = 0;
+      try { last = Number(localStorage.getItem(syncedKey)) || 0; } catch { /* ignore */ }
+      if (Date.now() - last < 10 * 60 * 1000) return;
 
-      if (sessionStorage.getItem(syncedKey)) return;
-
-      sessionStorage.setItem(syncedKey, 'true');
+      try { localStorage.setItem(syncedKey, String(Date.now())); } catch { /* ignore */ }
       syncmrbursso();
     }, [user?.email]);
 
@@ -1069,16 +1073,6 @@ useEffect(() => {
     didInitRef.current = true;
 
     const bootstrapSession = async () => {
-      // If we just landed here fresh off completing a login's SSO handshake,
-      // force one real browser reload so the whole page — not just this
-      // mount — reflects the newly-established session. The marker is
-      // cleared immediately so this can only ever fire once per login.
-      if (sessionStorage.getItem('snabbb_just_logged_in')) {
-        sessionStorage.removeItem('snabbb_just_logged_in');
-        window.location.reload();
-        return;
-      }
-
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('sid');
 
@@ -1220,6 +1214,9 @@ useEffect(() => {
   };
 
   const logout = async () => {
+    try {
+      if (user?.email) localStorage.removeItem(`snabbb_sso_synced_${user.email}`);
+    } catch { /* ignore */ }
     try {
       await signOut();
     } catch (error) {

@@ -115,13 +115,17 @@ onSuccess: async ({ sessionInfo, session_id }) => {
     onAuthSuccess();
   } else {
     // No redirect param — stay on Snabbb (normal login).
-    // Mark that we're coming from a fresh login so the app knows, once it
-    // lands back here after the SSO handshake below, to force one real
-    // reload (see the bootstrapSession check in App.tsx). Doesn't change
-    // the handshake itself — res.result.url still has to be visited to
-    // actually establish the session.
-    sessionStorage.setItem('snabbb_just_logged_in', '1');
-    onAuthSuccess();
+    // The SSO bounce below is already a full page load, so we do NOT call
+    // onAuthSuccess() (its setUser() would fire App.tsx's syncmrbursso
+    // effect, racing a second redirect to the same SSO URL) and we do NOT
+    // force an extra window.location.reload() on return.
+    // Pre-write the syncmrbursso guard so it can't bounce us again on return.
+    try {
+      localStorage.setItem(
+        `snabbb_sso_synced_${sessionInfo.username}`,
+        String(Date.now())
+      );
+    } catch { /* storage blocked — harmless */ }
     window.location.href = res.result.url;
   }
 },
