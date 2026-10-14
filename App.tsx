@@ -41,6 +41,7 @@ import { getWebsiteCodeForCountry } from './services/authOdoo';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
 import ProfileCompletionGuide from './components/profile-completion-guide/ProfileCompletionGuide';
 import { useProfileImage } from './hooks/useProfileImage';
+import { useIdleLogout, clearIdleActivity } from './hooks/useIdleLogout';
 import ThemeToggle from './components/ThemeToggle';
 import { useThemeStore } from './store/themeStore';
 import LoadingOverlay from './components/LoadingOverlay';
@@ -669,6 +670,7 @@ useEffect(() => {
   const avatarBgColor = useMemo(() => getAvatarColor(userName), [userName]);
 
   const clearAuthState = useCallback(() => {
+    clearIdleActivity();
     setIsLoggedIn(false);
     setUser(null);
     setLoggedInUser(null);
@@ -1214,6 +1216,7 @@ useEffect(() => {
   };
 
   const logout = async () => {
+    clearIdleActivity();
     try {
       if (user?.email) localStorage.removeItem(`snabbb_sso_synced_${user.email}`);
     } catch { /* ignore */ }
@@ -1227,6 +1230,11 @@ useEffect(() => {
       "https://e-learning.snabbb.com/logout?next=https%3A%2F%2Fapp.snabbb.com";
     }
   };
+
+  // Auto-logout after 2 hours without user activity (shared across tabs).
+  useIdleLogout(isLoggedIn === true, () => {
+    void logout();
+  });
 
   const toastMessage = useCallback(
     (msg: React.ReactNode, options: { type: 'success' | 'error'; hideIcon?: boolean }) => {
