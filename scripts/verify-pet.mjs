@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { dirname, resolve, join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 const host = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -13,7 +13,13 @@ const expectedVersion = declared.startsWith('file:')
   : declared.split('#v').at(-1);
 assert.equal(manifest.version, expectedVersion);
 assert.ok(!existsSync(join(host, 'public/games')), 'Host must not retain executable game copies.');
-const canonical = join(root, 'public/games');
+const resourceRoot = process.env.SNABBB_USE_LOCAL_PET === '1' ? resolve(host, '../pet-function') : root;
+const resourceVersion = JSON.parse(readFileSync(join(resourceRoot, 'package.json'))).version;
+const syncResources = join(resourceRoot, 'scripts/sync-resource-packs.mjs');
+const packagePublic = existsSync(syncResources)
+  ? await (await import(pathToFileURL(syncResources).href)).ensurePublicResources(resourceRoot)
+  : join(resourceRoot, 'public');
+const canonical = join(packagePublic, 'games');
 const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]);
 const files = walk(canonical);
 for (const file of files) {
@@ -49,7 +55,7 @@ for (const game of ['flappy-cat', 'pac-cat', 'tetris', 'meowdoku', 'mole-game', 
   assert.ok(existsSync(join(host, 'dist/games', game, 'index.html')));
 }
 const gameCount = readdirSync(canonical, { withFileTypes: true }).filter(entry => entry.isDirectory()).length;
-console.log(`Verified pet-function ${manifest.version}: ${files.length} canonical game files across ${gameCount} games, including reconstructed WASM and PCK chunks.`);
+console.log(`Verified pet-function ${resourceVersion}: ${files.length} canonical game files across ${gameCount} games, including reconstructed WASM and PCK chunks.`);
 
 for (const file of walk(join(host, 'dist'))) {
   assert.ok(readFileSync(file).length <= 25 * 1024 * 1024, `Cloudflare asset exceeds 25 MiB: ${file}`);

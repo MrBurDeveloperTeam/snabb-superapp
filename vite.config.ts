@@ -1,14 +1,31 @@
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { createReadStream, statSync, unlinkSync } from 'fs';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { createReadStream, statSync, unlinkSync, existsSync, readFileSync } from 'fs';
 import { open, readFile, readdir, writeFile } from 'fs/promises';
-import { defineConfig } from 'vite';
+import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-function/scripts/vite-games.mjs';
 
 // Fix for __dirname in ESM modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const localPetRoot = process.env.SNABBB_USE_LOCAL_PET === '1' ? path.resolve(__dirname, '../pet-function') : undefined;
+const localPetAliases: { find: RegExp; replacement: string }[] = [];
+if (localPetRoot) {
+  const localPackage = path.join(localPetRoot, 'package.json');
+  if (!existsSync(localPackage) || !existsSync(path.join(localPetRoot, 'public')) || !existsSync(path.join(localPetRoot, 'dist/pet.js'))) {
+    throw new Error('Build ../pet-function before enabling the local pet runtime.');
+  }
+  const manifest = JSON.parse(readFileSync(localPackage, 'utf8'));
+  for (const [entry, value] of Object.entries(manifest.exports) as [string, string | { import?: string; default?: string }][]) {
+    const target = typeof value === 'string' ? value : value.import ?? value.default;
+    if (!target) continue;
+    const specifier = manifest.name + (entry === '.' ? '' : entry.slice(1));
+    localPetAliases.push({
+      find: new RegExp('^' + specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'),
+      replacement: path.resolve(localPetRoot, target),
+    });
+  }
+}
 // Odoo.sh gives a staging branch a NEW hostname every time it is rebuilt
 // (mrbur-staging-2-<build id>.dev.odoo.com). Set ODOO_STAGING_URL in your shell /
 // .env.local instead of editing every proxy entry below.
@@ -117,7 +134,9 @@ function splitLargeGameAssetsForCloudflare() {
   };
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }): Promise<UserConfig> => {
+    const pluginRoot = localPetRoot ?? path.resolve(__dirname, 'node_modules/@mrburdeveloperteam/pet-function');
+    const { sharedGamesPlugin } = await import(pathToFileURL(path.join(pluginRoot, 'scripts/vite-games.mjs')).href);
   
     const isDev = mode === "development";
     return {
@@ -208,7 +227,7 @@ export default defineConfig(({ mode }) => {
           },
         }: undefined,
       },
-      plugins: [react(), sharedGamesPlugin(), splitLargeGameAssetsForCloudflare()],
+      plugins: [react(), sharedGamesPlugin(localPetRoot ? { packageRoot: localPetRoot } : {}), splitLargeGameAssetsForCloudflare()],
         build: {
         rollupOptions: {
           input: {
@@ -219,10 +238,7 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         dedupe: ['react', 'react-dom'],
-        alias: {
-          // Fixed: resolve the '@' alias using the defined __dirname
-          '@': path.resolve(__dirname, '.'),
-        }
+        alias: [...localPetAliases, { find: '@', replacement: path.resolve(__dirname, '.') }]
       }
     };
 });
