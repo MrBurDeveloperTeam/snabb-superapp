@@ -13,7 +13,7 @@ interface BrandFilterBarProps {
 // background sliding/resizing to whichever pill becomes active, instead of
 // it just popping into place. Same spring feel as the rest of the gallery
 // (see AppCard.tsx's motion usage).
-const ACTIVE_PILL_LAYOUT_ID = 'unified-shop-brand-filter-active-pill';
+const ACTIVE_PILL_LAYOUT_ID = 'snabbb-shop-brand-filter-active-pill';
 
 const pillBase =
   'relative px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-colors';

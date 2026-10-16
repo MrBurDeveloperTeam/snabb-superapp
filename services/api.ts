@@ -11,6 +11,25 @@ const api = axios.create({
   },
 });
 
+// A company workspace is an access context, not a second login. Personal is
+// represented by no override header; company mode sends the selected owner ID.
+api.interceptors.request.use((config) => {
+  const workspaceOwnerUserId = localStorage.getItem(
+    "snabbb.activeWorkspaceOwnerUserId"
+  );
+
+  if (workspaceOwnerUserId) {
+    config.headers.set(
+      "X-Snabbb-Workspace-User-Id",
+      workspaceOwnerUserId
+    );
+  } else {
+    config.headers.delete("X-Snabbb-Workspace-User-Id");
+  }
+
+  return config;
+});
+
 export const redirection = async (app: string, email: string, name: string) => {
   try {
      const res = await api.post('/v1/sso/app_link', {

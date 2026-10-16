@@ -1,0 +1,471 @@
+import React, { useState } from 'react';
+import { ChevronDown, ChevronUp, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
+import { isWalletItemUnclaimed } from '../../api/checkoutApi';
+import type { CheckoutLine, ClaimableReward, PromoClaimableReward, CreditWalletState, WalletState } from '../../types';
+
+function formatPrice(price: number, currency: string) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(price);
+  } catch {
+    return `${currency} ${price.toFixed(2)}`;
+  }
+}
+
+interface OrderSummaryProps {
+  itemCount: number;
+  /**
+   * Every line across every brand order in the cart, flat — the item
+   * list below renders straight from this, with no "Sold & invoiced by
+   * <seller>" grouping ("unified checkout UX", 2026-09-22): a cart
+   * mixing MR.BUR and Kaneiko items still splits into separate
+   * sale.orders/invoices behind the scenes (see CompanyCheckoutBreakdown
+   * in types.ts), but that split is a backend/invoicing detail this
+   * summary no longer discloses.
+   */
+  lines: CheckoutLine[];
+  currency: string;
+  amountSubtotal: number;
+  amountDelivery: number;
+  amountDeliveryGross?: number;
+  shippingDiscount?: number;
+  shippingRewardName?: string;
+  amountTax: number;
+  amountTotal: number;
+  rewards: ClaimableReward[];
+  promoRewards?: PromoClaimableReward[];
+  claimingPromoKey?: string | null;
+  onClaimPromoReward?: (reward: PromoClaimableReward) => void;
+  credit: CreditWalletState | undefined;
+  /** mrbur_wallet items for this cart; undefined when the wallet module isn't installed. */
+  wallet?: WalletState;
+  walletBusyId?: number | null;
+  walletError?: string | null;
+  onApplyWallet?: (itemId: number) => void;
+  onRemoveWallet?: (itemId: number) => void;
+  onClaimWallet?: (itemId: number) => void;
+  claimingRewardId: number | null;
+  rewardError: string | null;
+  onClaimReward: (reward: ClaimableReward) => void;
+  onApplyCode: (code: string) => void;
+  applyingCode: boolean;
+  creditToggling: boolean;
+  onToggleCredit: (useCredit: boolean) => void;
+  confirmDisabled: boolean;
+  confirming: boolean;
+  confirmError: string | null;
+  onConfirm: () => void;
+  onBackToCart: () => void;
+  /** Removes a product line from the cart; omitted → no delete button. */
+  onRemoveLine?: (line: CheckoutLine) => void;
+  /** Changes a product line's quantity; omitted → no +/- stepper. */
+  onChangeQty?: (line: CheckoutLine, qty: number) => void;
+  /** True while totals are being recalculated after a cart edit. */
+  updatingTotals?: boolean;
+}
+
+/**
+ * Right-hand order summary — subtotal/delivery/taxes/total, a discount
+ * code field, the "Snabbb reward ready to claim" card and the "Pay with
+ * Snabbb Credit" toggle, and the Confirm button. Mirrors the layout of
+ * mrbur.odoo.com's own /shop/checkout sidebar (reward picker +
+ * snabbb_credit_checkout_switch), rebuilt natively here against
+ * /api/unified-shop/checkout/* instead of those widgets' own
+ * session-cookie routes.
+ */
+const OrderSummary: React.FC<OrderSummaryProps> = ({
+  itemCount,
+  lines,
+  currency,
+  amountSubtotal,
+  amountDelivery,
+  amountDeliveryGross = 0,
+  shippingDiscount = 0,
+  shippingRewardName = '',
+  amountTax,
+  amountTotal,
+  rewards,
+  promoRewards = [],
+  claimingPromoKey = null,
+  onClaimPromoReward,
+  credit,
+  wallet,
+  walletBusyId = null,
+  walletError = null,
+  onApplyWallet,
+  onRemoveWallet,
+  onClaimWallet,
+  claimingRewardId,
+  rewardError,
+  onClaimReward,
+  onApplyCode,
+  applyingCode,
+  creditToggling,
+  onToggleCredit,
+  confirmDisabled,
+  confirming,
+  confirmError,
+  onConfirm,
+  onBackToCart,
+  onRemoveLine,
+  onChangeQty,
+  updatingTotals = false,
+}) => {
+  const [expanded, setExpanded] = useState(true);
+  const [codeInput, setCodeInput] = useState('');
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center justify-between"
+      >
+        <span className="text-left">
+          <span className="block text-[15px] font-bold text-slate-900 dark:text-white">Order summary</span>
+          <span className="block text-[12px] text-slate-400">
+            {itemCount} item{itemCount === 1 ? '' : 's'} — {formatPrice(amountSubtotal, currency)}
+          </span>
+        </span>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 text-slate-400" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-slate-400" />
+        )}
+      </button>
+
+      {(
+        <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+          {/*
+            One flat item list for the whole cart ("unified checkout
+            UX", 2026-09-22) — no "Sold & invoiced by <seller>" grouping,
+            even when the cart spans more than one brand order behind the
+            scenes (see CompanyCheckoutBreakdown in types.ts). `lines`
+            already carries every line across every brand order flat.
+          */}
+          {expanded && lines.length > 0 && (
+            <div className="mb-2 flex flex-col gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
+              {lines.map((line) => (
+                <div key={line.id} className="flex items-center gap-4">
+                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
+                    {line.image_url && (
+                      <img
+                        src={line.image_url}
+                        alt={line.name}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-[13px] leading-snug font-semibold text-slate-800 dark:text-slate-100">
+                      {onChangeQty && line.product_template_id && line.price_subtotal >= 0 && !line.removable_discount ? line.name : `${line.qty} x ${line.name}`}
+                    </p>
+                    {onChangeQty && line.product_template_id && line.price_subtotal >= 0 && !line.removable_discount && (
+                      <div className="mt-1.5 inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => onChangeQty(line, line.qty - 1)}
+                          disabled={line.qty <= 1}
+                          aria-label="Decrease quantity"
+                          className="p-1.5 text-slate-500 hover:text-slate-800 disabled:opacity-30 dark:text-slate-400 dark:hover:text-white"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="min-w-[1.75rem] text-center text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+                          {line.qty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onChangeQty(line, line.qty + 1)}
+                          aria-label="Increase quantity"
+                          className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-[13px] font-bold text-slate-900 dark:text-white">
+                    {formatPrice(line.price_subtotal, currency)}
+                  </span>
+                  {onRemoveLine && line.product_template_id && line.price_subtotal >= 0 && !line.removable_discount && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveLine(line)}
+                      aria-label={`Remove ${line.name}`}
+                      title="Remove item"
+                      className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {shippingDiscount > 0 ? (
+            <>
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="text-slate-500 dark:text-slate-400">Delivery</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  <span className="mr-1.5 whitespace-nowrap font-normal text-slate-400 line-through">{formatPrice(amountDeliveryGross, currency)}</span>
+                  {formatPrice(amountDelivery, currency)}
+                </span>
+              </div>
+              <div className="-mt-1 flex items-center justify-between gap-3 text-[12px] text-emerald-600 dark:text-emerald-400">
+                <span>Free shipping applied</span>
+                <span className="whitespace-nowrap font-semibold">-{formatPrice(shippingDiscount, currency)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-slate-500 dark:text-slate-400">Delivery</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-100">
+                {formatPrice(amountDelivery, currency)}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-100">
+              {formatPrice(amountSubtotal, currency)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="text-slate-500 dark:text-slate-400">Taxes</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-100">
+              {formatPrice(amountTax, currency)}
+            </span>
+          </div>
+
+          <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+            <span className="text-[14px] font-bold text-slate-900 dark:text-white">Total</span>
+            <span
+              className="inline-flex items-center gap-2 text-[17px] font-bold text-slate-900 dark:text-white"
+              aria-busy={updatingTotals}
+            >
+              {updatingTotals && <Loader2 className="h-4 w-4 animate-spin text-tiffany-500" aria-label="Updating total" />}
+              <span className={updatingTotals ? 'opacity-40 transition-opacity' : 'transition-opacity'}>
+                {formatPrice(amountTotal, currency)}
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
+
+      <form
+        className="mt-4 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!codeInput.trim()) return;
+          onApplyCode(codeInput.trim());
+        }}
+      >
+        <input
+          value={codeInput}
+          onChange={(e) => setCodeInput(e.target.value)}
+          placeholder="Gift card or discount code…"
+          className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-800 outline-none focus:border-tiffany-500 focus:ring-1 focus:ring-tiffany-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        />
+        <button
+          type="submit"
+          disabled={applyingCode || !codeInput.trim()}
+          className="rounded-lg bg-slate-800 px-4 py-2 text-[12px] font-bold text-white hover:bg-slate-900 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+        >
+          {applyingCode ? 'Applying…' : 'Apply'}
+        </button>
+      </form>
+
+      {rewardError && (
+        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+          {rewardError}
+        </p>
+      )}
+
+      {rewards.map((reward) => (
+        <div
+          key={reward.id}
+          className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/30"
+        >
+          <p className="text-[12px] font-bold text-emerald-800 dark:text-emerald-300">
+            Snabbb reward ready to claim
+          </p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+            {reward.benefit_summary || 'Free redemption'}
+          </p>
+          <p className="text-[12px] text-emerald-800 dark:text-emerald-200">
+            {reward.reward_name} · Code {reward.code_masked}
+          </p>
+          <button
+            type="button"
+            onClick={() => onClaimReward(reward)}
+            disabled={claimingRewardId === reward.id}
+            className="mt-2 w-full rounded-lg bg-emerald-600 py-2 text-[13px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {claimingRewardId === reward.id ? 'Claiming…' : 'Claim'}
+          </button>
+        </div>
+      ))}
+
+      {promoRewards.map((reward) => (
+        <div
+          key={reward.key}
+          className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/30"
+        >
+          <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200">{reward.name}</p>
+          <button
+            type="button"
+            onClick={() => onClaimPromoReward?.(reward)}
+            disabled={claimingPromoKey === reward.key}
+            className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {claimingPromoKey === reward.key ? 'Claiming…' : 'Claim'}
+          </button>
+        </div>
+      ))}
+
+      {wallet && (wallet.available.length > 0 || wallet.applied.length > 0 || wallet.unavailable.length > 0 || walletError) && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/60 dark:bg-amber-950/30">
+          <p className="text-[12px] font-bold text-amber-800 dark:text-amber-300">My Wallet</p>
+          {walletError && (
+            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              {walletError}
+            </p>
+          )}
+
+          {wallet.applied.map((item) => (
+            <div key={`applied-${item.id}`} className="mt-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold text-amber-900 dark:text-amber-100">{item.name}</p>
+                <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  -{formatPrice(item.amount, currency)} applied
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemoveWallet?.(item.id)}
+                disabled={walletBusyId === item.id}
+                className="shrink-0 text-[12px] font-semibold text-red-600 hover:underline disabled:opacity-50"
+              >
+                {walletBusyId === item.id ? 'Removing…' : 'Remove'}
+              </button>
+            </div>
+          ))}
+
+          {wallet.available.map((item) => (
+            <div key={`available-${item.id}`} className="mt-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold text-amber-900 dark:text-amber-100">{item.name}</p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                  Save {formatPrice(item.amount, currency)}
+                  {item.valid_until ? ` · valid until ${item.valid_until}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onApplyWallet?.(item.id)}
+                disabled={walletBusyId === item.id}
+                className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {walletBusyId === item.id ? 'Applying…' : 'Apply'}
+              </button>
+            </div>
+          ))}
+
+          {wallet.unavailable.map((item) => (
+            <div
+              key={`unavailable-${item.id}`}
+              className={`mt-2 flex items-center justify-between gap-3 ${isWalletItemUnclaimed(item) ? '' : 'opacity-70'}`}
+            >
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold text-slate-600 dark:text-slate-300">{item.name}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
+              </div>
+              {isWalletItemUnclaimed(item) && (
+                <button
+                  type="button"
+                  onClick={() => onClaimWallet?.(item.id)}
+                  disabled={walletBusyId === item.id}
+                  className="shrink-0 rounded-lg bg-tiffany-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-tiffany-700 disabled:opacity-50"
+                >
+                  {walletBusyId === item.id ? 'Claiming…' : 'Claim'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {confirmError && (
+        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+          {confirmError}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={onConfirm}
+        disabled={confirmDisabled || confirming}
+        className="mt-4 w-full rounded-xl bg-tiffany-500 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-tiffany-600 disabled:opacity-50 disabled:hover:bg-tiffany-500"
+      >
+        {confirming ? 'Preparing payment…' : 'Confirm'}
+      </button>
+
+      {credit && (
+        <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100">
+            Pay with Snabbb Credit
+          </p>
+          <p className="mt-1 text-[11px] leading-snug text-slate-400">
+            Use your available Snabbb Credit for this order.
+          </p>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">
+              100 Snabbb Credit = 1.00 order currency
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={credit.use_credit}
+              disabled={creditToggling}
+              onClick={() => onToggleCredit(!credit.use_credit)}
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+                credit.use_credit ? 'bg-tiffany-500' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  credit.use_credit ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="mt-1 text-[11px] text-slate-400">
+            Available balance: <span className="font-semibold text-slate-600 dark:text-slate-300">{credit.formatted_balance} Snabbb Credit</span>
+          </p>
+          {credit.use_credit && credit.redeemed_credits > 0 && (
+            <p className="mt-1 text-[11px] text-tiffany-600 dark:text-tiffany-400">
+              Redeeming {credit.redeemed_credits.toLocaleString()} credits ({formatPrice(credit.redeemed_amount, currency)})
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 flex items-center justify-center gap-3 text-[11px] text-slate-300">
+        <span className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
+        or
+        <span className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
+      </div>
+
+      <button
+        type="button"
+        onClick={onBackToCart}
+        className="mt-3 w-full text-center text-[12px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+      >
+        ← Back to cart
+      </button>
+    </div>
+  );
+};
+
+export default OrderSummary;

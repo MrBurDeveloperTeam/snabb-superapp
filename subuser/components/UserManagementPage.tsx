@@ -5,11 +5,17 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { toast } from 'sonner';
 import { COMPANY_MEMBER_ROLES, getCompanyRoleBadgeClass, } from '../config';
 import type { CompanyRole, InvitationRow, MemberRow } from '../types';
-import { getCompanyPeople, sendCompanyInvitations, updateCompanyMemberRole, removeCompanyMember } from '../services/subuserService';
+import { getCompanyPeople, sendCompanyInvitations, updateCompanyMemberRole, removeCompanyMember, checkCompanyInvitationEmail } from '../services/subuserService';
 import ExistingUserInviteModal from './ExistingUserInviteModal';
 import AccessControlPanel from './AccessControlPanel';
 
 type Props = { isCompanyAccount: boolean; isCheckingAccountType: boolean };
+
+type InvitationEmailStatus = {
+  exists: boolean;
+  alreadyMember: boolean;
+  hasPendingInvitation: boolean;
+};
 
 export default function UserManagementPage({ isCompanyAccount, isCheckingAccountType }: Props) {
   const [activeTab, setActiveTab] = useState<'members' | 'access'>('members');
@@ -20,6 +26,8 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
   const [invitations, setInvitations] = useState<InvitationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<InvitationEmailStatus | null>(null);
   const [memberMenuAnchor, setMemberMenuAnchor] = useState<HTMLElement | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
   const [existingUserModalOpen, setExistingUserModalOpen] = useState(false);
@@ -116,8 +124,57 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
     return query ? members.filter((item) => `${item.name} ${item.email} ${item.role}`.toLowerCase().includes(query)) : members;
   }, [members, search]);
 
+  const handleEmailBlur = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setEmailStatus(null);
+      return;
+    }
+
+    setCheckingEmail(true);
+
+    try {
+      const result = await checkCompanyInvitationEmail(normalizedEmail);
+
+      // Ignore an outdated response if the field changed during the request.
+      if (email.trim().toLowerCase() !== normalizedEmail) return;
+
+      setEmailStatus({
+        exists: result.exists,
+        alreadyMember: result.alreadyMember,
+        hasPendingInvitation: result.hasPendingInvitation,
+      });
+    } catch (error: any) {
+      setEmailStatus(null);
+      toast.error(error?.message || 'Unable to check this email.');
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
   const handleInvite = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (checkingEmail) return;
+
+    if (emailStatus?.alreadyMember) {
+      toast.error('This user is already a member of your company.');
+      return;
+    }
+
+    if (emailStatus?.exists) {
+      toast.error(
+        'This email already has a Snabbb account. Use “Invite an existing Snabbb user” below.'
+      );
+      return;
+    }
+
+    if (emailStatus?.hasPendingInvitation) {
+      toast.error('An invitation for this email is already pending.');
+      return;
+    }
+
     setSending(true);
     try {
       const recipientEmail = email.trim();
@@ -128,7 +185,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
       const body = [
         `You have been invited to join ${result.companyName} on Snabbb as ${role}.`,
         '',
-        'Accept the invitation and create your company member account using this link:',
+        'Accept the invitation and create your Snabbb account using this link:',
         '',
         inviteUrl,
         '',
@@ -137,6 +194,7 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
 
       window.location.href = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       setEmail('');
+      setEmailStatus(null);
       toast.success('Invitation created. Complete sending it from your email app.');
       await loadPeople();
     } catch (error: any) {
@@ -164,11 +222,89 @@ export default function UserManagementPage({ isCompanyAccount, isCheckingAccount
         <form noValidate onSubmit={handleInvite} className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:mt-8 sm:rounded-3xl sm:p-7">
           <h2 className="text-sm font-black text-slate-900 sm:text-lg"><i className="fa-solid fa-user-plus mr-2 text-tiffany-600 sm:mr-3" />Invite a Team Member</h2>
           <p className="ml-5 mt-1 text-xs leading-4 text-slate-400 sm:ml-8 sm:text-sm">An email invitation will be sent to join your company workspace.</p>
-          <div className="mt-5 grid gap-3 sm:mt-7 sm:gap-4 md:grid-cols-[1fr_210px_190px]">
-            <div className="relative"><i className="fa-regular fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 sm:left-5 sm:text-base" /><input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="colleague@company.com" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-3 text-xs outline-none focus:border-tiffany-500 sm:rounded-2xl sm:py-4 sm:pl-12 sm:pr-4 sm:text-base" /></div>
-            <select value={role} onChange={(e) => setRole(e.target.value as CompanyRole)} className="w-28 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold outline-none sm:w-full sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base">{COMPANY_MEMBER_ROLES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
-            <button disabled={sending} className="rounded-xl bg-tiffany-600 px-5 py-3 text-xs font-bold text-white transition-colors hover:bg-tiffany-700 disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-2xl sm:px-6 sm:py-4 sm:text-base"><i className="fa-regular fa-paper-plane mr-2" />{sending ? 'Sending...' : 'Send Invite'}</button>
-          </div>
+         <div className="mt-5 grid items-start gap-3 sm:mt-7 sm:gap-4 md:grid-cols-[1fr_210px_190px]">
+  {/* Email input and status message */}
+  <div className="min-w-0">
+    <div className="relative">
+      <i className="fa-regular fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 sm:left-5 sm:text-base" />
+
+      <input
+        required
+        type="email"
+        value={email}
+        onChange={(event) => {
+          setEmail(event.target.value);
+          setEmailStatus(null);
+        }}
+        onBlur={handleEmailBlur}
+        placeholder="colleague@company.com"
+        aria-describedby="invitation-email-status"
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-3 text-xs outline-none focus:border-tiffany-500 sm:rounded-2xl sm:py-4 sm:pl-12 sm:pr-4 sm:text-base"
+      />
+    </div>
+
+    <div
+      id="invitation-email-status"
+      aria-live="polite"
+      className="mt-2 min-h-5"
+    >
+      {checkingEmail ? (
+        <p className="text-xs font-semibold text-slate-400 sm:text-sm">
+          Checking this email…
+        </p>
+      ) : emailStatus?.alreadyMember ? (
+        <p className="text-xs font-semibold text-red-600 sm:text-sm">
+          This user is already a member of your company.
+        </p>
+      ) : emailStatus?.exists ? (
+        <p className="text-xs font-semibold text-amber-600 sm:text-sm">
+          This email already has a Snabbb account. Please use
+          “Invite an existing Snabbb user” below.
+        </p>
+      ) : emailStatus?.hasPendingInvitation ? (
+        <p className="text-xs font-semibold text-amber-600 sm:text-sm">
+          An invitation for this email is already pending.
+        </p>
+      ) : null}
+    </div>
+  </div>
+
+  {/* Role */}
+  <select
+    value={role}
+    onChange={(event) =>
+      setRole(event.target.value as CompanyRole)
+    }
+    className="w-28 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold outline-none sm:w-full sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base"
+  >
+    {COMPANY_MEMBER_ROLES.map((item) => (
+      <option
+        key={item.value}
+        value={item.value}
+      >
+        {item.label}
+      </option>
+    ))}
+  </select>
+
+  {/* Send */}
+  <button
+    disabled={
+      sending ||
+      checkingEmail ||
+      emailStatus?.exists === true ||
+      emailStatus?.alreadyMember === true ||
+      emailStatus?.hasPendingInvitation === true
+    }
+    className="rounded-xl bg-tiffany-600 px-5 py-3 text-xs font-bold text-white transition-colors hover:bg-tiffany-700 disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-2xl sm:px-6 sm:py-4 sm:text-base"
+  >
+    <i className="fa-regular fa-paper-plane mr-2" />
+
+    {sending
+      ? "Sending..."
+      : "Send Invite"}
+  </button>
+</div>
           <div className="my-4 flex items-center gap-3 text-xs text-slate-400 sm:my-6 sm:gap-4 sm:text-sm"><span className="h-px flex-1 bg-slate-200" /><span>or</span><span className="h-px flex-1 bg-slate-200" /></div>
           <button type="button" onClick={() => setExistingUserModalOpen(true)} className="w-full rounded-xl border border-dashed border-tiffany-500 px-3 py-3 text-xs font-bold text-tiffany-700 transition hover:bg-tiffany-50 sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tiffany-500"><i className="fa-solid fa-user-plus mr-2" />Invite an existing Snabbb user</button>
         </form>

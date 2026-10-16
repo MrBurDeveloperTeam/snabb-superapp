@@ -2,6 +2,7 @@ import { loginOdoo } from "@/services/LoginOdoo";
 import { useMutation } from "@tanstack/react-query";
 import { AuthFormInputs } from "../types/AuthFormInputs";
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
+import { isLocalDev } from '@/utils/env';
 
 async function plantSnabbbIdentity(sessionInfo: any) {
   const snabbbToken =
@@ -58,10 +59,9 @@ export const useLoginMutation = (onAuthSuccess: () => void) => {
    mutationFn: async (data: AuthFormInputs) => {
   const loginResult = await loginOdoo(data.login, data.password);
 
-  console.log("loginResult:", JSON.stringify(loginResult));
 
   return {
-    sessionInfo: loginResult.data?.result ?? loginResult.sessionInfo,
+    sessionInfo: loginResult.data?.result ?? loginResult.sessionInfo ?? loginResult.result,
     session_id: loginResult.session_id ?? loginResult.data?.result?.session_id,
     seed_entry_url: loginResult.seed_entry_url ?? null,
   };
@@ -76,7 +76,26 @@ onSuccess: async ({ sessionInfo, session_id }) => {
               email: sessionInfo.username,
               name: sessionInfo.name,
             });
-            
+
+  // Local dev: res.result.url below is built by Odoo's sso.app record for
+  // code='snabbb' (mrbur_sso_idp's build_sso_url) — a fixed base_url
+  // shared by everyone who logs in through this Odoo branch, with no
+  // notion of "send them back to whichever origin they came from". It
+  // exists to bounce through a cross-domain SSO bridge
+  // (sso.snabbb.com) so a session can be shared across the *other*
+  // snabbb.com subdomains (inventory, appointment, shop, ...) — not
+  // needed here, since we ARE the "snabbb" app already, and loginOdoo()
+  // above already established a real Odoo session cookie against
+  // whichever backend this dev server's proxy targets (see
+  // vite.config.ts). Following that redirect locally would just bounce
+  // this tab to production app.snabbb.com instead. The Odoo session
+  // cookie + odoo_session in localStorage set above are already enough
+  // to be logged in here — same fallback the redirect-param branch below
+  // already uses on error. See utils/env.ts's isLocalDev() for why this
+  // checks the hostname against snabbb.com rather than an enumerated list
+  // of dev addresses.
+  const localDev = isLocalDev();
+
   if (redirectUrl && session_id) {
     try {
       const { hostname } = new URL(redirectUrl);
@@ -92,15 +111,21 @@ onSuccess: async ({ sessionInfo, session_id }) => {
     } catch {
       onAuthSuccess();
     }
+  } else if (localDev) {
+    onAuthSuccess();
   } else {
     // No redirect param — stay on Snabbb (normal login).
-    // Mark that we're coming from a fresh login so the app knows, once it
-    // lands back here after the SSO handshake below, to force one real
-    // reload (see the bootstrapSession check in App.tsx). Doesn't change
-    // the handshake itself — res.result.url still has to be visited to
-    // actually establish the session.
-    sessionStorage.setItem('snabbb_just_logged_in', '1');
-    onAuthSuccess();
+    // The SSO bounce below is already a full page load, so we do NOT call
+    // onAuthSuccess() (its setUser() would fire App.tsx's syncmrbursso
+    // effect, racing a second redirect to the same SSO URL) and we do NOT
+    // force an extra window.location.reload() on return.
+    // Pre-write the syncmrbursso guard so it can't bounce us again on return.
+    try {
+      localStorage.setItem(
+        `snabbb_sso_synced_${sessionInfo.username}`,
+        String(Date.now())
+      );
+    } catch { /* storage blocked — harmless */ }
     window.location.href = res.result.url;
   }
 },

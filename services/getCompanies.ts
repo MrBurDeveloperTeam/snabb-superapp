@@ -27,7 +27,6 @@ export const getActiveCompanyFromOdooSession = () => {
       session?.current_company ||
       null;
 
-    console.log('the company code: ', companyCodes[currentCompanyId]);
 
     if (currentCompanyId && companyCodes[currentCompanyId]) {
       const companyId = String(currentCompanyId);

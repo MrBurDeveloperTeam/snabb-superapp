@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Save, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { ICON_VERSION } from '../../constants';
 import {
   getCompanyAccessMatrix,
   saveCompanyRolePermissions,
@@ -63,11 +64,11 @@ const INITIAL_PERMISSIONS: PermissionState = {
 const APP_META: Record<AppKey, { label: string; iconPath: string }> = {
   inventory: {
     label: 'Inventory',
-    iconPath: '/icons/inventory_tiffany.png',
+    iconPath: `/icons/inventory_tiffany.png?v=${ICON_VERSION}`,
   },
   appointment: {
     label: 'Appointment',
-    iconPath: '/icons/appointment.png',
+    iconPath: `/icons/appointment.png?v=${ICON_VERSION}`,
   },
 };
 

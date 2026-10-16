@@ -120,3 +120,32 @@ export const addExistingCompanyMember = (memberUserId: string, role: string) =>
     'add-existing-member',
     { memberUserId, role }
   );
+
+export const checkCompanyInvitationEmail = (
+  email: string
+) =>
+  sendCompanyInvitations<{
+    ok: true;
+    email: string;
+    exists: boolean;
+    alreadyMember: boolean;
+    hasPendingInvitation: boolean;
+    profile: {
+      userId: string;
+      email: string;
+      name: string;
+    } | null;
+  }>("check-email", { email });
+  
+export type CompanyWorkspace = {
+  ownerUserId: string;
+  name: string;
+  role: string;
+  status: string;
+};
+
+export const getMyCompanyWorkspaces = () =>
+  sendCompanyInvitations<{
+    ok: true;
+    workspaces: CompanyWorkspace[];
+  }>('list-my-workspaces');
