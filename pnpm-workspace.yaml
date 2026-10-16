@@ -1,3 +1,4 @@
 allowBuilds:
   '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/e1a10ef0836824f5200a8473792a107a214c5931': true
+  '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/55d2510b52c59cd78ff474bb6ca3e9cd6fb6528a': true
   'esbuild@0.25.12': true

@@ -1,6 +1,8 @@
 # Shared pet integration
 
-This host imports `@mrburdeveloperteam/pet-function` at Git tag `v0.9.10`.
+This host imports `@mrburdeveloperteam/pet-function` at Git tag `v0.12.0`
+(`55d2510b52c59cd78ff474bb6ca3e9cd6fb6528a`). The npm and pnpm lockfiles
+must resolve to that release; build approval is scoped to that commit.
 Cat presentation, Molar AI chat presentation, Virtual Pet, pet options and
 portable resources come from that package. Meowdoku uses its shared launcher.
 
