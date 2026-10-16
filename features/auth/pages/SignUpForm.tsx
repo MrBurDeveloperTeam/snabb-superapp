@@ -28,12 +28,37 @@ interface Props {
 export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNavigate, handleSubmit, setToastMsg }) => {
   const [isLoginMode] = useState('login');
   const [showTermsError, setShowTermsError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isOtherMode, setIsOtherMode] = useState(false);
   const [accountType, setAccountType] = useState<'individual' | 'company'>('individual');
 
   const signupMutation = useAuthMutation();
 
   const passwordValue = useWatch({ control, name: 'password' });
+  const passwordStrength = (() => {
+    if (!passwordValue) return 'empty';
+    if (passwordValue.length < 8) return 'short';
+    const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/]
+      .filter((pattern) => pattern.test(passwordValue)).length;
+    return variety >= 3 ? 'strong' : 'fair';
+  })();
+  const passwordFieldStyle: React.CSSProperties | undefined =
+    passwordStrength === 'short' || (passwordStrength === 'empty' && error.password)
+      ? { borderColor: '#ef4444', boxShadow: '0 0 0 4px rgba(239, 68, 68, 0.10)' }
+      : passwordStrength === 'fair'
+        ? { borderColor: '#f59e0b', boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.10)' }
+        : passwordStrength === 'strong'
+          ? { borderColor: '#10b981', boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.10)' }
+          : undefined;
+  const fieldClass = (hasError: boolean) =>
+    `${inputClasses} ${hasError ? '!border-red-500 focus:!border-red-500 dark:!border-red-400 dark:focus:!border-red-400' : ''}`;
+  const validationMessage = (message?: string) => message ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-500 dark:text-red-400" role="alert">
+      <i className="fa-solid fa-circle-exclamation text-[10px]" aria-hidden="true" />
+      {message}
+    </p>
+  ) : null;
 
   const onSubmit: SubmitHandler<AuthFormInputs> = async (data) => {
     try {
@@ -187,13 +212,19 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                         name="companyEmail"
                         defaultValue=""
                         control={control}
-                        rules={{ required: 'Company email is required.' }}
+                        rules={{
+                          required: 'Company email is required.',
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+                            message: 'Please enter a valid email address.',
+                          },
+                        }}
                         render={({ field }) => (
                           <input
                             {...field}
                             type="email"
                             placeholder="e.g. hello@company.com"
-                            className={inputClasses}
+                            className={fieldClass(Boolean(error.companyEmail))}
                             required
                             onChange={(e) => { field.onChange(e); onChange(e); }}
                           />
@@ -201,7 +232,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                       />
                     </div>
                     <p className="mt-1 text-xs text-slate-400 italic">Company email for login and communication.</p>
-                    {error.companyEmail && <p className="mt-1 text-xs text-red-500">{error.companyEmail.message}</p>}
+                    {validationMessage(error.companyEmail?.message as string | undefined)}
                   </div>
                 </>
               )}
@@ -215,13 +246,19 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     <Controller
                       name="login"
                       control={control}
-                      rules={{ required: 'Email is required.' }}
+                      rules={{
+                        required: 'Email is required.',
+                        pattern: {
+                          value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+                          message: 'Please enter a valid email address.',
+                        },
+                      }}
                       render={({ field }) => (
                         <input
                           {...field}
                           type="email"
                           placeholder="e.g. nur@email.com"
-                          className={inputClasses}
+                          className={fieldClass(Boolean(error.login))}
                           required
                           onChange={(e) => { field.onChange(e); onChange(e); }}
                         />
@@ -229,7 +266,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     />
                   </div>
                   <p className="mt-1 text-xs text-slate-400 italic">This will be your login email.</p>
-                  {error.login && <p className="mt-1 text-xs text-red-500">{error.login.message}</p>}
+                  {validationMessage(error.login?.message as string | undefined)}
                 </div>
               )}
 
@@ -264,13 +301,16 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="firstName"
                     control={control}
-                    rules={{ required: 'First name is required.' }}
+                    rules={{
+                      required: 'First name is required.',
+                      validate: (value) => !/\p{N}/u.test(value || '') || 'First name cannot include numbers.',
+                    }}
                     render={({ field }) => (
                       <input
                         {...field}
                         type="text"
                         placeholder="e.g. Ahmad"
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.firstName))}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
@@ -280,7 +320,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                 {accountType === 'company' && (
                   <p className="mt-1 text-xs text-slate-400 italic">Your name as the company representative.</p>
                 )}
-                {error.firstName && <p className="mt-1 text-xs text-red-500">{error.firstName.message}</p>}
+                {validationMessage(error.firstName?.message as string | undefined)}
               </div>
 
               {/* Last Name */}
@@ -291,20 +331,23 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="lastName"
                     control={control}
-                    rules={{ required: 'Last name is required.' }}
+                    rules={{
+                      required: 'Last name is required.',
+                      validate: (value) => !/\p{N}/u.test(value || '') || 'Last name cannot include numbers.',
+                    }}
                     render={({ field }) => (
                       <input
                         {...field}
                         type="text"
                         placeholder="e.g. Nizam"
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.lastName))}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
                   />
                 </div>
-                {error.lastName && <p className="mt-1 text-xs text-red-500">{error.lastName.message}</p>}
+                {validationMessage(error.lastName?.message as string | undefined)}
               </div>
 
               {/* Phone */}
@@ -315,20 +358,23 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                   <Controller
                     name="phone"
                     control={control}
-                    rules={{ required: 'Phone number is required.' }}
+                    rules={{
+                      required: 'Phone number is required.',
+                      validate: (value) => !/\p{L}/u.test(value || '') || 'Phone number cannot include letters.',
+                    }}
                     render={({ field }) => (
                       <input
                         {...field}
                         type="tel"
                         placeholder={accountType === 'individual' ? 'e.g. +60123456789' : 'phone'}
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.phone))}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
                   />
                 </div>
-                {error.phone && <p className="mt-1 text-xs text-red-500">{error.phone.message}</p>}
+                {validationMessage(error.phone?.message as string | undefined)}
               </div>
 
               {/* Date of Birth — both individual and company */}
@@ -342,12 +388,12 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     inputClasses={inputClasses}
                     onChange={onChange}
                     required
+                    mustBeBeforeToday
                   />
                 </div>
                 {accountType === 'company' && (
                   <p className="mt-1 text-xs text-slate-400 italic">Date of birth of the company representative.</p>
                 )}
-                {error.dob && <p className="mt-1 text-xs text-red-500">{error.dob.message}</p>}
               </div>
 
               {/* Job Position */}
@@ -459,16 +505,43 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     render={({ field }) => (
                       <input
                         {...field}
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
+                        id="signup-password"
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         className={inputClasses}
+                        style={passwordFieldStyle}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-controls="signup-password"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    className="password-visibility-toggle absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
+                  >
+                    <i className={`fa-regular ${showPassword ? 'fa-eye' : 'fa-eye-slash'} text-base`} aria-hidden="true" />
+                  </button>
                 </div>
-                {error.password && <p className="mt-1 text-xs text-red-500">{error.password.message}</p>}
+                {passwordStrength === 'short' && validationMessage('Password must be at least 8 characters.')}
+                {passwordStrength === 'empty' && validationMessage(error.password?.message as string | undefined)}
+                {passwordStrength === 'fair' && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-500" role="status">
+                    <i className="fa-solid fa-circle-half-stroke text-[10px]" aria-hidden="true" />
+                    Weak password.
+                  </p>
+                )}
+                {passwordStrength === 'strong' && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-500" role="status">
+                    <i className="fa-solid fa-circle-check text-[10px]" aria-hidden="true" />
+                    Strong password.
+                  </p>
+                )}
               </div>
 
               {/* Confirm Password */}
@@ -486,16 +559,29 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     render={({ field }) => (
                       <input
                         {...field}
-                        type="password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        id="signup-confirm-password"
+                        autoComplete="new-password"
                         placeholder="••••••••"
-                        className={inputClasses}
+                        className={fieldClass(Boolean(error.confirmPassword))}
                         required
                         onChange={(e) => { field.onChange(e); onChange(e); }}
                       />
                     )}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((visible) => !visible)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    aria-controls="signup-confirm-password"
+                    title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    className="password-visibility-toggle absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
+                  >
+                    <i className={`fa-regular ${showConfirmPassword ? 'fa-eye' : 'fa-eye-slash'} text-base`} aria-hidden="true" />
+                  </button>
                 </div>
-                {error.confirmPassword && <p className="mt-1 text-xs text-red-500">{error.confirmPassword.message}</p>}
+                {validationMessage(error.confirmPassword?.message as string | undefined)}
               </div>
 
               {/* Terms */}
@@ -566,11 +652,18 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
           variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } } }}
           className="grid grid-cols-3 gap-y-10 gap-x-6"
         >
-          {MINI_APPS.map((app, i) => {
+          {/* {MINI_APPS.map((app, i) => {
             if (i <= 5) {
               return <AppIcon key={app.id} icon={app.icon} label={app.title} />;
             }
-          })}
+          })} */}
+          {MINI_APPS.map((app) => (
+            <AppIcon
+              key={app.id}
+              icon={app.icon}
+              label={app.title}
+            />
+          ))}
         </motion.div>
       </div>
     </>

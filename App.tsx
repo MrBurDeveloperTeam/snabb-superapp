@@ -1,12 +1,15 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MINI_APPS, CATEGORIES } from './constants';
+import { MINI_APPS, CATEGORIES, ICON_VERSION } from './constants';
 import AppCard from './components/AppCard';
 import UnifiedShopApp from './features/unifiedShop/components/UnifiedShopApp';
-import { useUnifiedCartCount, useUnifiedCartStore } from './features/unifiedShop/store/unifiedCartStore';
+import MyInvoicesPage from './features/invoices/MyInvoicesPage';
+import { useUnifiedCartStore } from './features/unifiedShop/store/unifiedCartStore';
+import { useUnifiedCartBadgeCount } from './features/unifiedShop/hooks/useReservedRewards';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import { AuthPage } from './features/auth/pages/AuthPage';
+import ResetPasswordPage from './features/auth/pages/ResetPassword';
 import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
@@ -36,12 +39,17 @@ import { getActiveCompanyFromOdooSession } from './services/getCompanies';
 import { loadUserProfile } from './services/loadProfile';
 import { getWebsiteCodeForCountry } from './services/authOdoo';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
+import ProfileCompletionGuide from './components/profile-completion-guide/ProfileCompletionGuide';
 import { useProfileImage } from './hooks/useProfileImage';
+import { useIdleLogout, clearIdleActivity } from './hooks/useIdleLogout';
 import ThemeToggle from './components/ThemeToggle';
 import { useThemeStore } from './store/themeStore';
 import LoadingOverlay from './components/LoadingOverlay';
 import UserManagementPage from './subuser/components/UserManagementPage';
 import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
+import WorkspaceSwitcher from './subuser/components/WorkspaceSwitcher';
+import { acceptCompanyInvitation } from './subuser/services/subuserService';
+import { readPendingCompanyInvitation, clearPendingCompanyInvitation } from './subuser/services/pendingCompanyInvitation';
 import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
 import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
 import { BookOpenText, ShoppingBag, ArrowLeft } from 'lucide-react';
@@ -247,6 +255,7 @@ const App: React.FC = () => {
   const [accountType, setAccountType] = useState<string | null>(null);
   const [accountTypeOwnerId, setAccountTypeOwnerId] = useState<string | null>(null);
   const [isCheckingAccountType, setIsCheckingAccountType] = useState(true);
+  const acceptingInvitationRef = useRef<string | null>(null);
   // const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const { profileImageUrl } = useProfileImage(isLoggedIn);
   const isAccountTypeReady =
@@ -406,11 +415,12 @@ useEffect(() => {
 
   const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
   const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
-  const isUnifiedShopRoute = path === '/unified-shop';
+  const isUnifiedShopRoute = path === '/snabbb-shop' || path === '/snabbb-shop/admin/sequence';
+  const isInvoicesRoute = path === '/my-invoices';
   // Unified Shop's cart badge/trigger, surfaced in the shared header
   // (profile-menu entries below, plus a guest-visible icon) instead of
   // Unified Shop rendering its own separate header.
-  const unifiedCartCount = useUnifiedCartCount();
+  const unifiedCartCount = useUnifiedCartBadgeCount();
   const openUnifiedCart = useUnifiedCartStore((s) => s.open);
 
   useEffect(() => {
@@ -660,6 +670,7 @@ useEffect(() => {
   const avatarBgColor = useMemo(() => getAvatarColor(userName), [userName]);
 
   const clearAuthState = useCallback(() => {
+    clearIdleActivity();
     setIsLoggedIn(false);
     setUser(null);
     setLoggedInUser(null);
@@ -682,6 +693,7 @@ useEffect(() => {
     verifySessionGenerationRef.current += 1;
     setMatchedSupabaseUserId(null);
     lastVerifiedEmailRef.current = null;
+    localStorage.removeItem('snabbb.activeWorkspaceOwnerUserId');
   }, []);
 
   // Cross-tab SSO_LOGOUT never calls the Odoo server logout endpoint again
@@ -725,7 +737,6 @@ useEffect(() => {
       }
 
 
-      console.log('res.sessionInfo:', res);
       const nextUser: AuthFormData = {
         fullName: res.sessionInfo.name || '',
         jobPosition: '',
@@ -758,6 +769,12 @@ useEffect(() => {
         setUserChatContextOwnerEmail(null);
         userChatContextGenerationRef.current += 1;
       }
+
+      // Same identity-change signal also decides whether the persisted
+      // Unified Shop cart belongs to whoever just logged in, or needs to
+      // be wiped because it belonged to a previous account on this
+      // browser (see reconcileOwner's doc comment).
+      useUnifiedCartStore.getState().reconcileOwner(normalizedNextEmail);
 
       // Fire-and-forget: confirms/repairs the Supabase session for this
       // Odoo-verified identity before any personalized-dialogue provider is
@@ -886,11 +903,15 @@ useEffect(() => {
     useEffect(() => {
       if (!user?.email) return;
 
+      // localStorage + expiry (not sessionStorage): sessionStorage is lost in
+      // some browsers/in-app webviews across the cross-domain SSO bounce,
+      // which made this redirect re-fire forever.
       const syncedKey = `snabbb_sso_synced_${user.email}`;
+      let last = 0;
+      try { last = Number(localStorage.getItem(syncedKey)) || 0; } catch { /* ignore */ }
+      if (Date.now() - last < 10 * 60 * 1000) return;
 
-      if (sessionStorage.getItem(syncedKey)) return;
-
-      sessionStorage.setItem(syncedKey, 'true');
+      try { localStorage.setItem(syncedKey, String(Date.now())); } catch { /* ignore */ }
       syncmrbursso();
     }, [user?.email]);
 
@@ -1054,16 +1075,6 @@ useEffect(() => {
     didInitRef.current = true;
 
     const bootstrapSession = async () => {
-      // If we just landed here fresh off completing a login's SSO handshake,
-      // force one real browser reload so the whole page — not just this
-      // mount — reflects the newly-established session. The marker is
-      // cleared immediately so this can only ever fire once per login.
-      if (sessionStorage.getItem('snabbb_just_logged_in')) {
-        sessionStorage.removeItem('snabbb_just_logged_in');
-        window.location.reload();
-        return;
-      }
-
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('sid');
 
@@ -1121,7 +1132,6 @@ useEffect(() => {
         email: user.email,
         name: user.fullName,
       });
-      console.log("check url: ", resurl);
       if (resurl?.result?.url) {
         window.location.href = resurl.result.url;
       }
@@ -1197,6 +1207,7 @@ useEffect(() => {
     setIsLoggedIn(true);
     setAuthFormData(nextUser);
     setUser(nextUser);
+    useUnifiedCartStore.getState().reconcileOwner(nextUser.email.trim().toLowerCase());
     navigate(takeTicketingReturnPath() || '/');
 
     // Fetch the user's saved theme from Odoo and apply it.
@@ -1205,6 +1216,10 @@ useEffect(() => {
   };
 
   const logout = async () => {
+    clearIdleActivity();
+    try {
+      if (user?.email) localStorage.removeItem(`snabbb_sso_synced_${user.email}`);
+    } catch { /* ignore */ }
     try {
       await signOut();
     } catch (error) {
@@ -1215,6 +1230,11 @@ useEffect(() => {
       "https://e-learning.snabbb.com/logout?next=https%3A%2F%2Fapp.snabbb.com";
     }
   };
+
+  // Auto-logout after 2 hours without user activity (shared across tabs).
+  useIdleLogout(isLoggedIn === true, () => {
+    void logout();
+  });
 
   const toastMessage = useCallback(
     (msg: React.ReactNode, options: { type: 'success' | 'error'; hideIcon?: boolean }) => {
@@ -1236,8 +1256,42 @@ useEffect(() => {
     []
   );
 
+  useEffect(() => {
+    // The Worker authenticates its own cookie and resolves profiles.user_id.
+    // A separate browser Supabase session is not required for acceptance.
+    if (!isLoggedIn) return;
+
+    const token = readPendingCompanyInvitation();
+    if (!token || acceptingInvitationRef.current === token) return;
+
+    acceptingInvitationRef.current = token;
+
+    acceptCompanyInvitation(token)
+      .then(() => {
+        clearPendingCompanyInvitation(token);
+        window.dispatchEvent(new CustomEvent('snabbb:memberships-changed'));
+        toastMessage('Your company membership has been activated.', {
+          type: 'success',
+        });
+      })
+      .catch((error: any) => {
+        toastMessage(
+          `${error?.message || 'Unable to activate your company membership.'} Your invitation is saved. Reload to retry, or reopen the invitation link and sign in with the invited email.`,
+          { type: 'error' }
+        );
+      })
+      .finally(() => {
+        acceptingInvitationRef.current = null;
+      });
+  }, [isLoggedIn, matchedSupabaseUserId, path, toastMessage]);
+
   if(path === '/sso/check') {
     return <SsoCheck />;
+  }
+
+  // Set-password page linked from the invoice account-activation email.
+  if (path === '/reset-password') {
+    return <ResetPasswordPage navigate={navigate} />;
   }
 
   return (
@@ -1258,6 +1312,7 @@ useEffect(() => {
         isLoggedIn={!!user}
         profileComplete={(user as any)?.profileComplete}
       />
+    <ProfileCompletionGuide enabled={!!isLoggedIn && profileCompletionStatus === 'incomplete'} path={path} menuOpen={isProfileMenuOpen} owner={user?.email || ''} />
     {isToastBackdropOpen && (
         <div
           className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-[1px]"
@@ -1328,12 +1383,19 @@ useEffect(() => {
                 aria-label="Open cart"
               >
                 <ShoppingBag className="h-4 w-4" />
-                {unifiedCartCount > 0 && (
+                {/* Badge mirrors CartDrawer: hidden while signed out so a
+                    guest never sees a count that belongs to whoever last
+                    shopped on this browser (see CartDrawer's isLoggedIn
+                    doc comment). */}
+                {isLoggedIn && unifiedCartCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {unifiedCartCount}
                   </span>
                 )}
               </button>
+            )}
+            {isLoggedIn && typeof matchedSupabaseUserId === 'string' && (
+              <WorkspaceSwitcher userId={matchedSupabaseUserId} />
             )}
             <ThemeToggle />
             {isLoggedIn === null ? (
@@ -1344,6 +1406,9 @@ useEffect(() => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                  aria-label="Open profile menu"
+                  data-profile-guide="profile"
+                  aria-expanded={isProfileMenuOpen}
                   className="block relative"
                 >
                   {avatarPreview ? (
@@ -1412,31 +1477,6 @@ useEffect(() => {
                     <div className="p-2 border-b border-slate-100">
                       {isUnifiedShopRoute && (
                         <>
-                          {/* Unified Shop cart, mirrored here so it's also
-                              reachable from the profile menu, not just the
-                              persistent header icon. */}
-                          <button
-                            onClick={() => {
-                              openUnifiedCart();
-                              setIsProfileMenuOpen(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
-                          >
-                            <div className="w-7 h-7 rounded-xl bg-tiffany-600/10 flex items-center justify-center shrink-0">
-                              <ShoppingBag className="h-3.5 w-3.5 text-tiffany-700" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-slate-800 leading-tight">Cart</p>
-                              <p className="text-[11px] font-semibold text-slate-400 truncate">
-                                {unifiedCartCount > 0 ? `${unifiedCartCount} item${unifiedCartCount === 1 ? '' : 's'}` : 'Your cart is empty'}
-                              </p>
-                            </div>
-                            <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
-                          </button>
-
-                          {/* Back to the app gallery — the brand mark above
-                              already does this on click, but Unified Shop
-                              gets its own explicit menu entry too. */}
                           <button
                             onClick={() => {
                               navigate('/');
@@ -1469,11 +1509,21 @@ useEffect(() => {
                               name: authUser?.name,
                             });
 
-                            const supabaseUserId = res.result?.supabase_user_id;
-                            if (supabaseUserId && w) {
-                              w.location.href = `https://reward.snabbb.com`;
+                            // Use the SSO link Odoo returns. supabase_user_id can be null
+                            // (the reward app creates/syncs the Supabase session itself),
+                            // so it must not gate the launch.
+                            const ssoUrl = res.result?.url;
+                            if (res.error || !ssoUrl) {
+                              throw new Error(
+                                res.error?.data?.message ||
+                                  res.error?.message ||
+                                  'Could not open Snabbb Credit. Please try again.'
+                              );
+                            }
+                            if (w) {
+                              w.location.href = ssoUrl;
                             } else {
-                              w?.close();
+                              window.location.href = ssoUrl;
                             }
                           } catch (e: any) {
                             w?.close();
@@ -1483,9 +1533,6 @@ useEffect(() => {
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-wallet text-[11px] text-violet-500"></i>
-                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">Snabbb Credit</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">
@@ -1522,9 +1569,6 @@ useEffect(() => {
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-tv text-[11px] text-sky-500"></i>
-                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">My Channel</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your channel</p>
@@ -1532,6 +1576,19 @@ useEffect(() => {
                         <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
                       </button>
  
+                      <button
+                        type="button"
+                        onClick={() => { navigate('/my-invoices'); setIsProfileMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiffany-600"
+                      >
+                        
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm font-bold text-slate-800 leading-tight">My Invoice</span>
+                          <span className="block text-[11px] font-semibold text-slate-400 truncate">View and download invoices</span>
+                        </span>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors" aria-hidden="true" />
+                      </button>
+
                       {isAccountTypeReady && (
                         <button
                           type="button"
@@ -1541,12 +1598,9 @@ useEffect(() => {
                           }}
                           className="flex w-full items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                         >
-                          <span className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
-                            <i className="fa-solid fa-life-ring text-xs" aria-hidden="true"></i>
-                          </span>
                           <span className="flex-1 min-w-0">
                             <span className="block text-sm font-bold text-slate-900 leading-tight">
-                              {accountType === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}
+                              {accountType === 'admin' ? 'Support Tickets' : 'Support Tickets'}
                             </span>
                             <span className="block text-[11px] font-semibold text-slate-500 truncate">
                               {accountType === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}
@@ -1564,9 +1618,6 @@ useEffect(() => {
                           }}
                           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                         >
-                          <div className="w-7 h-7 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
-                            <i className="fa-solid fa-users text-[11px] text-emerald-500"></i>
-                          </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-800 leading-tight">User Management</p>
                             <p className="text-[11px] font-semibold text-slate-400 truncate">Manage company members</p>
@@ -1577,12 +1628,10 @@ useEffect(() => {
 
                       {/* Settings */}
                       <button
+                        data-profile-guide="settings"
                         onClick={() => navigate('/profile-settings')}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-gear text-[11px] text-slate-500"></i>
-                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 leading-tight">Settings</p>
                           <p className="text-[11px] font-semibold text-slate-400 truncate">Account & preferences</p>
@@ -1676,12 +1725,12 @@ useEffect(() => {
             switch unmounts A's Cat and mounts a fresh B instance, instead
             of the old key={isLoggedIn ? 'logged-in' : 'guest'} which never
             changed across an in-session account swap. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute || isInvoicesRoute ? 'hidden' : 'contents'}>
           <CatMascot
             key={!isLoggedIn ? 'guest' : (petCatOwnerId ?? 'guest')}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
-            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute}
+            isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute || isInvoicesRoute}
             profileCompletionStatus={isPersonalizedPetDialogueEnabled() ? profileCompletionStatus : 'unknown'}
             personalizedMatchedUserId={isPersonalizedPetDialogueEnabled() ? matchedSupabaseUserId : null}
             catCacheOwnerId={petCatOwnerId}
@@ -1700,7 +1749,7 @@ useEffect(() => {
             leaving A's history visible under B. Disabled entirely — not
             just context-starved — while a logged-in identity is still
             unreconciled, so no chat can start under an unconfirmed owner. */}
-        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute ? 'hidden' : 'contents'}>
+        <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute || isInvoicesRoute ? 'hidden' : 'contents'}>
           <SuperappMolarAIFloat
             key={!isLoggedIn ? 'guest' : typeof matchedSupabaseUserId === 'string' ? matchedSupabaseUserId : 'reconciling'}
             userContext={safeUserChatContext}
@@ -1715,7 +1764,7 @@ useEffect(() => {
           !isCompanyMemberSignup &&
           !isVirtualPetOpen &&
           !isTutorialRoute &&
-          !isUnifiedShopRoute && (
+          !isUnifiedShopRoute && !isInvoicesRoute && (
             <div className="fixed bottom-28 right-6 z-[60]">
               <div className="group/tutorial relative">
                 <div className="pointer-events-none absolute -top-9 left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-bold text-tiffany-600 opacity-0 shadow-lg shadow-tiffany-500/20 transition-all duration-200 group-hover/tutorial:translate-y-0 group-hover/tutorial:opacity-100 group-focus-within/tutorial:translate-y-0 group-focus-within/tutorial:opacity-100">
@@ -1733,7 +1782,7 @@ useEffect(() => {
                   aria-label="Explore Tutorials"
                 >
                   <img
-                    src="/icons/tutorial-video.png"
+                    src={`/icons/tutorial-video.png?v=${ICON_VERSION}`}
                     alt=""
                     className="h-14 w-14 object-contain transition-transform duration-300 group-hover/tutorial:scale-105"
                   />
@@ -1797,7 +1846,7 @@ useEffect(() => {
           )}
           {path === '/profile-settings' && (
             <motion.div key="profile-settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ProfileSettingsPage />
+              <ProfileSettingsPage onProfileSaved={() => { void verifySession(); }} />
             </motion.div>
           )}
 
@@ -1862,9 +1911,13 @@ useEffect(() => {
             </motion.div>
           )}
 
+          {isInvoicesRoute && (
+            <MyInvoicesPage key={`${authUser?.username || 'guest'}:${authUser?.company_id || ''}`} signedIn={isLoggedIn === true} onNavigate={navigate} />
+          )}
+
           {isUnifiedShopRoute && (
             <motion.div key="shop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <UnifiedShopApp onBack={() => navigate('/')} />
+              <UnifiedShopApp onBack={() => navigate('/')} isLoggedIn={!!isLoggedIn} isAdmin={accountType === 'admin'} />
             </motion.div>
           )}
 
@@ -1941,7 +1994,7 @@ useEffect(() => {
                 </div>
               </div>
 
-              <div className="mt-12">
+              <div className="mt-0 sm:mt-12">
                 {activeCategory === 'All' ? (
                   ['Shops', 'Productivity', 'Value Added'].map((cat) => {
                     const appsInCategory = filteredApps.filter((app) => app.category === cat);
@@ -1960,7 +2013,7 @@ useEffect(() => {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.18, ease: 'easeOut' }}
-                          className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
+                          className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 sm:gap-y-12 gap-x-4 sm:gap-x-8"
                         >
                           {appsInCategory.map((app, index) => (
                             <AppCard
@@ -1968,7 +2021,7 @@ useEffect(() => {
                               key={app.id}
                               app={app}
                               index={index}
-                              onOpenEmbedded={() => window.open('/unified-shop', '_blank', 'noopener,noreferrer')}
+                              onOpenEmbedded={() => window.open('/snabbb-shop', '_blank', 'noopener,noreferrer')}
                             />
                           ))}
                         </motion.div>
@@ -1981,7 +2034,7 @@ useEffect(() => {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-8 sm:gap-y-12 gap-x-4 sm:gap-x-8"
+                    className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 sm:gap-y-12 gap-x-4 sm:gap-x-8"
                   >
                     {filteredApps.map((app, index) => (
                       <AppCard
@@ -1989,7 +2042,7 @@ useEffect(() => {
                         key={app.id}
                         app={app}
                         index={index}
-                        onOpenEmbedded={() => window.open('/unified-shop', '_blank', 'noopener,noreferrer')}
+                        onOpenEmbedded={() => window.open('/snabbb-shop', '_blank', 'noopener,noreferrer')}
                       />
                     ))}
 
@@ -2013,7 +2066,7 @@ useEffect(() => {
           )}
         {/* </AnimatePresence> */}
 
-        {!isAuthRoute && !isCompanyMemberSignup && !isTutorialRoute && !isTicketingRoute && !isUnifiedShopRoute && (
+        {!isAuthRoute && !isCompanyMemberSignup && !isTutorialRoute && !isTicketingRoute && !isUnifiedShopRoute && !isInvoicesRoute && (
           <footer className="max-w-7xl mx-auto px-6 mt-12 pb-12">
             <div className="py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-slate-400 text-sm font-bold">© 2026 Snabbb Apps Gallery.</p>

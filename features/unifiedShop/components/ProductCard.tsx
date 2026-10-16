@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { ShoppingCart, ImageOff, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { UnifiedProduct } from '../types';
 import { BRAND_DISPLAY } from './brandMeta';
 import { useUnifiedCartStore } from '../store/unifiedCartStore';
+import { CART_TOAST_STYLE } from './cartToastStyle';
 
 function formatPrice(price: number, currency: string) {
   try {
@@ -111,6 +113,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
               // shouldn't also pop that open.
               e.stopPropagation();
               addItem(product);
+              toast.success('Item added to cart', { style: CART_TOAST_STYLE });
             }}
             className="flex items-center justify-center h-8 w-8 rounded-full bg-tiffany-500 text-white transition-transform hover:scale-105 hover:bg-tiffany-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:scale-100 disabled:hover:bg-tiffany-500"
             aria-label={`Add ${product.name} to cart`}

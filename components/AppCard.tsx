@@ -11,7 +11,7 @@ interface AppCardProps {
   index: number;
   /**
    * Opens an embedded, in-app screen instead of following `app.route` as a
-   * URL — used by tiles like `unified-shop` that render inside this SPA
+   * URL — used by tiles like `snabbb-shop` that render inside this SPA
    * rather than launching another site via SSO. `app.route` is still set
    * (to a non-navigable placeholder) purely so `isComingSoon` below doesn't
    * grey the tile out; handleClick checks `app.id` for this before it ever
@@ -22,7 +22,8 @@ interface AppCardProps {
 
 // Render a 120px image inside the 112px desktop icon viewport.
 // The viewport clips the excess evenly on every side.
-const ICON_SCALE = 120 / 112;
+// const ICON_SCALE = 120 / 112;
+const ICON_SCALE = 1.4;
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedded }) => {
   const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
@@ -35,7 +36,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
   const iconCornerRadius = '20%';
 
   const handleClick = async () => {
-    if (app.id === 'unified-shop') {
+    if (app.id === 'snabbb-shop') {
       onOpenEmbedded?.(app.id);
       return;
     }
@@ -108,7 +109,44 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
           );
         }
 
+        
         let targetUrl = res.result?.url;
+
+        if (
+           ["inventory", "appointment", "charting", "todo"].includes(appCode) &&
+           targetUrl
+        ) {
+          const selectedCompanyOwnerId =
+            localStorage.getItem(
+              'snabbb.activeWorkspaceOwnerUserId'
+            );
+
+          const inventoryUrl =
+            new URL(targetUrl);
+
+          if (selectedCompanyOwnerId) {
+            inventoryUrl.searchParams.set(
+              'workspace_type',
+              'company'
+            );
+
+            inventoryUrl.searchParams.set(
+              'workspace_owner_id',
+              selectedCompanyOwnerId
+            );
+          } else {
+            inventoryUrl.searchParams.set(
+              'workspace_type',
+              'personal'
+            );
+
+            inventoryUrl.searchParams.delete(
+              'workspace_owner_id'
+            );
+          }
+
+          targetUrl = inventoryUrl.toString();
+        }
 
         if (appCode === 'shop' && targetUrl) {
           const ssoUrl = new URL(targetUrl);
@@ -186,7 +224,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
   const iconInsetClass = 'absolute inset-[3px]';
 
   const cardClass =
-    'relative z-10 w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-150';
+    'relative z-10 w-24 h-24 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-150';
 
   const wrapperClass =
     'group flex flex-col items-center gap-3 sm:gap-4 w-full pb-4 pt-2';
@@ -375,7 +413,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
 
           {isComingSoon && (
             <div className="absolute bottom-2 left-0 right-0 flex justify-center z-30">
-              <span className="text-[8px] font-black uppercase tracking-[0.14em] bg-white/80 text-slate-500 px-2.5 py-1 rounded-full border border-slate-200/80 shadow-sm">
+              <span className="text-[8px] font-black uppercase tracking-[0.14em] bg-white/80 text-slate-500 px-1 py-1 rounded-full border border-slate-200/80 shadow-sm">
                 Coming Soon
               </span>
             </div>)}

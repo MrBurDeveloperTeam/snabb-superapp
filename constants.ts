@@ -15,26 +15,33 @@ function getOdooCompanyCode(): string | null {
 // In your app config array:
 const companyCode = getOdooCompanyCode()
 
+// Cache-buster for /icons/*. The Cloudflare Worker caches versioned icon URLs
+// for a year (see "STATIC ICON EDGE CACHE" in worker.js). Icon filenames are not
+// content-hashed, so BUMP THIS whenever any icon image is replaced.
+export const ICON_VERSION = '1';
+
 export const MINI_APPS: MiniApp[] = [
   // ======= SHOPS =======
   {
     id: 'app-1',
     title: 'Mr.Bur',
     category: 'Shops',
-    icon: 'https://app.snabbb.com/icons/mr_bur.png',
+    // icon: 'https://app.snabbb.com/icons/mr_bur.png',
+    icon: `/icons/new-icons/mr-bur-logo.png?v=${ICON_VERSION}`,
     route: getMrBurUrlFromCompanyCode(companyCode),
     colorScheme: { text: 'text-[#4338ca]', icon: '#0891b2' }
   },
   {
-    id: 'unified-shop',
+    id: 'snabbb-shop',
     title: 'Snabbb Shop',
     category: 'Shops',
-    icon: 'fa-solid fa-basket-shopping',
-    // Not used for navigation — AppCard.tsx special-cases id === 'unified-shop'
+    // icon: 'fa-solid fa-basket-shopping',
+    icon: `/icons/new-icons/unify-shop.png?v=${ICON_VERSION}`,
+    // Not used for navigation — AppCard.tsx special-cases id === 'snabbb-shop'
     // and opens the embedded UnifiedShopApp overlay instead of following this
     // as a URL. Kept truthy only so isComingSoon (`!app.route`) doesn't grey
     // the tile out.
-    //route: '#unified-shop',
+    //route: '#snabbb-shop',
     // #089a98 is tiffany-700 from the app's own Tailwind config (index.html)
     // — the same brand color used inside the Shop screen itself, rather than
     // an approximated teal.
@@ -45,31 +52,62 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-2',
     title: 'Inventory',
     category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
+    // icon: 'https://app.snabbb.com/icons/inventory_tiffany.png',
+    icon: `/icons/new-icons/inventory.png?v=${ICON_VERSION}`,
     route: `https://inventory.snabbb.com/`,
     colorScheme: { text: 'text-[#b91c1c]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-3',
-    title: 'Events',
-    category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/event.png',
-    // route: `https://app.snabbb.com/event`,
-    colorScheme: { text: 'text-[#0891b2]', icon: '#0891b2' }
   },
   {
     id: 'app-4',
     title: 'Appointment',
     category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/appointment.png',
+    // icon: 'https://app.snabbb.com/icons/appointment.png',
+    icon: `/icons/new-icons/appointment.png?v=${ICON_VERSION}`,
     route: `https://appointment.snabbb.com/`,
     colorScheme: {  text: 'text-[#15803d]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-12',
+    title: 'Dental Charting',
+    category: 'Productivity',
+    // icon: '/icons/dental_charting.PNG',
+    icon: `/icons/new-icons/charting.png?v=${ICON_VERSION}`,
+    route: `https://charting.snabbb.com`,
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-10',
+    title: 'E-Learning',
+    category: 'Productivity',
+    // icon: 'https://app.snabbb.com/icons/e-learning.png',
+    icon: `/icons/new-icons/e-learning.png?v=${ICON_VERSION}`,
+    route: `https://e-learning.snabbb.com/`,
+    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-9',
+    title: 'To-Do Manager',
+    category: 'Productivity',
+    // icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
+    icon: `/icons/new-icons/to-do.png?v=${ICON_VERSION}`,
+    route: `https://todo.snabbb.com/`,
+    colorScheme: { text: 'text-[#b45309]', icon: '#0891b2' }
+  },
+  {
+    id: 'app-3',
+    title: 'Events',
+    category: 'Productivity',
+    // icon: 'https://app.snabbb.com/icons/event.png',
+    icon: `/icons/new-icons/events.png?v=${ICON_VERSION}`,
+    // route: `https://app.snabbb.com/event`,
+    colorScheme: { text: 'text-[#0891b2]', icon: '#0891b2' }
   },
   {
     id: 'app-6',
     title: 'Content Studio',
     category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/ai_image.png',
+    // icon: 'https://app.snabbb.com/icons/ai_image.png',
+    icon: `/icons/new-icons/content-studio.png?v=${ICON_VERSION}`,
     route: 'https://imageai.snabbb.com',
     colorScheme: { text: 'text-[#7e22ce]', icon: '#0891b2' }
   },
@@ -85,66 +123,48 @@ export const MINI_APPS: MiniApp[] = [
     id: 'app-8',
     title: 'Profit Calculator',
     category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/profit_calculator.png',
+    // icon: 'https://app.snabbb.com/icons/profit_calculator.png',
+    icon: `/icons/new-icons/profit-calculator.png?v=${ICON_VERSION}`,
     route: `https://calculator.snabbb.com`,
-    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-9',
-    title: 'To-Do Manager',
-    category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/todo_tiffany.png',
-    route: `https://todo.snabbb.com/`,
-    colorScheme: { text: 'text-[#b45309]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-10',
-    title: 'E-Learning',
-    category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/e-learning.png',
-    route: `https://e-learning.snabbb.com/`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
   {
     id: 'app-11',
     title: 'Expenses',
     category: 'Productivity',
-    icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
+    // icon: 'https://app.snabbb.com/icons/expenses_tiffany.png',
+    icon: `/icons/new-icons/snabbb-expenses.png?v=${ICON_VERSION}`,
     // route: `https://app.snabbb.com`,
-    colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-12',
-    title: 'Dental Charting',
-    category: 'Productivity',
-    icon: '/icons/dental_charting.PNG',
-    route: `https://charting.snabbb.com`,
     colorScheme: {  text: 'text-[#b45309]', icon: '#0891b2' }
   },
 
   // ======= VALUE ADDED =======
   {
+    id: 'app-15',
+    title: 'Snabbb Reward',
+    category: 'Value Added',
+    // icon: `/icons/reward.png`,
+    icon: `/icons/new-icons/snabbb-reward.png?v=${ICON_VERSION}`,
+    route: `https://reward.snabbb.com`,
+    colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
+  },
+  {
     id: 'app-14',
     title: 'Insurance',
     category: 'Value Added',
-    icon: '/icons/insurance.png',
+    // icon: '/icons/insurance.png',
+    icon: `/icons/new-icons/insurance.png?v=${ICON_VERSION}`,
     // route: `https://app.snabbb.com`,
     colorScheme: {  text: 'text-[#166534]', icon: '#0891b2' }
   },
   {
-    id: 'app-15',
+    // id: 'app-15',
+    id: 'app-17',
     title: 'Lease',
     category: 'Value Added',
-    icon: '/icons/lease.png',
+    // icon: '/icons/lease.png',
+    icon: `/icons/new-icons/lease.png?v=${ICON_VERSION}`,
     // route: `https://app.snabbb.com`,
-    colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
-  },
-  {
-    id: 'app-15',
-    title: 'Snabbb Reward',
-    category: 'Value Added',
-    icon: `/icons/reward.png`,
-    route: `https://reward.snabbb.com`,
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
   // {

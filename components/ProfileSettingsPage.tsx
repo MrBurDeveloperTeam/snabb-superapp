@@ -299,7 +299,34 @@ type ProfileForm = {
   categoryIds: string[];
 };
 
-export default function ProfileSettingsPage() {
+type ValidatedProfileField = "firstName" | "lastName" | "phone" | "dateOfBirth";
+
+const getLocalDateValue = () => {
+  const today = new Date();
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+};
+
+const validateProfileField = (name: ValidatedProfileField, value: string) => {
+  if ((name === "firstName" || name === "lastName") && !value.trim()) {
+    return `${name === "firstName" ? "First" : "Last"} name is required.`;
+  }
+  if ((name === "firstName" || name === "lastName") && /\p{N}/u.test(value)) {
+    return `${name === "firstName" ? "First" : "Last"} name cannot include numbers.`;
+  }
+  if (name === "phone" && /\p{L}/u.test(value)) {
+    return "Phone number cannot include letters.";
+  }
+  if (name === "dateOfBirth" && value && value > getLocalDateValue()) {
+    return "Date of birth cannot be in the future.";
+  }
+  return "";
+};
+
+export default function ProfileSettingsPage({ onProfileSaved }: { onProfileSaved?: () => void } = {}) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [form, setForm] = useState<ProfileForm>({
@@ -336,6 +363,7 @@ export default function ProfileSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Partial<Record<ValidatedProfileField, boolean>>>({});
 
   // Referral contact ID
   const [contactId, setContactId] = useState<string | null>(null);
@@ -365,8 +393,6 @@ export default function ProfileSettingsPage() {
       });
 
       const data = await res.json().catch(() => null);
-
-      console.log("GET profile response:", data);
 
       if (!res.ok || !data?.ok) {
         console.error("Profile load failed:", data);
@@ -560,7 +586,28 @@ export default function ProfileSettingsPage() {
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (["firstName", "lastName", "phone", "dateOfBirth"].includes(name)) {
+      setTouchedFields((prev) => ({ ...prev, [name]: true }));
+    }
   };
+
+  const profileErrors: Record<ValidatedProfileField, string> = {
+    firstName: validateProfileField("firstName", form.firstName),
+    lastName: validateProfileField("lastName", form.lastName),
+    phone: validateProfileField("phone", form.phone),
+    dateOfBirth: validateProfileField("dateOfBirth", form.dateOfBirth),
+  };
+
+  const inputValidationClass = (name: ValidatedProfileField) =>
+    touchedFields[name] && profileErrors[name] ? " inp-error" : "";
+
+  const renderValidationError = (name: ValidatedProfileField) =>
+    touchedFields[name] && profileErrors[name] ? (
+      <p className="field-error" role="alert">
+        <span aria-hidden="true">!</span>
+        {profileErrors[name]}
+      </p>
+    ) : null;
 
   const updateState = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.selectedOptions[0];
@@ -580,15 +627,26 @@ export default function ProfileSettingsPage() {
     }));
   };
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('profile-guide-progress', { detail: {
+      address: !!(form.street.trim() && form.city.trim() && form.stateId && form.postalCode.trim()),
+    } }));
+  }, [form.street, form.city, form.stateId, form.postalCode]);
+
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      alert('Please choose a JPG, PNG or GIF image.');
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) {
       alert("Image must be below 2MB");
       return;
     }
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
+    window.dispatchEvent(new CustomEvent('profile-guide-progress', { detail: { photo: true } }));
   };
 
   const addSpecialty = (specialtyId: string) => {
@@ -626,8 +684,9 @@ export default function ProfileSettingsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      alert("First Name and Last Name are required.");
+    setTouchedFields({ firstName: true, lastName: true, phone: true, dateOfBirth: true });
+    if (Object.values(profileErrors).some(Boolean)) {
+      window.dispatchEvent(new CustomEvent('profile-guide-progress', { detail: { repair: true } }));
       return;
     }
 
@@ -793,6 +852,7 @@ export default function ProfileSettingsPage() {
       }
 
       await loadProfile();
+      onProfileSaved?.();
 
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -853,6 +913,51 @@ export default function ProfileSettingsPage() {
         .inp:focus {
           border-color: #647294;
           box-shadow: 0 0 0 3px rgba(100,114,148,0.12);
+        }
+
+        .inp.inp-error {
+          border-color: #ef4444;
+          box-shadow: none;
+        }
+
+        .inp.inp-error:focus {
+          border-color: #ef4444;
+          box-shadow: none;
+        }
+
+        .dark .inp.inp-error,
+        .dark .inp.inp-error:focus {
+          border-color: #f87171;
+        }
+
+        .field-error {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 6px;
+          color: #ef4444;
+          font-size: 11.5px;
+          font-weight: 600;
+        }
+
+        .field-error span {
+          display: inline-flex;
+          width: 14px;
+          height: 14px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          background: #fee2e2;
+          font-size: 9px;
+          font-weight: 800;
+        }
+
+        .dark .field-error {
+          color: #f87171;
+        }
+
+        .dark .field-error span {
+          background: rgba(248,113,113,0.15);
         }
 
         .inp:disabled {
@@ -917,7 +1022,7 @@ export default function ProfileSettingsPage() {
           </p>
         </div>
 
-        <div className="section-card">
+        <div className="section-card" data-profile-guide="photo">
           <div className="section-title">Profile Photo</div>
 
           <div className="flex items-center gap-5">
@@ -982,7 +1087,7 @@ export default function ProfileSettingsPage() {
           </div>
         </div>
 
-        <div className="section-card">
+        <div className="section-card" data-profile-guide="personal">
           <div className="section-title">Personal Information</div>
 
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
@@ -993,9 +1098,10 @@ export default function ProfileSettingsPage() {
                 value={form.firstName}
                 onChange={updateField}
                 required
-                className="inp"
+                className={`inp${inputValidationClass("firstName")}`}
                 placeholder="e.g. Ahmad"
               />
+              {renderValidationError("firstName")}
             </div>
 
             <div>
@@ -1005,9 +1111,10 @@ export default function ProfileSettingsPage() {
                 value={form.lastName}
                 onChange={updateField}
                 required
-                className="inp"
+                className={`inp${inputValidationClass("lastName")}`}
                 placeholder="e.g. Nizam"
               />
+              {renderValidationError("lastName")}
             </div>
 
             <div>
@@ -1027,9 +1134,10 @@ export default function ProfileSettingsPage() {
                 name="phone"
                 value={form.phone}
                 onChange={updateField}
-                className="inp"
+                className={`inp${inputValidationClass("phone")}`}
                 placeholder="+60 12 345 6789"
               />
+              {renderValidationError("phone")}
             </div>
 
             <div>
@@ -1039,8 +1147,10 @@ export default function ProfileSettingsPage() {
                 name="dateOfBirth"
                 value={form.dateOfBirth}
                 onChange={updateField}
-                className="inp"
+                max={getLocalDateValue()}
+                className={`inp${inputValidationClass("dateOfBirth")}`}
               />
+              {renderValidationError("dateOfBirth")}
             </div>
 
             <div className="md:col-span-2">
@@ -1151,7 +1261,7 @@ export default function ProfileSettingsPage() {
           </div>
         )}
 
-        <div className="section-card">
+        <div className="section-card" data-profile-guide="address">
           <div className="section-title">Address</div>
 
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
@@ -1347,9 +1457,9 @@ export default function ProfileSettingsPage() {
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-[#e5e7eb] bg-white/90 px-6 py-3.5 backdrop-blur-md">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-[#e5e7eb] bg-white/90 py-3.5 pl-6 pr-24 backdrop-blur-md sm:pr-6">
         <div className="mx-auto flex max-w-[760px] items-center justify-between">
-          <p className="text-xs text-[#9ca3af]">
+          <p className="mr-3 min-w-0 text-xs text-[#9ca3af]">
             Changes are saved to your account
           </p>
 
@@ -1365,6 +1475,7 @@ export default function ProfileSettingsPage() {
             <button
               type="button"
               onClick={handleSave}
+              data-profile-guide="save"
               disabled={saving}
               className="rounded-lg bg-[#647294] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#52617f] disabled:cursor-not-allowed disabled:opacity-60"
             >

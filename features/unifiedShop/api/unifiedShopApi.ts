@@ -2,17 +2,19 @@ import type { ProductQuery, ProductsResponse } from '../types';
 import { mockQueryProducts } from '../data/mockProducts';
 
 /**
- * Same-origin path, matching how the rest of this app talks to Odoo (e.g.
- * themeStore.ts's `/api/user/theme`) — whatever proxies `/api/*` on
- * app.snabbb.com to Odoo today handles this the same way. Nothing here talks
- * to mrbur.odoo.com / an Odoo *.shop domain directly.
+ * Relative path, matching how the rest of this app talks to Odoo (e.g.
+ * themeStore.ts's `/api/user/theme`) and checkoutApi.ts/paymentApi.ts's own
+ * BASE constants — matches unified_shop_api's own route
+ * (`/api/unified-shop/products`, mrbur repo) exactly.
  *
- * This endpoint doesn't exist in Odoo/the Worker yet — that's the Phase 1
- * backend work (a new `unified_shop_api` Odoo module + a Worker route). Until
- * it's deployed, every call below falls back to local mock data on a 404 so
- * this feature is fully demoable without the backend.
+ * Kept relative rather than a hardcoded `https://app.snabbb.com/...` origin
+ * so it resolves the same way in production (app.snabbb.com serves this app
+ * itself) and in local/LAN dev, where vite's dev proxy forwards `/api/*` to
+ * the real Odoo backend (see vite.config.ts) and a same-origin request
+ * carries the browser's real Odoo session cookie — a hardcoded absolute
+ * origin would bypass both.
  */
-const BASE = 'https://app.snabbb.com/api/unified-shop';
+const BASE = '/api/snabbb-shop';
 
 let warnedAboutMockFallback = false;
 function warnMockFallbackOnce(context: string) {
@@ -20,7 +22,7 @@ function warnMockFallbackOnce(context: string) {
   warnedAboutMockFallback = true;
   // eslint-disable-next-line no-console
   console.info(
-    `[unified-shop] ${BASE} isn't deployed yet — using local mock data ` +
+    `[snabbb-shop] ${BASE} isn't deployed yet — using local mock data ` +
       `(first hit: ${context}). This will switch to live data automatically ` +
       `once the backend endpoint exists.`
   );
@@ -49,7 +51,7 @@ export async function fetchProducts(query: ProductQuery): Promise<ProductsRespon
     // Network-level failure (backend unreachable, dev server with no proxy
     // configured, etc.) — fall through to mock data rather than breaking the
     // page, but still surface it via console so it's not silently swallowed.
-    console.warn('[unified-shop] /products request failed, using mock data:', err);
+    console.warn('[snabbb-shop] /products request failed, using mock data:', err);
   }
 
   warnMockFallbackOnce('/products');
