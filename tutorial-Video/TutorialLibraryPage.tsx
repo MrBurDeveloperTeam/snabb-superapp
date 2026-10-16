@@ -40,9 +40,9 @@ const TutorialLibraryPage: React.FC<TutorialLibraryPageProps> = ({ onNavigate })
           {VISIBLE_TUTORIAL_CATEGORIES.map(({ group, items }) => (
             <div key={group}>
               <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{group}</p>
-              <div className="flex flex-wrap gap-2">
+              <div className={group === 'Productivity' ? 'no-scrollbar flex flex-nowrap gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible sm:pb-0' : 'flex flex-wrap gap-2'}>
                 {items.map((category) => (
-                  <button key={category} type="button" onClick={() => setActiveCategory(category)} className={`tutorial-filter rounded-full border px-4 py-2 text-sm font-bold transition-all ${activeCategory === category ? 'tutorial-filter-active border-tiffany-600 bg-tiffany-600 text-white shadow-md shadow-tiffany-600/20' : 'border-slate-200 bg-white text-slate-600 hover:border-tiffany-300 hover:text-tiffany-700'}`}>{category}</button>
+                  <button key={category} type="button" onClick={() => setActiveCategory(category)} className={`tutorial-filter shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition-all ${activeCategory === category ? 'tutorial-filter-active border-tiffany-600 bg-tiffany-600 text-white shadow-md shadow-tiffany-600/20' : 'border-slate-200 bg-white text-slate-600 hover:border-tiffany-300 hover:text-tiffany-700'}`}>{category}</button>
                 ))}
               </div>
             </div>
