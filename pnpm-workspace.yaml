@@ -1,4 +1,5 @@
 allowBuilds:
+  '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/8a1993a66d60087829519c053ee7de0ed3475320': true
   '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/e9393635bc73d75d6b848e1e66a2be5faf4f47c5': true
   '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/e1a10ef0836824f5200a8473792a107a214c5931': true
   '@mrburdeveloperteam/pet-function@https://codeload.github.com/mrburdeveloperteam/pet-function/tar.gz/55d2510b52c59cd78ff474bb6ca3e9cd6fb6528a': true
