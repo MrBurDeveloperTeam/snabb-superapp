@@ -92,6 +92,22 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
       // open a blank tab right away and navigate it once we have the URL.
       const newTab = window.open('', '_blank');
 
+      // Give the user something to look at while the launch link is being
+      // created (Worker -> Odoo can take a few seconds on mobile networks);
+      // a bare about:blank tab looks like the launch is stuck.
+      try {
+        if (newTab) {
+          newTab.document.title = `Opening ${app.title}…`;
+          newTab.document.body.innerHTML =
+            '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+            '<style>html,body{height:100%;margin:0}body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0}' +
+            '.s{width:36px;height:36px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:r .8s linear infinite}@keyframes r{to{transform:rotate(360deg)}}</style>' +
+            '<div class="s"></div><div>Opening ' + String(app.title).replace(/[<>&]/g, '') + '…</div>';
+        }
+      } catch {
+        /* cross-origin or blocked: ignore, the redirect below still works */
+      }
+
       try {
         const res = await createAppLink({
           app: appCode,
