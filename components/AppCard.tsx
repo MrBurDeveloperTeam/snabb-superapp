@@ -97,12 +97,33 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
       // a bare about:blank tab looks like the launch is stuck.
       try {
         if (newTab) {
-          newTab.document.title = `Opening ${app.title}…`;
-          newTab.document.body.innerHTML =
-            '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-            '<style>html,body{height:100%;margin:0}body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0}' +
-            '.s{width:36px;height:36px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:r .8s linear infinite}@keyframes r{to{transform:rotate(360deg)}}</style>' +
-            '<div class="s"></div><div>Opening ' + String(app.title).replace(/[<>&]/g, '') + '…</div>';
+          const safeTitle = String(app.title).replace(/[<>&"']/g, '');
+          const dark =
+            window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+          const bg = dark ? '#0f172a' : '#ffffff';
+          const fg = dark ? '#e2e8f0' : '#0f172a';
+          const ring = dark ? 'rgba(255,255,255,.25)' : 'rgba(15,23,42,.15)';
+          const ringTop = dark ? '#ffffff' : '#0f172a';
+          // Full document (not body innerHTML) so the viewport meta sits in
+          // <head>; mobile browsers ignore a viewport meta placed in <body>.
+          newTab.document.open();
+          newTab.document.write(
+            '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
+              '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' +
+              `<meta name="theme-color" content="${bg}">` +
+              `<title>Opening ${safeTitle}…</title>` +
+              '<style>' +
+              '*{box-sizing:border-box}' +
+              'html,body{height:100%;margin:0}' +
+              `body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));text-align:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;background:${bg};color:${fg};-webkit-text-size-adjust:100%}` +
+              `.s{width:40px;height:40px;border:3px solid ${ring};border-top-color:${ringTop};border-radius:50%;animation:r .8s linear infinite}` +
+              '@keyframes r{to{transform:rotate(360deg)}}' +
+              '@media (prefers-reduced-motion:reduce){.s{animation-duration:2s}}' +
+              '</style></head><body>' +
+              `<div class="s" role="progressbar" aria-label="Loading"></div><div>Opening ${safeTitle}…</div>` +
+              '</body></html>'
+          );
+          newTab.document.close();
         }
       } catch {
         /* cross-origin or blocked: ignore, the redirect below still works */
