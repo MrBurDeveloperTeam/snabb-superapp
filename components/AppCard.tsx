@@ -172,6 +172,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
         }
 
         if (newTab) {
+          try {
+            const status = newTab.document.getElementById('status');
+            if (status) status.textContent = 'Signing you in…';
+          } catch {
+            /* ignore */
+          }
           newTab.location.href = targetUrl;
         } else {
           // Popup blocker still caught it (e.g. blocked at the OS/browser
