@@ -50,6 +50,15 @@ html[data-theme="dark"]{--ls-bg:#0F1115;--ls-fg:#F1F5F9;--ls-ring:rgba(255,255,2
 @keyframes ls-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.ls-spinner{animation-duration:2.4s}}
 </style>
+<script>
+  // Phase-lock the spinner to the wall clock so the next page's splash (which
+  // does the same) continues the rotation instead of restarting it.
+  (function () {
+    var d = document.createElement('style');
+    d.textContent = '.ls-spinner{animation-delay:-' + (Date.now() % 800) + 'ms}';
+    document.head.appendChild(d);
+  })();
+</script>
 </head>
 <body>
 <div class="ls" role="status" aria-live="polite"><img id="icon" class="ls-icon" alt="" width="160" height="160"><div class="ls-spinner" aria-hidden="true"></div><h1 class="ls-title" id="title">Opening…</h1><p class="ls-status" id="status">Preparing your link…</p></div>
