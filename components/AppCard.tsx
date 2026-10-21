@@ -182,7 +182,23 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
         if (newTab) {
           try {
             const status = newTab.document.getElementById('status');
-            if (status) status.textContent = 'Almost there…';
+            if (status) {
+              // Vary the hand-off message so repeated launches don't feel
+              // repetitive. Deliberately avoids "Signing you in…", which the
+              // mini app's own splash shows right after.
+              const handoffMessages = [
+                'Almost there…',
+                'Just a moment…',
+                'Getting things ready for you…',
+                'Hang tight, nearly done…',
+                'Warming things up…',
+                'Setting up your workspace…',
+                'One more second…',
+                'Opening the door for you…',
+              ];
+              status.textContent =
+                handoffMessages[Math.floor(Math.random() * handoffMessages.length)];
+            }
           } catch {
             /* ignore */
           }
