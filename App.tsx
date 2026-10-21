@@ -199,6 +199,15 @@ const App: React.FC = () => {
     setInviteResolveError,
   ] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  // Hide the page until the first login check resolves, so the header
+  // button, greeting and announcement bar don't visibly swap/shift a few
+  // seconds after load. Safety timeout so a failed check never leaves a blank page.
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setAuthTimedOut(true), 6000);
+    return () => window.clearTimeout(t);
+  }, []);
+  const appReady = isLoggedIn !== null || authTimedOut;
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -243,6 +252,27 @@ const App: React.FC = () => {
   // read the raw tri-state `matchedSupabaseUserId` directly.
   const petCatOwnerId = matchedSupabaseUserId === undefined ? null : matchedSupabaseUserId;
   const isPetOwnerReconciling = isLoggedIn === true && matchedSupabaseUserId === undefined;
+  // Stable React key for the floating Cat. It used to be keyed directly on
+  // the reconciled owner id, so on every page load the key flipped
+  // 'guest' -> '<supabase user id>' a few seconds in, unmounting and
+  // remounting the cat mid-run (it "restarted"). Now the instance is only
+  // replaced on a genuine account change (A -> B) or an explicit logout; the
+  // normal guest -> first-resolved-user transition keeps the same instance
+  // and just receives the new props.
+  const catIdentityRef = useRef<{ owner: string | null; epoch: number }>({ owner: null, epoch: 0 });
+  {
+    const resolvedOwner =
+      isLoggedIn === true && typeof matchedSupabaseUserId === 'string' ? matchedSupabaseUserId : null;
+    const tracker = catIdentityRef.current;
+    if (resolvedOwner !== null && resolvedOwner !== tracker.owner) {
+      if (tracker.owner !== null) tracker.epoch += 1; // A -> B switch
+      tracker.owner = resolvedOwner;
+    } else if (resolvedOwner === null && isLoggedIn === false && tracker.owner !== null) {
+      tracker.epoch += 1; // explicit logout
+      tracker.owner = null;
+    }
+  }
+  const catInstanceKey = `cat-${catIdentityRef.current.epoch}`;
   const setConfig = useAnnouncementBarStore((s) => s.setConfig);
   const [isToastBackdropOpen, setIsToastBackdropOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -1327,6 +1357,12 @@ useEffect(() => {
           : 'loading...'
       }
     />
+    {!appReady && (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-[9997] bg-white dark:bg-slate-900"
+      />
+    )}
     <Toaster
       position="top-right"
       richColors
@@ -1750,7 +1786,7 @@ useEffect(() => {
             changed across an in-session account swap. */}
         <div className={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute || isInvoicesRoute ? 'hidden' : 'contents'}>
           <CatMascot
-            key={!isLoggedIn ? 'guest' : (petCatOwnerId ?? 'guest')}
+            key={catInstanceKey}
             onCatClick={() => setIsVirtualPetOpen(true)}
             disabled={!isLoggedIn}
             isHidden={isAuthRoute || isCompanyMemberSignup || isVirtualPetOpen || isTutorialRoute || isUnifiedShopRoute || isInvoicesRoute}
