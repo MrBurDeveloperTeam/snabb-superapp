@@ -10,7 +10,7 @@ interface AppCardProps {
   isLoggedIn: boolean | null;
   app: MiniApp;
   index: number;
-  canOpenProfitCalculator: boolean;
+  canOpenProfitCalculator: () => boolean;
   /**
    * Opens an embedded, in-app screen instead of following `app.route` as a
    * URL — used by tiles like `snabbb-shop` that render inside this SPA
@@ -39,8 +39,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
   const iconCornerRadius = '20%';
 
   const handleClick = async () => {
-    // Check before opening a tab or requesting an SSO launch link.
-    if (app.id === 'app-8' && !(isLoggedIn && canOpenProfitCalculator)) {
+    // Guests open the public landing page; restrict only authenticated launches.
+    if (app.id === 'app-8' && isLoggedIn === true && !canOpenProfitCalculator()) {
       setAccessDenied(true);
       return;
     }
@@ -364,7 +364,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
       <DialogTitle id="profit-access-denied-title">Access denied</DialogTitle>
       <DialogContent>
         <DialogContentText id="profit-access-denied-description">
-          Access Denied: You do not have permission to access the Profit Calculator.
+          Profit Calculator is available only to the owner in this company workspace. Switch to your Personal workspace to access it.
         </DialogContentText>
       </DialogContent>
       <DialogActions>
