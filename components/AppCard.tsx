@@ -364,7 +364,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
       <DialogTitle id="profit-access-denied-title">Access denied</DialogTitle>
       <DialogContent>
         <DialogContentText id="profit-access-denied-description">
-          Profit Calculator is available only to the company owner.
+          Access Denied: You do not have permission to access the Profit Calculator.
         </DialogContentText>
       </DialogContent>
       <DialogActions>

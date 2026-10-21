@@ -48,7 +48,7 @@ import LoadingOverlay from './components/LoadingOverlay';
 import UserManagementPage from './subuser/components/UserManagementPage';
 import CompanyMemberSignupPage from './subuser/components/CompanyMemberSignupPage';
 import WorkspaceSwitcher from './subuser/components/WorkspaceSwitcher';
-import { acceptCompanyInvitation } from './subuser/services/subuserService';
+import { acceptCompanyInvitation, getMyCompanyWorkspaces } from './subuser/services/subuserService';
 import { readPendingCompanyInvitation, clearPendingCompanyInvitation } from './subuser/services/pendingCompanyInvitation';
 import TutorialLibraryPage from './tutorial-Video/TutorialLibraryPage';
 import TutorialWatchPage from './tutorial-Video/TutorialWatchPage';
@@ -263,6 +263,49 @@ const App: React.FC = () => {
     typeof matchedSupabaseUserId === 'string' &&
     accountTypeOwnerId === matchedSupabaseUserId;
   const isCompanyAccount = accountType === 'company';
+  const [calculatorMembership, setCalculatorMembership] = useState<{
+    userId: string;
+    isMember: boolean;
+  } | null>(null);
+  const canOpenProfitCalculator = isAccountTypeReady && (
+    isCompanyAccount || (
+      accountType !== 'company_member' &&
+      calculatorMembership?.userId === matchedSupabaseUserId &&
+      calculatorMembership?.isMember === false
+    )
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    let requestVersion = 0;
+    const loadMembership = async () => {
+      const version = ++requestVersion;
+      setCalculatorMembership(null);
+      if (!isLoggedIn || !matchedSupabaseUserId) return;
+      try {
+        const { workspaces } = await getMyCompanyWorkspaces();
+        if (!cancelled && version === requestVersion) {
+          setCalculatorMembership({
+            userId: matchedSupabaseUserId,
+            // Members can retain an individual profile. Check memberships,
+            // regardless of which workspace is currently selected.
+            isMember: workspaces.some(workspace =>
+              workspace.status === 'active' &&
+              workspace.ownerUserId !== matchedSupabaseUserId
+            ),
+          });
+        }
+      } catch (error) {
+        console.warn('[Profit Calculator] Unable to verify membership:', error);
+      }
+    };
+    loadMembership();
+    window.addEventListener('snabbb:memberships-changed', loadMembership);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('snabbb:memberships-changed', loadMembership);
+    };
+  }, [isLoggedIn, matchedSupabaseUserId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2018,7 +2061,7 @@ useEffect(() => {
                           {appsInCategory.map((app, index) => (
                             <AppCard
                               isLoggedIn={isLoggedIn}
-                              canOpenProfitCalculator={isAccountTypeReady && isCompanyAccount}
+                              canOpenProfitCalculator={canOpenProfitCalculator}
                               key={app.id}
                               app={app}
                               index={index}
@@ -2040,7 +2083,7 @@ useEffect(() => {
                     {filteredApps.map((app, index) => (
                       <AppCard
                         isLoggedIn={isLoggedIn}
-                        canOpenProfitCalculator={isAccountTypeReady && isCompanyAccount}
+                        canOpenProfitCalculator={canOpenProfitCalculator}
                         key={app.id}
                         app={app}
                         index={index}
