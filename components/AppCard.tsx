@@ -182,7 +182,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
         if (newTab) {
           try {
             const status = newTab.document.getElementById('status');
-            if (status) status.textContent = 'Signing you in…';
+            if (status) status.textContent = 'Almost there…';
           } catch {
             /* ignore */
           }
