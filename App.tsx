@@ -1139,7 +1139,24 @@ useEffect(() => {
         name: user.fullName,
       });
       if (resurl?.result?.url) {
-        window.location.href = resurl.result.url;
+        // Run the SSO bounce in a hidden iframe instead of navigating the
+        // whole page, so the cross-domain cookies still get set but the
+        // gallery doesn't visibly reload a few seconds after opening.
+        const frame = document.createElement('iframe');
+        frame.setAttribute('aria-hidden', 'true');
+        frame.tabIndex = -1;
+        frame.style.cssText =
+          'position:absolute;width:0;height:0;border:0;visibility:hidden;pointer-events:none;';
+        let timer = 0;
+        const cleanup = () => {
+          window.clearTimeout(timer);
+          frame.remove();
+        };
+        timer = window.setTimeout(cleanup, 15000);
+        // Remove shortly after the final redirect target has loaded.
+        frame.addEventListener('load', () => window.setTimeout(cleanup, 1500));
+        frame.src = resurl.result.url;
+        document.body.appendChild(frame);
       }
     } catch (e) {
       console.error('Failed to sync mrbur SSO:', e);
