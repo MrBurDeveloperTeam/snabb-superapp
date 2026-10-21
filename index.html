@@ -11,9 +11,11 @@
     <link rel="apple-touch-icon" href="/icons/favicon.png" />
     <title>App.Snabbb</title>
     <link rel="icon" type="image/png" href="/icons/favicon.png?v=1">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- deferred: no longer blocks the first paint. Still runs before /index.tsx
+         (module scripts run after defer scripts, in document order). -->
+    <script defer src="https://cdn.tailwindcss.com" onload="tailwind.config = window.__tailwindConfig"></script>
     <script>
-      tailwind.config = {
+      window.__tailwindConfig = {
         // Without this, Tailwind's `dark:` utilities default to the
         // 'media' strategy and key off the OS/browser's
         // prefers-color-scheme instead of the app's own light/dark
@@ -44,10 +46,13 @@
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"></noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap"></noscript>
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
     <!-- Apply persisted/system theme before paint to avoid a light-mode flash (FOUC) -->
     <script>
       (function () {
@@ -112,6 +117,12 @@
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.5);
       }
+      /* Pre-React splash so the page is never blank while the JS bundle loads */
+      html.dark body { background-color: #0F1115; background-image: none; }
+      .boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+      .boot-spinner { width: 56px; height: 56px; border-radius: 50%; border: 5px solid rgba(23,43,77,.12); border-top-color: #2A9D8F; animation: boot-spin .8s linear infinite; }
+      html.dark .boot-spinner { border-color: rgba(255,255,255,.18); border-top-color: #5EEAD4; }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
       /* Custom icon color gradients */
       .fa-icon-gradient {
         background: linear-gradient(135deg, #2563eb, #4f46e5);
@@ -135,7 +146,7 @@
 </script>
 </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" role="status" aria-label="Loading"><div class="boot-spinner"></div></div></div>
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>

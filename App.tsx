@@ -1359,9 +1359,14 @@ useEffect(() => {
     />
     {!appReady && (
       <div
-        aria-hidden="true"
-        className="fixed inset-0 z-[9997] bg-white dark:bg-slate-900"
-      />
+        role="status"
+        aria-label="Loading"
+        className="fixed inset-0 z-[9997] bg-white dark:bg-slate-900 flex items-center justify-center"
+      >
+        {/* .boot-spinner is defined in index.html, so this looks identical to
+            the pre-React splash and the hand-off to it is seamless. */}
+        <div className="boot-spinner" />
+      </div>
     )}
     <Toaster
       position="top-right"
