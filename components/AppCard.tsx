@@ -4,11 +4,13 @@ import { toast } from 'react-toastify';
 import { MiniApp } from '../types';
 import { getAuthUser } from '@/utils/authStorage';
 import { useCreateAppLink } from '@/mutation/useCreateAppLink';
+import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 
 interface AppCardProps {
   isLoggedIn: boolean | null;
   app: MiniApp;
   index: number;
+  canOpenProfitCalculator: boolean;
   /**
    * Opens an embedded, in-app screen instead of following `app.route` as a
    * URL — used by tiles like `snabbb-shop` that render inside this SPA
@@ -25,7 +27,8 @@ interface AppCardProps {
 // const ICON_SCALE = 120 / 112;
 const ICON_SCALE = 1.4;
 
-const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedded }) => {
+const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfitCalculator, onOpenEmbedded }) => {
+  const [accessDenied, setAccessDenied] = React.useState(false);
   const { mutateAsync: createAppLink, isPending } = useCreateAppLink();
 
   // Supports both full image URLs and local public paths like /icons/kaneiko_black.png
@@ -36,6 +39,11 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
   const iconCornerRadius = '20%';
 
   const handleClick = async () => {
+    // Check before opening a tab or requesting an SSO launch link.
+    if (app.id === 'app-8' && !(isLoggedIn && canOpenProfitCalculator)) {
+      setAccessDenied(true);
+      return;
+    }
     if (app.id === 'snabbb-shop') {
       onOpenEmbedded?.(app.id);
       return;
@@ -351,6 +359,18 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
   }
 
   return (
+    <>
+    <Dialog open={accessDenied} onClose={() => setAccessDenied(false)} aria-labelledby="profit-access-denied-title" aria-describedby="profit-access-denied-description" maxWidth="xs" fullWidth>
+      <DialogTitle id="profit-access-denied-title">Access denied</DialogTitle>
+      <DialogContent>
+        <DialogContentText id="profit-access-denied-description">
+          Profit Calculator is available only to the company owner.
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setAccessDenied(false)} autoFocus>OK</Button>
+      </DialogActions>
+    </Dialog>
     <motion.div
       onClick={isComingSoon ? undefined : handleClick}
       initial={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -452,6 +472,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, onOpenEmbedde
         {app.title}
       </h3>
     </motion.div>
+    </>
   );
 };
 
