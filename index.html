@@ -119,7 +119,9 @@
       }
       /* Pre-React splash so the page is never blank while the JS bundle loads */
       html.dark body { background-color: #0F1115; background-image: none; }
-      .boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+      .boot { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 20px; padding: 24px; text-align: center; align-items: center; justify-content: center; }
+      .boot-text { margin: 0; font-size: 16px; font-weight: 600; color: #475569; }
+      html.dark .boot-text { color: #cbd5e1; }
       .boot-spinner { width: 56px; height: 56px; border-radius: 50%; border: 5px solid rgba(23,43,77,.12); border-top-color: #2A9D8F; animation: boot-spin .8s linear infinite; }
       html.dark .boot-spinner { border-color: rgba(255,255,255,.18); border-top-color: #5EEAD4; }
       @keyframes boot-spin { to { transform: rotate(360deg); } }
@@ -146,7 +148,7 @@
 </script>
 </head>
   <body>
-    <div id="root"><div class="boot" role="status" aria-label="Loading"><div class="boot-spinner"></div></div></div>
+    <div id="root"><div class="boot" role="status" aria-label="Loading"><div class="boot-spinner"></div><p class="boot-text">Getting your apps ready&hellip;</p></div></div>
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>
