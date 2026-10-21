@@ -360,15 +360,66 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
 
   return (
     <>
-    <Dialog open={accessDenied} onClose={() => setAccessDenied(false)} aria-labelledby="profit-access-denied-title" aria-describedby="profit-access-denied-description" maxWidth="xs" fullWidth>
-      <DialogTitle id="profit-access-denied-title">Access denied</DialogTitle>
-      <DialogContent>
-        <DialogContentText id="profit-access-denied-description">
+    <Dialog
+      open={accessDenied}
+      onClose={() => setAccessDenied(false)}
+      aria-labelledby="profit-access-denied-title"
+      aria-describedby="profit-access-denied-description"
+      maxWidth="xs"
+      fullWidth
+      slotProps={{
+        backdrop: { sx: { backgroundColor: 'rgba(30, 41, 59, 0.58)' } },
+        paper: {
+          sx: {
+            m: 2,
+            width: 'calc(100% - 32px)',
+            maxWidth: 420,
+            p: { xs: 2.5, sm: 3 },
+            borderRadius: '16px',
+            backgroundImage: 'none',
+            backgroundColor: '#fff',
+            color: '#0f172a',
+            fontFamily: 'inherit',
+            boxShadow: '0 16px 48px #0004',
+            '.dark &': { backgroundColor: '#0f172a', color: '#f1f5f9' },
+          },
+        },
+      }}
+    >
+      <p style={{ margin: '0 0 8px', color: '#0f766e', fontSize: 12, lineHeight: 1.5, fontWeight: 700 }}>
+        <span className="dark:text-teal-300">PROFIT CALCULATOR</span>
+      </p>
+      <DialogTitle id="profit-access-denied-title" sx={{ p: 0, mb: 1.25, fontFamily: 'inherit', fontSize: 20, lineHeight: 1.4, fontWeight: 700 }}>
+        Access denied
+      </DialogTitle>
+      <DialogContent sx={{ p: 0 }}>
+        <DialogContentText id="profit-access-denied-description" sx={{ m: 0, color: 'inherit', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.6 }}>
           Profit Calculator is available only to the owner in this company workspace. Switch to your Personal workspace to access it.
         </DialogContentText>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setAccessDenied(false)} autoFocus>OK</Button>
+      <DialogActions sx={{ p: 0, mt: 2 }}>
+        <Button
+          onClick={() => setAccessDenied(false)}
+          autoFocus
+          sx={{
+            minWidth: 44,
+            minHeight: 44,
+            px: 1,
+            borderRadius: '8px',
+            color: '#0f766e',
+            fontFamily: 'inherit',
+            fontSize: 14,
+            fontWeight: 700,
+            textDecoration: 'underline',
+            textUnderlineOffset: '4px',
+            textDecorationThickness: '2px',
+            '&:hover': { backgroundColor: '#f0fdfa', textDecoration: 'underline' },
+            '&.Mui-focusVisible': { outline: '2px solid currentColor', outlineOffset: 2 },
+            '.dark &': { color: '#5eead4', '&:hover': { backgroundColor: '#134e4a' } },
+          }}
+        >
+          OK
+        </Button>
       </DialogActions>
     </Dialog>
     <motion.div
