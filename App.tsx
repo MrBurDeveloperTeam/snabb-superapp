@@ -2018,6 +2018,7 @@ useEffect(() => {
                           {appsInCategory.map((app, index) => (
                             <AppCard
                               isLoggedIn={isLoggedIn}
+                              canOpenProfitCalculator={isAccountTypeReady && isCompanyAccount}
                               key={app.id}
                               app={app}
                               index={index}
@@ -2039,6 +2040,7 @@ useEffect(() => {
                     {filteredApps.map((app, index) => (
                       <AppCard
                         isLoggedIn={isLoggedIn}
+                        canOpenProfitCalculator={isAccountTypeReady && isCompanyAccount}
                         key={app.id}
                         app={app}
                         index={index}
