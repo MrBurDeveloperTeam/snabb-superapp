@@ -54,6 +54,17 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
     const isExternal =
       app.route.startsWith('http://') || app.route.startsWith('https://');
 
+    // Kaneiko is a plain external site (per-country URL from constants.ts) —
+    // there's no Odoo SSO app link to create. Without this it fell into the
+    // logged-in branch below, matched none of the appCode checks, and
+    // `if (!appCode) return;` made the click a silent no-op. Matched on title
+    // rather than route because the route can also be the
+    // app.snabbb.com/shop fallback when company_code isn't loaded yet.
+    if (app.title === 'Kaneiko') {
+      window.open(app.route, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     if (isExternal && isLoggedIn) {
       // Figure out which app we're launching synchronously — no awaits yet.
       //
