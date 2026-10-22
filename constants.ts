@@ -1,4 +1,4 @@
-import { getMrBurUrlFromCompanyCode } from './services/authOdoo';
+import { getkaneikoUrlFromCompanyCode, getMrBurUrlFromCompanyCode } from './services/authOdoo';
 import { MiniApp } from './types';
 
 function getOdooCompanyCode(): string | null {
@@ -172,7 +172,7 @@ export const MINI_APPS: MiniApp[] = [
     title: 'Kaneiko',
     category: 'Shops',
     icon: '/icons/kaneiko_black.png',
-    route: 'https://kaneiko.com/',
+    route: getkaneikoUrlFromCompanyCode(companyCode),
     colorScheme: {  text: 'text-[#a21caf]', icon: '#0891b2' }
   },
   // {

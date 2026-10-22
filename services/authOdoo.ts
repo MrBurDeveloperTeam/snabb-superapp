@@ -359,12 +359,27 @@ const COMPANY_CODE_TO_MRBUR_URL: Record<string, string> = {
   JP: 'https://jp.mrbur.shop',
   KR: 'https://kr.mrbur.shop',
 }
+const COMPANY_CODE_TO_KANEIKO_URL: Record<string, string> = {
+  MY: 'https://my.kaneiko.com',
+  SG: 'https://sg.kaneiko.com',
+  TH: 'https://th.kaneiko.com',
+  IN: 'https://id.kaneiko.com',
+  VN: 'https://vn.kaneiko.com',
+  JP: 'https://jp.kaneiko.com',
+  KR: 'https://kr.kaneiko.com',
+}
 
 export function getMrBurUrlFromCompanyCode(companyCode?: string | null): string {
   if (!companyCode) return 'https://app.snabbb.com/shop';
   // company_code is like "MMY", "MSG", "MTH" — last 2 chars are country code
   const countryCode = companyCode.slice(-2).toUpperCase()
   return COMPANY_CODE_TO_MRBUR_URL[countryCode] ?? 'https://app.snabbb.com/shop'
+}
+export function getkaneikoUrlFromCompanyCode(companyCode?: string | null): string {
+  if (!companyCode) return 'https://app.snabbb.com/shop';
+  // company_code is like "MMY", "MSG", "MTH" — last 2 chars are country code
+  const countryCode = companyCode.slice(-2).toUpperCase()
+  return COMPANY_CODE_TO_KANEIKO_URL[countryCode] ?? 'https://app.snabbb.com/shop'
 }
 
 const getLocationInfo = async (): Promise<LocationResponse> => {
