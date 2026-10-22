@@ -26,6 +26,8 @@ interface AppCardProps {
 // The viewport clips the excess evenly on every side.
 // const ICON_SCALE = 120 / 112;
 const ICON_SCALE = 1.4;
+// Kaneiko's icon has no baked-in white border to crop, so it renders unscaled.
+const getIconScale = (title: string) => (title === 'Kaneiko' ? 1 : ICON_SCALE);
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfitCalculator, onOpenEmbedded }) => {
   const [accessDenied, setAccessDenied] = React.useState(false);
@@ -335,7 +337,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
                   className="block h-full w-full object-cover"
                   style={{
                     borderRadius: iconCornerRadius,
-                    transform: `scale(${app.title === "Kaneiko" ? 1 : ICON_SCALE})`,
+                    transform: `scale(${getIconScale(app.title)})`,
                   }}
                 />
               ) : (
@@ -509,7 +511,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
                 src={app.icon}
                 alt={app.title}
                 className="block h-full w-full object-cover transition-transform duration-200"
-                style={{ transform: `scale(${ICON_SCALE})` }}
+                style={{ transform: `scale(${getIconScale(app.title)})` }}
               />
             ) : (
               <i className={`${app.icon} text-3xl sm:text-4xl`} />
