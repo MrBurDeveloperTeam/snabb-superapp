@@ -1234,7 +1234,11 @@ useEffect(() => {
         !searchQuery.trim() || app.title.toLowerCase().includes(searchQuery.toLowerCase());
 
       return categoryMatch && searchMatch;
-    });
+    })
+      // "Coming soon" tiles (no route — see AppCard's isComingSoon) go last.
+      // Array.prototype.sort is stable, so everything else keeps its order
+      // from MINI_APPS and the same applies within each category section.
+      .sort((a: MiniApp, b: MiniApp) => Number(!a.route) - Number(!b.route));
   }, [activeCategory, searchQuery]);
 
   const handleSuccessfulAuth = () => {
