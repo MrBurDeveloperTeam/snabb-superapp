@@ -370,6 +370,9 @@ export interface PaymentProvider {
    *  redirect page regardless, so the frontend falls back to the existing
    *  SSO hand-off for those. */
   inline: boolean;
+  /** Cash / 30 Days Credit (Odoo: mrbur_offline_payment). No gateway: payment/init
+   *  confirms the order immediately, so the frontend never hands off to Odoo. */
+  offline?: boolean;
   /** Stripe only — see checkout.py's _provider_json (mrbur repo) for why
    *  this rides along here instead of in payment/init's processing_values
    *  (Stripe.js needs it client-side before it can even construct the
@@ -395,6 +398,8 @@ export interface PaymentInitResponse {
   ok: boolean;
   reference: string;
   provider_code: string;
+  /** True when the order is already confirmed (offline providers). */
+  offline_confirmed?: boolean;
   processing_values: Record<string, string | number | boolean | null>;
 }
 
@@ -416,6 +421,8 @@ export interface PaymentStatusResponse {
   state: string;
   is_done: boolean;
   is_error: boolean;
+  /** Offline (Cash / 30 Days Credit) tx: stays `pending` but the order is accepted. */
+  is_offline_confirmed?: boolean;
   state_message: string;
   order_group_id?: number | false;
   order_group_name?: string | false;

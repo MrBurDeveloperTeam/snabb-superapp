@@ -119,6 +119,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
     resumeReference ? 'confirming' : 'idle'
   );
   const [redirectingOther, setRedirectingOther] = useState(false);
+  // Set when the order was placed with an offline method (Cash / 30 Days
+  // Credit) — only changes the success-screen wording.
+  const [offlineMethodName, setOfflineMethodName] = useState<string | null>(null);
 
   const stripeRef = useRef<any>(null);
   const elementsRef = useRef<any>(null);
@@ -224,7 +227,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
     for (let attempt = 0; attempt < 12; attempt++) {
       try {
         const res = await fetchPaymentStatus(reference);
-        if (res.is_done) {
+        if (res.is_done || res.is_offline_confirmed) {
           setStatus('success');
           clearCart();
           return;
@@ -249,6 +252,26 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
   const handlePayNow = async () => {
     if (!selectedProvider) return;
     setPayError(null);
+
+    if (selectedProvider.offline) {
+      // Cash / 30 Days Credit: payment/init creates the transaction AND
+      // confirms the order server-side — nothing to redirect to or collect.
+      setPaying(true);
+      try {
+        const res = await initPayment(selectedProvider.id, false);
+        if (!res.offline_confirmed) {
+          throw new Error('Could not place your order with this payment method. Please try again.');
+        }
+        setOfflineMethodName(selectedProvider.name);
+        await pollStatus(res.reference);
+      } catch (err) {
+        setPayError(err instanceof Error ? err.message : 'Could not place your order. Please try again.');
+        setStatus('idle');
+      } finally {
+        setPaying(false);
+      }
+      return;
+    }
 
     if (!selectedProvider.inline) {
       setRedirectingOther(true);
@@ -345,9 +368,15 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center">
         <ShieldCheck className="mx-auto h-10 w-10 text-emerald-500" />
-        <p className="mt-3 text-[15px] font-bold text-slate-900 dark:text-white">Payment successful!</p>
+        <p className="mt-3 text-[15px] font-bold text-slate-900 dark:text-white">
+          {offlineMethodName ? 'Order placed!' : 'Payment successful!'}
+        </p>
         <p className="mt-1 text-[13px] text-slate-500 dark:text-slate-400">
-          {state?.order_group_id ? `Order confirmed — thank you for shopping with us.` : 'Your order is confirmed.'}
+          {offlineMethodName
+            ? `Your order is confirmed. Payment method: ${offlineMethodName}.`
+            : state?.order_group_id
+              ? `Order confirmed — thank you for shopping with us.`
+              : 'Your order is confirmed.'}
         </p>
         <button
           type="button"
@@ -472,7 +501,15 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
                   </div>
                 )}
 
-                {selectedProviderId === provider.id && !provider.inline && (
+                {selectedProviderId === provider.id && provider.offline && (
+                  <p className="mt-3 border-t border-slate-100 pt-3 text-[12px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                    {provider.name === 'Cash'
+                      ? 'Your order is confirmed right away and you pay in cash.'
+                      : 'Your order is confirmed right away and the invoice is due within 30 days.'}
+                  </p>
+                )}
+
+                {selectedProviderId === provider.id && !provider.inline && !provider.offline && (
                   <p className="mt-3 border-t border-slate-100 pt-3 text-[12px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
                     You'll be securely redirected to complete this payment with {provider.name}.
                   </p>
@@ -591,7 +628,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, onBackToShop, onRevie
               disabled={!selectedProvider || paying || redirectingOther || (selectedProvider?.inline && !txReference)}
               className="mt-4 w-full rounded-xl bg-tiffany-500 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-tiffany-600 disabled:opacity-50 disabled:hover:bg-tiffany-500"
             >
-              {paying || redirectingOther ? 'Processing…' : 'Pay now'}
+              {paying || redirectingOther ? 'Processing…' : selectedProvider?.offline ? 'Place order' : 'Pay now'}
             </button>
 
             {credit && (
