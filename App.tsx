@@ -1436,7 +1436,7 @@ useEffect(() => {
             </span>
             {isUnifiedShopRoute && (
               <span className="hidden sm:inline text-[11px] font-bold text-tiffany-700 border-l border-slate-200 pl-2 sm:pl-3 ml-1">
-                Shop &mdash; MR.BUR &amp; Kaneiko
+                SHOP
               </span>
             )}
           </button>
