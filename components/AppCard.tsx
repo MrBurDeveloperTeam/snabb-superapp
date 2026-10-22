@@ -54,17 +54,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
     const isExternal =
       app.route.startsWith('http://') || app.route.startsWith('https://');
 
-    // Kaneiko is a plain external site (per-country URL from constants.ts) —
-    // there's no Odoo SSO app link to create. Without this it fell into the
-    // logged-in branch below, matched none of the appCode checks, and
-    // `if (!appCode) return;` made the click a silent no-op. Matched on title
-    // rather than route because the route can also be the
-    // app.snabbb.com/shop fallback when company_code isn't loaded yet.
-    if (app.title === 'Kaneiko') {
-      window.open(app.route, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
     if (isExternal && isLoggedIn) {
       // Figure out which app we're launching synchronously — no awaits yet.
       //
@@ -78,7 +67,11 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
       // error). Matching on the stable id sidesteps that entirely; the real
       // shop URL still comes from the backend's createAppLink response
       // below, not from app.route.
-      const appCode = app.id === 'app-1'
+      // Kaneiko storefronts are on the same Odoo database as MR.BUR, so it
+      // uses the same app_link token + odoo-exchange hand-off as the Shop
+      // tile (see isKaneiko below) — otherwise it opens logged out.
+      const isKaneiko = app.title === 'Kaneiko';
+      const appCode = app.id === 'app-1' || isKaneiko
         ? 'shop'
         : app.route.includes('inventory')
         ? 'inventory'
@@ -182,7 +175,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
           if (token) {
             targetUrl = `https://app.snabbb.com/api/sso/odoo-exchange?token=${encodeURIComponent(
               token
-            )}&company_code=${encodeURIComponent(companyCode)}`;
+            )}&company_code=${encodeURIComponent(companyCode)}${isKaneiko ? '&brand=kaneiko' : ''}`;
           }
         }
 
