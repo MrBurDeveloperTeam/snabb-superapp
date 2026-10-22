@@ -335,7 +335,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
                   className="block h-full w-full object-cover"
                   style={{
                     borderRadius: iconCornerRadius,
-                    transform: `scale(${app.title !== "Kaneiko" ? 1 : ICON_SCALE})`,
+                    transform: `scale(${app.title === "Kaneiko" ? 1 : ICON_SCALE})`,
                   }}
                 />
               ) : (
