@@ -7,6 +7,7 @@ import { useUnifiedProducts, unifiedProductsQueryOptions } from '../hooks/useUni
 import { BRANDS, type ShopBrand, type SortOption, type UnifiedProduct } from '../types';
 import BrandFilterBar from './BrandFilterBar';
 import AttributeFilterBar from './AttributeFilterBar';
+import ActiveFilterChips from './ActiveFilterChips';
 import ShopBannerSlider from './ShopBannerSlider';
 import ProductCard from './ProductCard';
 import ProductPreviewModal from './ProductPreviewModal';
@@ -162,6 +163,12 @@ const ProductGrid: React.FC = () => {
       <BrandFilterBar value={brand} onChange={setBrand} />
 
       <AttributeFilterBar
+        attributes={attributes}
+        value={attributeValueIds}
+        onChange={setAttributeValueIds}
+      />
+
+      <ActiveFilterChips
         attributes={attributes}
         value={attributeValueIds}
         onChange={setAttributeValueIds}
