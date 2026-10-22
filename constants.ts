@@ -168,7 +168,7 @@ export const MINI_APPS: MiniApp[] = [
     colorScheme: { text: 'text-[#854d0e]', icon: '#0891b2' }
   },
   {
-    id: 'app-12',
+    id: 'app-13',
     title: 'Kaneiko',
     category: 'Shops',
     icon: '/icons/kaneiko_black.png',
