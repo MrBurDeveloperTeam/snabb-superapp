@@ -360,13 +360,13 @@ const COMPANY_CODE_TO_MRBUR_URL: Record<string, string> = {
   KR: 'https://kr.mrbur.shop',
 }
 const COMPANY_CODE_TO_KANEIKO_URL: Record<string, string> = {
-  MY: 'https://my.kaneiko.com',
-  SG: 'https://sg.kaneiko.com',
-  TH: 'https://th.kaneiko.com',
-  IN: 'https://id.kaneiko.com',
-  VN: 'https://vn.kaneiko.com',
-  JP: 'https://jp.kaneiko.com',
-  KR: 'https://kr.kaneiko.com',
+  MY: 'https://my.kaneiko.shop',
+  SG: 'https://sg.kaneiko.shop',
+  TH: 'https://th.kaneiko.shop',
+  IN: 'https://id.kaneiko.shop',
+  VN: 'https://vn.kaneiko.shop',
+  JP: 'https://jp.kaneiko.shop',
+  KR: 'https://kr.kaneiko.shop',
 }
 
 export function getMrBurUrlFromCompanyCode(companyCode?: string | null): string {
