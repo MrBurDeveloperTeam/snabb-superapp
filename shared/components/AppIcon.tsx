@@ -28,7 +28,7 @@ export const AppIcon = ({ icon, label }: { icon: string, label: string }) => {
             alt={label}
             className={`relative z-10 transition-transform duration-500 group-hover/icon:scale-110 ${
               isMrBur ? 'w-full h-full object-contain' : 'w-full h-full object-cover'
-            } ${needsInset ? 'scale-[0.81] rounded-2xl' : ''}`}
+            } ${needsInset ? 'scale-[0.81] rounded-2xl' : ''} ${isMrBur ? 'scale-[1.13]' : ''}`}
           />
         ) : (
           <i className={`${icon} text-2xl sm:text-3xl relative z-10 transition-transform duration-500 group-hover/icon:scale-110`}></i>
