@@ -1,16 +1,45 @@
 import api from "./api";
 import { isLocalDev } from "@/utils/env";
 
-export const getSessionInfo = async () => {
-  const response = await api.post('/web/session/get_session_info', {});
-  if(response.data.error) {
-    return Promise.reject(new Error(response.data.error.message));
-  }
-  const data = await response.data;
-  return data.result;
+// Several mount-time code paths (session verify, SSO cookie sync, the
+// path-change effect) ask for the session at the same moment. Share one
+// in-flight request between them instead of hitting Odoo once per caller.
+// Only the in-flight promise is shared — nothing is cached after it settles,
+// so a later focus/SSO re-check always gets fresh data.
+let sessionInfoInFlight: Promise<any> | null = null;
+
+export const getSessionInfo = (): Promise<any> => {
+  if (sessionInfoInFlight) return sessionInfoInFlight;
+
+  const request = (async () => {
+    const response = await api.post('/web/session/get_session_info', {});
+    if(response.data.error) {
+      return Promise.reject(new Error(response.data.error.message));
+    }
+    const data = await response.data;
+    return data.result;
+  })();
+
+  const tracked: Promise<any> = request.finally(() => {
+    if (sessionInfoInFlight === tracked) sessionInfoInFlight = null;
+  });
+  sessionInfoInFlight = tracked;
+  return tracked;
 };
 
-export const getSessionInfoWithRetry = async (retries = 3, delay = 1000): Promise<any> => {
+let sessionInfoEnrichInFlight: Promise<any> | null = null;
+
+export const getSessionInfoWithRetry = (retries = 3, delay = 1000): Promise<any> => {
+  // Same in-flight sharing as getSessionInfo() above.
+  if (sessionInfoEnrichInFlight) return sessionInfoEnrichInFlight;
+  const tracked: Promise<any> = fetchSessionInfoEnrichment(retries, delay).finally(() => {
+    if (sessionInfoEnrichInFlight === tracked) sessionInfoEnrichInFlight = null;
+  });
+  sessionInfoEnrichInFlight = tracked;
+  return tracked;
+};
+
+const fetchSessionInfoEnrichment = async (retries = 3, delay = 1000): Promise<any> => {
   // /api/odoo/session_info is implemented only by the production
   // Cloudflare Worker that fronts app.snabbb.com (worker.js) — it forwards
   // the browser's cookie to Odoo itself to compute company_id/company_name

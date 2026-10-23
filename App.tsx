@@ -13,6 +13,7 @@ import ResetPasswordPage from './features/auth/pages/ResetPassword';
 import { signOut } from './services/signOut';
 import { getAuthUser } from './utils/authStorage';
 import useGetSessionInfo from './features/auth/hooks/useGetSessionInfo';
+import { getSessionInfo as fetchOdooSessionInfo } from './services/GetSessionInfo';
 import api from './services/api';
 import type { MiniApp } from './types';
 import type { AuthFormData } from './types/AuthFormData';
@@ -749,7 +750,7 @@ useEffect(() => {
     clearAuthState();
   }, [clearAuthState]);
 
-    const verifySession = useCallback(async (): Promise<boolean | null> => {
+    const verifySessionRun = useCallback(async (): Promise<boolean | null> => {
     if (user && (user as any).isSimulated) return true;
 
     // Claim this invocation's generation before the only await that can
@@ -898,6 +899,20 @@ useEffect(() => {
     }
   }, [getSessionInfo, clearAuthState]);
 
+  // Mount fires verifySession() from bootstrapSession() AND from the
+  // path-change effect at the same time. Share one in-flight run between
+  // overlapping callers so the session endpoints, theme/context fetches and
+  // state updates happen once, not once per caller.
+  const verifySessionInFlightRef = useRef<Promise<boolean | null> | null>(null);
+  const verifySession = useCallback((): Promise<boolean | null> => {
+    if (verifySessionInFlightRef.current) return verifySessionInFlightRef.current;
+    const run: Promise<boolean | null> = verifySessionRun().finally(() => {
+      if (verifySessionInFlightRef.current === run) verifySessionInFlightRef.current = null;
+    });
+    verifySessionInFlightRef.current = run;
+    return run;
+  }, [verifySessionRun]);
+
   const verifySessionSafe = useCallback(
     async (force = false) => {
       const now = Date.now();
@@ -920,19 +935,18 @@ useEffect(() => {
   );
   
   async function syncSessionToMrBur() {
-    // Get the current session_id from Odoo
-    const res = await fetch("https://app.snabbb.com/api/web/session/get_session_info", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: 1 }),
-    });
+    // Get the current session_id from Odoo. Goes through the shared
+    // getSessionInfo() (same /api/web/session/get_session_info endpoint) so
+    // it reuses the request verifySession() already has in flight.
+    try {
+      const result = await fetchOdooSessionInfo();
+      const sid = result?.session_id;  // Odoo includes this in session_info
 
-    const data = await res.json();
-    const sid = data?.result?.session_id;  // Odoo includes this in session_info
-
-    if (sid) {
-      await plantMrBurCookie(sid);
+      if (sid) {
+        await plantMrBurCookie(sid);
+      }
+    } catch (e) {
+      console.warn('Failed to sync session to MR.BUR:', e);
     }
   }
 
