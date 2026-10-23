@@ -17,7 +17,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
  * it still refetches.
  */
 const COALESCED_TABLES = ['inventory_pet'];
-const READ_COALESCE_TTL_MS = 3000;
+const READ_COALESCE_TTL_MS = 6000;
 
 const coalescedReads = new Map<string, { at: number; promise: Promise<Response> }>();
 
