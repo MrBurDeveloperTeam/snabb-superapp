@@ -228,6 +228,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
     borderRadius: iconCornerRadius,
     overflow: 'hidden',
     position: 'relative',
+    willChange: 'transform',
+    backfaceVisibility: 'hidden',
   };
 
   const activeCardStyle: React.CSSProperties = {
@@ -262,19 +264,21 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
   };
 
   const glowStyle: React.CSSProperties = {
-    backgroundColor: `${app.colorScheme.icon}22`,
+    background: `radial-gradient(circle at center, ${app.colorScheme.icon}33 0%, ${app.colorScheme.icon}00 70%)`,
+    transform: 'scale(1.5)',
+    willChange: 'opacity',
   };
 
   const iconInsetClass = 'absolute inset-[3px]';
 
   const cardClass =
-    'relative z-10 w-24 h-24 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center transition-all duration-150';
+    'relative z-10 w-24 h-24 xs:w-24 xs:h-24 sm:w-28 sm:h-28 flex items-center justify-center';
 
   const wrapperClass =
     'group flex flex-col items-center gap-3 sm:gap-4 w-full pb-4 pt-2';
 
   const iconContentClass =
-    'relative z-10 flex items-center justify-center h-full w-full select-none transition-all duration-300';
+    'relative z-10 flex items-center justify-center h-full w-full select-none';
 
   const renderIcon = (imageClass = '') => {
     if (isImageUrl) {
@@ -444,15 +448,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
         </Button>
       </DialogActions>
     </Dialog>
-    <motion.div
+    <div
       onClick={isComingSoon ? undefined : handleClick}
-      initial={{ opacity: 0, scale: 0.96, y: 8 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{
-        opacity: { duration: 0.18 },
-        scale: { duration: 0.18 },
-        y: { duration: 0.18 },
-      }}
       className={`${wrapperClass} ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       data-no-cat="true"
       data-mascot-ignore="true"
@@ -465,28 +462,10 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
               : {
                   scale: 1.05,
                   y: -8,
-                  transition: { type: 'spring', stiffness: 400, damping: 12 },
+                  transition: { type: 'spring', stiffness: 320, damping: 24, mass: 0.6 },
                 }
           }
           whileTap={isComingSoon ? {} : { scale: 0.98 }}
-          onHoverStart={(e) => {
-            const el = e.currentTarget as HTMLDivElement;
-            if (el) {
-              Object.assign(
-                el.style,
-                isComingSoon ? comingSoonCardHoverStyle : activeCardHoverStyle
-              );
-            }
-          }}
-          onHoverEnd={(e) => {
-            const el = e.currentTarget as HTMLDivElement;
-            if (el) {
-              Object.assign(
-                el.style,
-                isComingSoon ? comingSoonCardStyle : activeCardStyle
-              );
-            }
-          }}
           className={cardClass}
           style={isComingSoon ? comingSoonCardStyle : activeCardStyle}
         >
@@ -502,7 +481,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
           )}
 
           <div
-            className={`${iconContentClass} group-hover:scale-100 ${
+            className={`${iconContentClass} ${
               !isImageUrl ? app.colorScheme.text : ''
             }`}
           >
@@ -510,7 +489,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
               <img
                 src={app.icon}
                 alt={app.title}
-                className="block h-full w-full object-cover transition-transform duration-200"
+                className="block h-full w-full object-cover"
+                draggable={false}
                 style={{ transform: `scale(${getIconScale(app.title)})` }}
               />
             ) : (
@@ -528,7 +508,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
 
         {!isComingSoon && (
           <div
-            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl -z-10 scale-100"
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 pointer-events-none"
             style={glowStyle}
           />
         )}
@@ -544,7 +524,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfit
       >
         {app.title}
       </h3>
-    </motion.div>
+    </div>
     </>
   );
 };
