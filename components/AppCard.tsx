@@ -27,7 +27,13 @@ interface AppCardProps {
 // const ICON_SCALE = 120 / 112;
 const ICON_SCALE = 1.4;
 // Kaneiko's icon has no baked-in white border to crop, so it renders unscaled.
-const getIconScale = (title: string) => (title === 'Kaneiko' ? 1 : ICON_SCALE);
+// Per-icon scale so every icon's visible artwork ends up the same size.
+const ICON_SCALE_BY_TITLE: Record<string, number> = {
+  Kaneiko: 1,
+  'Mr.Bur': 1.5,
+  'Snabbb Shop': 1.42,
+};
+const getIconScale = (title: string) => ICON_SCALE_BY_TITLE[title] ?? ICON_SCALE;
 
 const AppCard: React.FC<AppCardProps> = ({ app, index, isLoggedIn, canOpenProfitCalculator, onOpenEmbedded }) => {
   const [accessDenied, setAccessDenied] = React.useState(false);
