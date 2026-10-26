@@ -18,7 +18,7 @@ const companyCode = getOdooCompanyCode()
 // Cache-buster for /icons/*. The Cloudflare Worker caches versioned icon URLs
 // for a year (see "STATIC ICON EDGE CACHE" in worker.js). Icon filenames are not
 // content-hashed, so BUMP THIS whenever any icon image is replaced.
-export const ICON_VERSION = '1';
+export const ICON_VERSION = '2';
 
 export const MINI_APPS: MiniApp[] = [
   // ======= SHOPS =======
