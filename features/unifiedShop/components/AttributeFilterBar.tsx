@@ -122,7 +122,7 @@ const AttributeFilterBar: React.FC<AttributeFilterBarProps> = ({ attributes, val
   const openAttribute = attributes.find((a) => a.id === openId) ?? null;
 
   return (
-    <div ref={containerRef} className="flex items-center gap-2 overflow-x-auto pb-1">
+    <div ref={containerRef} className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {attributes.map((attr) => {
         const selectedCount = attr.values.filter((v) => value.includes(v.id)).length;
         const isOpen = openId === attr.id;

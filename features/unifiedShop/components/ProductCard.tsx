@@ -86,7 +86,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
         )}
       </div>
 
-      <div className="flex min-h-[116px] flex-1 flex-col gap-1.5 p-3">
+      <div className="flex min-h-[127px] flex-1 flex-col gap-1.5 p-3">
         <h3 className="min-h-[2.75em] text-[13px] font-semibold leading-snug text-slate-800 dark:text-slate-100 line-clamp-2">
           {product.name}
         </h3>

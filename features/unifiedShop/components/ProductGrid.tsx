@@ -202,7 +202,7 @@ const ProductGrid: React.FC = () => {
                   className="flex animate-pulse flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
                 >
                   <div className="aspect-square w-full bg-slate-100 dark:bg-slate-800" />
-                  <div className="h-[116px]" />
+                  <div className="h-[127px]" />
                 </div>
               ))}
             </div>
