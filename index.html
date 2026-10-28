@@ -11,41 +11,7 @@
     <link rel="apple-touch-icon" href="/icons/favicon.png" />
     <title>App.Snabbb</title>
     <link rel="icon" type="image/png" href="/icons/favicon.png?v=1">
-    <!-- deferred: no longer blocks the first paint. Still runs before /index.tsx
-         (module scripts run after defer scripts, in document order). -->
-    <script defer src="https://cdn.tailwindcss.com" onload="tailwind.config = window.__tailwindConfig"></script>
-    <script>
-      window.__tailwindConfig = {
-        // Without this, Tailwind's `dark:` utilities default to the
-        // 'media' strategy and key off the OS/browser's
-        // prefers-color-scheme instead of the app's own light/dark
-        // toggle (the `.dark` class on <html>, set by the pre-paint
-        // script below and store/themeStore.ts). That mismatch is why
-        // a component styled with `dark:` classes could render dark
-        // even while the rest of the app shows light — pinning this to
-        // 'class' makes every dark: utility in the app follow the same
-        // toggle everything else already uses.
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              tiffany: {
-                50:  '#f0fdfb',
-                100: '#ccfbf4',
-                200: '#99f5e9',
-                300: '#5eead4',
-                400: '#2dd4bf',
-                500: '#14b8a6',
-                600: '#0abfbc',
-                700: '#089a98',
-                800: '#0a7a78',
-                900: '#0c5f5e',
-              }
-            }
-          }
-        }
-      }
-    </script>
+    <!-- Tailwind is compiled at build time (see tailwind.config.js); no CDN runtime. -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"></noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">

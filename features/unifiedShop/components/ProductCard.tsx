@@ -54,6 +54,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
             <img
               src={product.imageUrl}
               alt={product.name}
+              width={400}
+              height={400}
+              decoding="async"
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageError(true)}
               className={`h-full w-full object-cover transition-[opacity,transform] duration-200 group-hover:scale-105 ${
@@ -83,8 +86,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-1.5 p-3">
-        <h3 className="text-[13px] font-semibold leading-snug text-slate-800 dark:text-slate-100 line-clamp-2">
+      <div className="flex min-h-[116px] flex-1 flex-col gap-1.5 p-3">
+        <h3 className="min-h-[2.75em] text-[13px] font-semibold leading-snug text-slate-800 dark:text-slate-100 line-clamp-2">
           {product.name}
         </h3>
 

@@ -5,6 +5,8 @@ import type { ShopBrand } from '../types';
 
 const AUTOPLAY_MS = 5000;
 const SWIPE_PX = 40;
+// Reserved slot (width:height) so the page doesn't jump when banners load.
+const BANNER_ASPECT = 'aspect-[16/5]';
 
 function prefersReducedMotion(): boolean {
   try {
@@ -21,7 +23,7 @@ function prefersReducedMotion(): boolean {
  * Renders nothing when there are no banners (or the request failed).
  */
 const ShopBannerSlider: React.FC<{ brand: ShopBrand | 'all' }> = ({ brand }) => {
-  const { data: banners = [] } = useShopBanners(brand);
+  const { data: banners = [], isLoading } = useShopBanners(brand);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -37,6 +39,15 @@ const ShopBannerSlider: React.FC<{ brand: ShopBrand | 'all' }> = ({ brand }) => 
     const timer = window.setInterval(() => setIndex((i) => (i + 1) % count), AUTOPLAY_MS);
     return () => window.clearInterval(timer);
   }, [count, paused]);
+
+  if (isLoading) {
+    return (
+      <div
+        className={`${BANNER_ASPECT} w-full animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800`}
+        aria-hidden="true"
+      />
+    );
+  }
 
   if (count === 0) return null;
 
@@ -74,13 +85,13 @@ const ShopBannerSlider: React.FC<{ brand: ShopBrand | 'all' }> = ({ brand }) => 
               alt={banner.altText}
               loading={i === 0 ? 'eager' : 'lazy'}
               draggable={false}
-              className="block h-auto w-full select-none"
+              className="block h-full w-full select-none object-cover"
             />
           );
           return (
             <div
               key={banner.id}
-              className="w-full shrink-0"
+              className={`${BANNER_ASPECT} w-full shrink-0 [&>a]:block [&>a]:h-full`}
               role="group"
               aria-roledescription="slide"
               aria-label={`${i + 1} of ${count}`}

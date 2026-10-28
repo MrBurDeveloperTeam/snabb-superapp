@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /*
  * Snabbb Apps Gallery — global dark-mode override layer.
  *

@@ -162,11 +162,15 @@ const ProductGrid: React.FC = () => {
 
       <BrandFilterBar value={brand} onChange={setBrand} />
 
-      <AttributeFilterBar
-        attributes={attributes}
-        value={attributeValueIds}
-        onChange={setAttributeValueIds}
-      />
+      {/* Attributes arrive with the first product response; hold the row's
+          height until then so the grid below doesn't get pushed down. */}
+      <div className={isLoading ? 'min-h-[42px]' : undefined}>
+        <AttributeFilterBar
+          attributes={attributes}
+          value={attributeValueIds}
+          onChange={setAttributeValueIds}
+        />
+      </div>
 
       <ActiveFilterChips
         attributes={attributes}
@@ -191,10 +195,15 @@ const ProductGrid: React.FC = () => {
           {isLoading && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
+                // Mirrors ProductCard's real layout (square image + fixed-height
+                // body) so swapping skeleton -> cards doesn't change the height.
                 <div
                   key={i}
-                  className="aspect-[3/4] animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
-                />
+                  className="flex animate-pulse flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="aspect-square w-full bg-slate-100 dark:bg-slate-800" />
+                  <div className="h-[116px]" />
+                </div>
               ))}
             </div>
           )}

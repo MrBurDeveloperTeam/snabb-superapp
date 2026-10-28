@@ -2422,7 +2422,12 @@ function copyResponseHeadersWithoutSetCookie(upstreamRes) {
         subdomain = COMPANY_SUBDOMAIN_MAP[companyCode] || "www";
     }
 
-    const shopHost = `${subdomain}.mrbur.shop`;
+    // Kaneiko storefronts live on the same Odoo DB but on *.kaneiko.shop.
+    // The gallery passes &brand=kaneiko for that tile; without this the
+    // hand-off always landed on *.mrbur.shop.
+    const brand = (url.searchParams.get("brand") || "").toLowerCase();
+    const shopDomain = brand === "kaneiko" ? "kaneiko.shop" : "mrbur.shop";
+    const shopHost = `${subdomain}.${shopDomain}`;
 
     return new Response(null, {
         status: 302,
