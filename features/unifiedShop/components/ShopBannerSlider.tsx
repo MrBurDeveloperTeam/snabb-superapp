@@ -84,6 +84,8 @@ const ShopBannerSlider: React.FC<{ brand: ShopBrand | 'all' }> = ({ brand }) => 
               src={banner.imageUrl}
               alt={banner.altText}
               loading={i === 0 ? 'eager' : 'lazy'}
+              fetchPriority={i === 0 ? 'high' : 'auto'}
+              decoding="async"
               draggable={false}
               className="block h-full w-full select-none object-cover"
             />
