@@ -269,7 +269,7 @@ const LoginForm: React.FC<Props> = ({
                         className="password-visibility-toggle absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
                       >
                         <i
-                          className={`fa-regular ${showPassword ? "fa-eye" : "fa-eye-slash"} text-base`}
+                          className={`fa-regular ${showPassword ? "fa-eye-slash" : "fa-eye"} text-base`}
                           aria-hidden="true"
                         />
                       </button>
