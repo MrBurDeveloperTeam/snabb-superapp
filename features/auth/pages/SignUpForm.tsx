@@ -525,7 +525,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     title={showPassword ? 'Hide password' : 'Show password'}
                     className="password-visibility-toggle absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
                   >
-                    <i className={`fa-regular ${showPassword ? 'fa-eye' : 'fa-eye-slash'} text-base`} aria-hidden="true" />
+                    <i className={`fa-regular ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-base`} aria-hidden="true" />
                   </button>
                 </div>
                 {passwordStrength === 'short' && validationMessage('Password must be at least 8 characters.')}
@@ -578,7 +578,7 @@ export const SignupForm: React.FC<Props> = ({ control, onChange, error, onNaviga
                     title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                     className="password-visibility-toggle absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
                   >
-                    <i className={`fa-regular ${showConfirmPassword ? 'fa-eye' : 'fa-eye-slash'} text-base`} aria-hidden="true" />
+                    <i className={`fa-regular ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} text-base`} aria-hidden="true" />
                   </button>
                 </div>
                 {validationMessage(error.confirmPassword?.message as string | undefined)}
