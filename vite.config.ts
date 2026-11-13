@@ -29,7 +29,7 @@ if (localPetRoot) {
 // Odoo.sh gives a staging branch a NEW hostname every time it is rebuilt
 // (mrbur-staging-2-<build id>.dev.odoo.com). Set ODOO_STAGING_URL in your shell /
 // .env.local instead of editing every proxy entry below.
-const ODOO_STAGING = process.env.ODOO_STAGING_URL || 'https://mrbur-staging-2-39203776.dev.odoo.com';
+const ODOO_STAGING = process.env.ODOO_STAGING_URL || 'https://mrbur-staging-2-41035078.dev.odoo.com';
 const CLOUDFLARE_ASSET_LIMIT = 25 * 1024 * 1024;
 const GAME_CHUNK_SIZE = 20 * 1024 * 1024;
 
