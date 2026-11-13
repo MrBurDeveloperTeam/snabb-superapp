@@ -11,6 +11,7 @@ export interface Invoice {
   amount_due: number;
   payment_state: string;
   can_pay?: boolean;
+  tracking?: { number: string; courier: string; url: string }[];
 }
 
 export interface InvoicePage {
