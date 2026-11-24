@@ -69,7 +69,7 @@ export async function fetchInvoicePayUrl(invoiceId: number): Promise<string> {
 /** One invoice from the shipping e-mail link (?inv=<id>&t=<token>), no session needed. */
 export async function fetchInvoicePreview(id: string, token: string, signal: AbortSignal): Promise<InvoicePreview> {
   const params = new URLSearchParams({ inv: id, t: token });
-  const response = await fetch(`/api/my/invoices/preview?${params}`, {
+  const response = await fetch(`/api/my/invoices?${params}`, {
     credentials: 'omit', signal, cache: 'no-store',
     headers: { Accept: 'application/json' },
   });
