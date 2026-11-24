@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, CreditCard, Download, FileText, LoaderCircle, RefreshCw } from 'lucide-react';
-import { fetchInvoicePayUrl, fetchInvoices, InvoiceApiError, type InvoicePage } from './invoiceApi';
+import { fetchInvoicePayUrl, fetchInvoicePreview, fetchInvoices, InvoiceApiError, type InvoicePage, type InvoicePreview } from './invoiceApi';
 
 const action = 'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiffany-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40';
 const statuses: Record<string, string> = { paid: 'Paid', partial: 'Partially paid', not_paid: 'Unpaid', in_payment: 'Processing', reversed: 'Reversed', blocked: 'On hold', invoicing_legacy: 'Invoiced' };
@@ -17,6 +17,8 @@ export default function MyInvoicesPage({ signedIn, onNavigate }: { signedIn: boo
   const heading = useRef<HTMLHeadingElement>(null);
   const [payingId, setPayingId] = useState<number | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<InvoicePreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const payInvoice = async (invoiceId: number) => {
     setPayingId(invoiceId); setPayError(null);
@@ -29,6 +31,20 @@ export default function MyInvoicesPage({ signedIn, onNavigate }: { signedIn: boo
   };
 
   useEffect(() => { heading.current?.focus(); }, []);
+  // Not signed in but opened from the shipping e-mail (?inv=&t=): show just that invoice.
+  useEffect(() => {
+    if (signedIn) { setPreview(null); setPreviewLoading(false); return; }
+    const params = new URLSearchParams(window.location.search);
+    const inv = params.get('inv'), token = params.get('t');
+    if (!inv || !token) { setPreview(null); return; }
+    const controller = new AbortController();
+    setPreviewLoading(true);
+    fetchInvoicePreview(inv, token, controller.signal)
+      .then(setPreview)
+      .catch(() => { if (!controller.signal.aborted) setPreview(null); })
+      .finally(() => { if (!controller.signal.aborted) setPreviewLoading(false); });
+    return () => controller.abort();
+  }, [signedIn]);
   useEffect(() => {
     const restore = () => setPage(readPage());
     window.addEventListener('popstate', restore);
@@ -66,7 +82,26 @@ export default function MyInvoicesPage({ signedIn, onNavigate }: { signedIn: boo
       {!needsLogin && <button type="button" disabled={loading} onClick={() => setRevision(v => v + 1)} className={`${action} border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`}><RefreshCw size={15} /> Refresh</button>}
     </div>
     <section aria-label="Your invoices" aria-busy={loading} className="min-h-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      {needsLogin ? <div className="px-6 py-16 text-center"><FileText className="mx-auto mb-4 text-tiffany-600" size={32} /><h2 className="font-bold text-slate-900 dark:text-white">Sign in to view your invoices</h2><p className="mt-2 text-sm text-slate-500">Your invoices are only available to your account.</p><button type="button" onClick={() => onNavigate('/login')} className={`${action} mt-5 bg-tiffany-700 text-white hover:bg-tiffany-800`}>Sign in</button></div>
+      {needsLogin && previewLoading ? <div role="status" className="flex min-h-72 items-center justify-center gap-3 text-sm text-slate-500"><LoaderCircle size={20} className="animate-spin motion-reduce:animate-none" /> Loading your invoice…</div>
+      : needsLogin && preview ? <>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <caption className="sr-only">Your invoice. Sign in to see the full details.</caption>
+            <thead className="border-b border-slate-100 bg-slate-50 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400"><tr><th scope="col" className="px-5 py-4">Invoice</th><th scope="col" className="hidden px-5 py-4 md:table-cell">Date</th><th scope="col" className="hidden px-5 py-4 sm:table-cell">Status</th></tr></thead>
+            <tbody><tr className="text-slate-700 dark:text-slate-300">
+              <th scope="row" className="max-w-64 px-3 py-5 sm:px-5 font-normal"><span className="block break-words font-bold text-slate-900 dark:text-white">{preview.number}</span><span className="mt-1 block text-xs text-slate-500">{preview.brands.join(' · ') || preview.company}</span>{preview.tracking?.map(t => <span key={t.number} className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
+                <span>{t.courier ? `${t.courier}:` : 'Tracking:'}</span>
+                <span className="select-all break-all font-semibold text-slate-700 dark:text-slate-200">{t.number}</span>
+                {/^https?:\/\//.test(t.url) && <a href={t.url} target="_blank" rel="noopener noreferrer" aria-label={`Track parcel ${t.number} (opens in a new tab)`} className="whitespace-nowrap font-semibold text-tiffany-700 hover:underline dark:text-tiffany-300">Track ↗</a>}
+              </span>)}<span className="mt-1 block text-xs text-slate-500 md:hidden">{dateLabel(preview.date)}</span><span className="mt-1 block text-xs sm:hidden">{statuses[preview.payment_state] || 'Pending'}</span></th>
+              <td className="hidden whitespace-nowrap px-5 py-5 md:table-cell">{dateLabel(preview.date)}</td>
+              <td className="hidden px-5 py-5 sm:table-cell"><span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{statuses[preview.payment_state] || 'Pending'}</span></td>
+            </tr></tbody>
+          </table>
+        </div>
+        <div className="border-t border-slate-100 bg-slate-50 px-5 py-6 text-center dark:border-slate-800 dark:bg-slate-800/50"><p className="text-sm text-slate-600 dark:text-slate-300">Sign in to see the full details of this invoice (amount, PDF, payment) and the rest of your invoices.</p><button type="button" onClick={() => onNavigate('/login')} className={`${action} mt-4 bg-tiffany-700 text-white hover:bg-tiffany-800`}>Sign in</button></div>
+      </>
+      : needsLogin ? <div className="px-6 py-16 text-center"><FileText className="mx-auto mb-4 text-tiffany-600" size={32} /><h2 className="font-bold text-slate-900 dark:text-white">Sign in to view your invoices</h2><p className="mt-2 text-sm text-slate-500">Your invoices are only available to your account.</p><button type="button" onClick={() => onNavigate('/login')} className={`${action} mt-5 bg-tiffany-700 text-white hover:bg-tiffany-800`}>Sign in</button></div>
       : loading ? <div role="status" className="flex min-h-72 items-center justify-center gap-3 text-sm text-slate-500"><LoaderCircle size={20} className="animate-spin motion-reduce:animate-none" /> Loading your invoices…</div>
       : error ? <div role="alert" className="px-6 py-16 text-center"><h2 className="font-bold text-slate-900 dark:text-white">Invoices couldn’t be loaded</h2><p className="mt-2 text-sm text-slate-500">{error.message}</p><button type="button" onClick={() => setRevision(v => v + 1)} className={`${action} mt-5 bg-tiffany-700 text-white hover:bg-tiffany-800`}>Try again</button></div>
       : !data?.invoices.length ? <div className="px-6 py-16 text-center"><FileText className="mx-auto mb-4 text-slate-300" size={36} /><h2 className="font-bold text-slate-900 dark:text-white">No invoices yet</h2><p className="mt-2 text-sm text-slate-500">Your invoices will appear here once they’re issued.</p></div>

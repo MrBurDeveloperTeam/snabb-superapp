@@ -14,6 +14,18 @@ export interface Invoice {
   tracking?: { number: string; courier: string; url: string }[];
 }
 
+/** What a visitor who is not signed in may see: no amounts, PDF or payment. */
+export interface InvoicePreview {
+  id: number;
+  number: string;
+  date: string | null;
+  company: string;
+  brands: string[];
+  type: 'out_invoice' | 'out_refund';
+  payment_state: string;
+  tracking?: { number: string; courier: string; url: string }[];
+}
+
 export interface InvoicePage {
   invoices: Invoice[];
   total: number;
@@ -52,4 +64,16 @@ export async function fetchInvoicePayUrl(invoiceId: number): Promise<string> {
     );
   }
   return body.url;
+}
+
+/** One invoice from the shipping e-mail link (?inv=<id>&t=<token>), no session needed. */
+export async function fetchInvoicePreview(id: string, token: string, signal: AbortSignal): Promise<InvoicePreview> {
+  const params = new URLSearchParams({ inv: id, t: token });
+  const response = await fetch(`/api/my/invoices/preview?${params}`, {
+    credentials: 'omit', signal, cache: 'no-store',
+    headers: { Accept: 'application/json' },
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body?.ok || !body.invoice) throw new InvoiceApiError('This link is no longer valid.', response.status);
+  return body.invoice;
 }

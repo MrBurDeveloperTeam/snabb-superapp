@@ -453,7 +453,7 @@ useEffect(() => {
   const tutorialVideoMatch = path.match(/^\/tutorial-video\/([^/]+)\/?$/);
   const isTutorialRoute = path === '/tutorial-video' || Boolean(tutorialVideoMatch);
   const isUnifiedShopRoute = path === '/snabbb-shop' || path === '/snabbb-shop/admin/sequence';
-  const isInvoicesRoute = path === '/my-invoices';
+  const isInvoicesRoute = path === '/my-invoices' || path === '/my-invoice';
   // Unified Shop's cart badge/trigger, surfaced in the shared header
   // (profile-menu entries below, plus a guest-visible icon) instead of
   // Unified Shop rendering its own separate header.
