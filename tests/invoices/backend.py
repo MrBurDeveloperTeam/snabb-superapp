@@ -58,6 +58,13 @@ class InvoiceAccessTests(unittest.TestCase):
         self.assertIn(('id', '=', 900), domain)
         http.request.env.__getitem__.assert_called_once_with('account.move')
 
+    def test_email_link_filters_within_the_authenticated_account(self):
+        self.controller.invoices(invoice_id='123')
+        domain = self.moves.search.call_args.args[0]
+        self.assertIn(('id', '=', 123), domain)
+        self.assertIn(('commercial_partner_id', '=', 42), domain)
+        self.assertEqual(self.controller.invoices(invoice_id='bad')[0], 404)
+
     def test_bad_and_empty_pages_are_bounded(self):
         for value in ['bad', '-5', '0', None]:
             self.assertEqual(module.bounded_page(value, 0), 1)

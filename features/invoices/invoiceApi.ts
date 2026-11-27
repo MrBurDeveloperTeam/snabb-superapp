@@ -16,6 +16,7 @@ export interface Invoice {
 
 /** What a visitor who is not signed in may see: no amounts, PDF or payment. */
 export interface InvoicePreview {
+  can_activate?: boolean;
   id: number;
   number: string;
   date: string | null;
@@ -37,8 +38,27 @@ export class InvoiceApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
 
-export async function fetchInvoices(page: number, signal: AbortSignal): Promise<InvoicePage> {
-  const response = await fetch(`/api/my/invoices?page=${page}`, {
+export async function downloadInvoice(invoice: Invoice) {
+  const response = await fetch(`/api/my/invoices/${invoice.id}/pdf?download=1`, {
+    credentials: 'include', cache: 'no-store', headers: { Accept: 'application/pdf' },
+  });
+  if (!response.ok || !response.headers.get('Content-Type')?.startsWith('application/pdf')) {
+    throw new InvoiceApiError('We couldn’t download this PDF. Please try again.', response.status);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = invoice.number.replace(/[\\/:*?"<>|]/g, '-') + '.pdf';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function fetchInvoices(page: number, signal: AbortSignal, invoiceId?: string | null): Promise<InvoicePage> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (invoiceId) params.set('invoice_id', invoiceId);
+  const response = await fetch(`/api/my/invoices?${params}`, {
     credentials: 'include', signal, cache: 'no-store',
     headers: { Accept: 'application/json' },
   });
