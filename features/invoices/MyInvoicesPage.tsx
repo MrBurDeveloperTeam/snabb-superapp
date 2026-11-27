@@ -26,7 +26,7 @@ export default function MyInvoicesPage({ signedIn, onNavigate, verifySession }: 
   const [preview, setPreview] = useState<InvoicePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogPurpose, setDialogPurpose] = useState<'invoice' | 'track' | null>(null);
   const [activationToken, setActivationToken] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('activate'));
   const params = new URLSearchParams(window.location.search);
   const invoiceId = params.get('inv');
@@ -42,7 +42,7 @@ export default function MyInvoicesPage({ signedIn, onNavigate, verifySession }: 
 
   const finishSignIn = async () => {
     if (!await verifySession()) throw new Error('Your session could not be verified.');
-    setDialogOpen(false);
+    setDialogPurpose(null);
     setRevision(v => v + 1);
   };
 
@@ -133,16 +133,16 @@ export default function MyInvoicesPage({ signedIn, onNavigate, verifySession }: 
                 <span className="select-all break-all font-semibold text-slate-700 dark:text-slate-200">{t.number}</span>
                 {/^https?:\/\//.test(t.url) && (preview.can_activate === true
                   ? <a href={t.url} target="_blank" rel="noopener noreferrer" aria-label={`Track parcel ${t.number} (opens in a new tab)`} className="whitespace-nowrap font-semibold text-tiffany-700 hover:underline dark:text-tiffany-300">Track ↗</a>
-                  : <button type="button" onClick={() => setDialogOpen(true)} aria-label={`Track parcel ${t.number} (sign in required)`} className="whitespace-nowrap rounded font-semibold text-tiffany-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiffany-600 dark:text-tiffany-300">Track ↗</button>)}
+                  : <button type="button" onClick={() => setDialogPurpose('track')} aria-label={`Track parcel ${t.number} (sign in required)`} className="whitespace-nowrap rounded font-semibold text-tiffany-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiffany-600 dark:text-tiffany-300">Track ↗</button>)}
               </span>)}<span className="mt-1 block text-xs text-slate-500 md:hidden">{dateLabel(preview.date)}</span><span className="mt-1 block text-xs sm:hidden">{statuses[preview.payment_state] || 'Pending'}</span></th>
               <td className="hidden whitespace-nowrap px-5 py-5 md:table-cell">{dateLabel(preview.date)}</td>
               <td className="hidden px-5 py-5 sm:table-cell"><span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{statuses[preview.payment_state] || 'Pending'}</span></td>
-              <td className="px-3 py-5"><button type="button" onClick={() => setDialogOpen(true)} className={`${action} text-tiffany-800 hover:underline dark:text-tiffany-300`}>Sign in to view Invoice</button></td>
+              <td className="px-3 py-5"><button type="button" onClick={() => setDialogPurpose('invoice')} className={`${action} text-tiffany-800 hover:underline dark:text-tiffany-300`}>Sign in to view Invoice</button></td>
             </tr></tbody>
           </table>
         </div>
       </>
-      : needsLogin ? <div className="px-6 py-16 text-center"><FileText className="mx-auto mb-4 text-tiffany-600" size={32} /><h2 className="font-bold text-slate-900 dark:text-white">Sign in to view your invoices</h2><p className="mt-2 text-sm text-slate-500">Your invoices are only available to your account.</p><button type="button" onClick={() => setDialogOpen(true)} className={`${action} mt-5 bg-tiffany-700 text-white hover:bg-tiffany-800`}>Sign in</button></div>
+      : needsLogin ? <div className="px-6 py-16 text-center"><FileText className="mx-auto mb-4 text-tiffany-600" size={32} /><h2 className="font-bold text-slate-900 dark:text-white">Sign in to view your invoices</h2><p className="mt-2 text-sm text-slate-500">Your invoices are only available to your account.</p><button type="button" onClick={() => setDialogPurpose('invoice')} className={`${action} mt-5 bg-tiffany-700 text-white hover:bg-tiffany-800`}>Sign in</button></div>
       : loading ? <div role="status" className="flex min-h-72 items-center justify-center gap-3 text-sm text-slate-500"><LoaderCircle size={20} className="animate-spin motion-reduce:animate-none" /> Loading your invoices…</div>
       : error ? <div role="alert" className="px-6 py-16 text-center"><h2 className="font-bold text-slate-900 dark:text-white">Invoices couldn’t be loaded</h2><p className="mt-2 text-sm text-slate-500">{error.message}</p><button type="button" onClick={() => setRevision(v => v + 1)} className={`${action} mt-5 bg-tiffany-700 text-white hover:bg-tiffany-800`}>Try again</button></div>
       : !data?.invoices.length ? <div className="px-6 py-16 text-center"><FileText className="mx-auto mb-4 text-slate-300" size={36} /><h2 className="font-bold text-slate-900 dark:text-white">{linkedInvoice ? 'Invoice unavailable' : 'No invoices yet'}</h2><p className="mt-2 text-sm text-slate-500">{linkedInvoice ? 'This invoice is unavailable for the signed-in account.' : 'Your invoices will appear here once they’re issued.'}</p></div>
@@ -170,7 +170,7 @@ export default function MyInvoicesPage({ signedIn, onNavigate, verifySession }: 
       </>}
     </section>
     {linkedInvoice && !needsLogin && <a href="/my-invoices" className={`${action} mt-4 text-tiffany-800 dark:text-tiffany-300`}>View all invoices</a>}
-    {dialogOpen && <InvoiceAccessDialog invoice={preview} token={activationToken} onConsumed={discardActivationToken}
-      onSignedIn={finishSignIn} onClose={() => setDialogOpen(false)} />}
+    {dialogPurpose && <InvoiceAccessDialog purpose={dialogPurpose} invoice={preview} token={activationToken} onConsumed={discardActivationToken}
+      onSignedIn={finishSignIn} onClose={() => setDialogPurpose(null)} />}
   </main>;
 }
