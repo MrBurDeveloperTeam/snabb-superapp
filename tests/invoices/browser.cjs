@@ -77,6 +77,9 @@ const { readFile } = require('node:fs/promises');
    await buyer.goto('about:blank');
    await buyer.goto(url);
    await buyer.getByRole('button',{name:'sign in to view Invoice',exact:true}).click();
+   const dialog = buyer.getByRole('dialog');
+   assert.equal(await dialog.getByRole('button',{name:'Activate',exact:true}).count(),canActivate === true ? 1 : 0);
+   assert.equal(await dialog.getByRole('button',{name:'Sign in',exact:true}).count(),canActivate === true ? 0 : 1);
  };
  const activate = async () => {
    await buyer.getByRole('button',{name:'Activate',exact:true}).click();
@@ -117,6 +120,7 @@ const { readFile } = require('node:fs/promises');
  await buyer.getByLabel('Purchase email').fill('buyer@example.test');
  await buyer.getByRole('button',{name:'Send email'}).click();
  await buyer.getByRole('heading',{name:'Check your inbox'}).waitFor();
+ assert.equal(await buyer.getByRole('button',{name:'Back to sign in'}).count(),0);
 
  confirmFails = false;
  signInFails = true;
@@ -130,7 +134,7 @@ const { readFile } = require('node:fs/promises');
  canActivate = false;
  signInFails = false;
  ownsInvoice = false;
- await startAccess(entry);
+ await startAccess(entry+'#activate=old-token');
  assert.equal(await buyer.getByRole('button',{name:'Activate',exact:true}).count(),0);
  await buyer.getByRole('button',{name:'Sign in',exact:true}).click();
  await buyer.getByLabel('Email or username').fill('buyer@example.test');
@@ -138,6 +142,8 @@ const { readFile } = require('node:fs/promises');
  await buyer.getByRole('button',{name:'Sign in',exact:true}).click();
  await buyer.getByRole('heading',{name:'Invoice unavailable'}).waitFor();
  assert.equal(await buyer.getByRole('button',{name:/Download invoice/}).count(),0);
+ canActivate = undefined;
+ await startAccess(entry+'#activate=old-token');
  await buyer.close();
  console.log('PASS: email activation, password mismatch, automatic sign-in, PDF bytes and filename, expired and legacy links, sign-in recovery and wrong-account view');
  // Verify the actual application's menu and internal route as well as the isolated page.

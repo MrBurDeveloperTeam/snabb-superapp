@@ -83,7 +83,7 @@ export default function InvoiceAccessDialog({ invoice, token, onClose, onSignedI
     }
   }
 
-  const canActivate = invoice && (invoice.can_activate ?? Boolean(token));
+  const canActivate = invoice?.can_activate === true;
   const title = { choose: 'View your invoice', activate: 'Set a new password', login: 'Sign in',
     request: 'Request a new email', sent: 'Check your inbox' }[step];
   return <dialog ref={dialog} aria-labelledby="invoice-access-title"
@@ -94,14 +94,17 @@ export default function InvoiceAccessDialog({ invoice, token, onClose, onSignedI
       <button type="button" disabled={busy} onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><X size={18} /></button>
     </div>
     {step === 'choose' ? <>
-      <p className="my-4 text-sm">{canActivate ? 'Activate your account to see the full invoice. Already have a password? Sign in.' : 'Sign in with your purchase account to download this invoice.'}</p>
+      <p className="my-4 text-sm">{canActivate ? 'Activate your account to see the full invoice.' : 'Sign in with your purchase account to download this invoice.'}</p>
       <div className="flex flex-wrap gap-2">
-        {canActivate && <button type="button" className={primary} onClick={() => changeStep(token ? 'activate' : 'request')}>Activate</button>}
-        <button type="button" className={canActivate ? secondary : primary} onClick={() => changeStep('login')}>Sign in</button>
+        {canActivate
+          ? <button type="button" className={primary} onClick={() => changeStep(token ? 'activate' : 'request')}>Activate</button>
+          : <button type="button" className={primary} onClick={() => changeStep('login')}>Sign in</button>}
       </div>
     </> : step === 'sent' ? <>
       <p role="status" className="my-4 text-sm">If your email matches an account, you’ll receive a link to set your password.</p>
-      <button type="button" className={secondary} onClick={() => changeStep('login')}>Back to sign in</button>
+      {canActivate
+        ? <button type="button" className={secondary} onClick={onClose}>Close</button>
+        : <button type="button" className={secondary} onClick={() => changeStep('login')}>Back to sign in</button>}
     </> : <form key={step} noValidate onSubmit={submit} className="mt-4 space-y-4">
       {step === 'request' && <p className="text-sm">Enter your purchase email to receive a fresh password link.</p>}
       {step !== 'activate' && <label className="block text-sm font-semibold">{step === 'request' ? 'Purchase email' : 'Email or username'}
