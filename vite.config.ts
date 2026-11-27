@@ -161,6 +161,11 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
             changeOrigin: true,
             secure: false,
           },
+          '/api/web/reset_password': {
+            target: ODOO_STAGING,
+            changeOrigin: true,
+            rewrite: (p) => p.replace(/^\/api\/web/, '/mrbur'),
+          },
           '/api/web': {
             target: ODOO_STAGING,  
             changeOrigin: true,

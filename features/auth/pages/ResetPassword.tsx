@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SnabbbIcon } from '../../../public/icons/SnabbbIcon';
-import api from '@/services/api';
+import { confirmPassword as savePassword } from '@/services/resetPassword';
 
 interface ResetPasswordPageProps {
   navigate: (path: string) => void;
@@ -43,29 +43,13 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ navigate }) => {
       return;
     }
 
+    if (!token) return;
     setIsLoading(true);
     try {
-      const res = await fetch('https://mrbur.odoo.com/mrbur/reset_password/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          id: 1,
-          params: { token, password },
-        }),
-      });
-    
-      const data = await res.json();
-      const result = data?.result;
-    
-      if (result?.ok) {
-        setStage('success');
-      } else {
-        setErrorMsg(result?.error || 'Something went wrong. Please try again.');
-      }
-    } catch {
-      setErrorMsg('Network error. Please check your connection and try again.');
+      await savePassword(token, password);
+      setStage('success');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }

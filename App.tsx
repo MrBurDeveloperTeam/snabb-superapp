@@ -1997,7 +1997,7 @@ useEffect(() => {
           )}
 
           {isInvoicesRoute && (
-            <MyInvoicesPage key={`${authUser?.username || 'guest'}:${authUser?.company_id || ''}`} signedIn={isLoggedIn === true} onNavigate={navigate} />
+            <MyInvoicesPage key={`${authUser?.username || 'guest'}:${authUser?.company_id || ''}`} signedIn={isLoggedIn === true} onNavigate={navigate} verifySession={verifySession} />
           )}
 
           {isUnifiedShopRoute && (

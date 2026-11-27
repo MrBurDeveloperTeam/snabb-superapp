@@ -15,6 +15,14 @@ GET `/api/my/invoices?page=1` returns `{ok, invoices, page, page_size:20, total}
 
 GET `/api/my/invoices/<id>/pdf` displays the issued PDF (or renders the configured invoice report when no attachment exists); `?download=1` requests attachment disposition.
 
+## Opening an invoice from email
+
+Deploy the app together with the Python changes in `mrbur_parcel_tracking`, `mrbur_auto_account_creation`, `mrbur_password_reset`, and `unified_shop_api`. Restart the Odoo workers. The issued PDF and the shipping email both lead back to the invoice row. The issued-PDF email personalizes the link for the invoice contact at send time.
+
+The `inv` and `t` query parameters authorize a limited preview. Eligible first-time buyers receive a separate Odoo signup token in the link fragment. The page sends that token, the invoice ID, and the new password to the password-confirmation endpoint. Odoo checks the token and invoice contact, runs its existing signup and password-sync logic, and returns the login used for automatic sign-in. An older preview-only link lets the customer request a fresh account email. Existing customers can sign in directly in the dialog.
+
+Signed-in email views request `/api/my/invoices?invoice_id=<id>` under the session's existing ownership rules. **Download invoice** saves the authenticated PDF locally. **View all invoices** returns to the paginated account list.
+
 ## Acceptance checks
 
 Use two independent customer accounts: confirm each sees only its own commercial-account documents, direct foreign PDF access is 404, logged-out requests are 401, draft/vendor records are absent, and pagination handles more than 20 documents. Verify mixed-brand invoices appear individually, balances/currencies match Odoo, and PDF view/download work. Test empty, error/retry, timeout, narrow layout, dark theme, keyboard, refresh, and browser history. Browser fixtures verify UI states but do not prove production auth/report rendering.
