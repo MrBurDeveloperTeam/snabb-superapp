@@ -120,7 +120,7 @@ export default function MyInvoicesPage({ signedIn, onNavigate, verifySession }: 
       <div><p className="mb-2 text-xs font-bold uppercase tracking-widest text-tiffany-700 dark:text-tiffany-300">Your account</p><h1 ref={heading} tabIndex={-1} className="text-3xl font-extrabold tracking-tight text-slate-900 outline-none dark:text-white">My Invoice</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400">View your invoices and credit notes in one place. Purchases with separate brand invoices appear individually.</p></div>
       {!needsLogin && <button type="button" disabled={loading} onClick={() => setRevision(v => v + 1)} className={`${action} border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`}><RefreshCw size={15} /> Refresh</button>}
     </div>
-    <section aria-label="Your invoices" aria-busy={loading} className="min-h-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section aria-label="Your invoices" aria-busy={loading} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {needsLogin && previewLoading ? <div role="status" className="flex min-h-72 items-center justify-center gap-3 text-sm text-slate-500"><LoaderCircle size={20} className="animate-spin motion-reduce:animate-none" /> Loading your invoice…</div>
       : needsLogin && preview ? <>
         <div className="overflow-x-auto">
@@ -131,11 +131,13 @@ export default function MyInvoicesPage({ signedIn, onNavigate, verifySession }: 
               <th scope="row" className="max-w-64 px-3 py-5 sm:px-5 font-normal"><span className="block break-words font-bold text-slate-900 dark:text-white">{preview.number}</span><span className="mt-1 block text-xs text-slate-500">{preview.brands.join(' · ') || preview.company}</span>{preview.tracking?.map(t => <span key={t.number} className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
                 <span>{t.courier ? `${t.courier}:` : 'Tracking:'}</span>
                 <span className="select-all break-all font-semibold text-slate-700 dark:text-slate-200">{t.number}</span>
-                {/^https?:\/\//.test(t.url) && <a href={t.url} target="_blank" rel="noopener noreferrer" aria-label={`Track parcel ${t.number} (opens in a new tab)`} className="whitespace-nowrap font-semibold text-tiffany-700 hover:underline dark:text-tiffany-300">Track ↗</a>}
+                {/^https?:\/\//.test(t.url) && (preview.can_activate === true
+                  ? <a href={t.url} target="_blank" rel="noopener noreferrer" aria-label={`Track parcel ${t.number} (opens in a new tab)`} className="whitespace-nowrap font-semibold text-tiffany-700 hover:underline dark:text-tiffany-300">Track ↗</a>
+                  : <button type="button" onClick={() => setDialogOpen(true)} aria-label={`Track parcel ${t.number} (sign in required)`} className="whitespace-nowrap rounded font-semibold text-tiffany-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiffany-600 dark:text-tiffany-300">Track ↗</button>)}
               </span>)}<span className="mt-1 block text-xs text-slate-500 md:hidden">{dateLabel(preview.date)}</span><span className="mt-1 block text-xs sm:hidden">{statuses[preview.payment_state] || 'Pending'}</span></th>
               <td className="hidden whitespace-nowrap px-5 py-5 md:table-cell">{dateLabel(preview.date)}</td>
               <td className="hidden px-5 py-5 sm:table-cell"><span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{statuses[preview.payment_state] || 'Pending'}</span></td>
-              <td className="px-3 py-5"><button type="button" onClick={() => setDialogOpen(true)} className={`${action} text-tiffany-800 hover:underline dark:text-tiffany-300`}>sign in to view Invoice</button></td>
+              <td className="px-3 py-5"><button type="button" onClick={() => setDialogOpen(true)} className={`${action} text-tiffany-800 hover:underline dark:text-tiffany-300`}>Sign in to view Invoice</button></td>
             </tr></tbody>
           </table>
         </div>

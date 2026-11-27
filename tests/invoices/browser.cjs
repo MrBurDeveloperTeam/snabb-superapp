@@ -38,6 +38,7 @@ const { readFile } = require('node:fs/promises');
  // Follow a receipt through first-time activation and an actual local PDF download.
  const buyer = await browser.newPage({viewport:{width:390,height:844}});
  const invoice = {id:42,number:'INV/0042',company:'MR.BUR',brands:[],type:'out_invoice',
+   tracking:[{number:'TRACK42',courier:'Courier',url:'https://courier.example.test/track/42'}],
    date:'2026-09-23',due_date:null,currency:'MYR',total:50,amount_due:0,payment_state:'paid'};
  const entry = fixture+'?guest=1&inv=42&t=preview';
  let canActivate = true;
@@ -76,7 +77,7 @@ const { readFile } = require('node:fs/promises');
  const startAccess = async (url) => {
    await buyer.goto('about:blank');
    await buyer.goto(url);
-   await buyer.getByRole('button',{name:'sign in to view Invoice',exact:true}).click();
+   await buyer.getByRole('button',{name:'Sign in to view Invoice',exact:true}).click();
    const dialog = buyer.getByRole('dialog');
    assert.equal(await dialog.getByRole('button',{name:'Activate',exact:true}).count(),canActivate === true ? 1 : 0);
    assert.equal(await dialog.getByRole('button',{name:'Sign in',exact:true}).count(),canActivate === true ? 0 : 1);
@@ -87,6 +88,7 @@ const { readFile } = require('node:fs/promises');
    await buyer.getByLabel('Confirm new password').fill('fixture-password');
  };
  await startAccess(entry+'#activate=one-time');
+ assert.equal(await buyer.getByRole('link',{name:'Track parcel TRACK42 (opens in a new tab)'}).getAttribute('href'),'https://courier.example.test/track/42');
  await activate();
  await buyer.getByLabel('Confirm new password').fill('different-password');
  await buyer.getByRole('button',{name:'Activate',exact:true}).click();
@@ -133,6 +135,22 @@ const { readFile } = require('node:fs/promises');
 
  canActivate = false;
  signInFails = false;
+ await buyer.goto('about:blank');
+ await buyer.goto(entry);
+ const pageCount = buyer.context().pages().length;
+ const trackButton = buyer.getByRole('button',{name:'Track parcel TRACK42 (sign in required)'});
+ await trackButton.click();
+ await buyer.getByRole('dialog').waitFor();
+ assert.equal(buyer.context().pages().length,pageCount);
+ assert.equal(await buyer.getByRole('link',{name:/Track parcel/}).count(),0);
+ assert.equal(await buyer.getByRole('dialog').getByRole('button',{name:'Activate',exact:true}).count(),0);
+ await buyer.getByRole('dialog').getByRole('button',{name:'Sign in',exact:true}).click();
+ await buyer.getByLabel('Email or username').fill('buyer@example.test');
+ await buyer.getByLabel('Password',{exact:true}).fill('fixture-password');
+ await buyer.getByRole('dialog').getByRole('button',{name:'Sign in',exact:true}).click();
+ await buyer.getByRole('link',{name:'Track parcel TRACK42 (opens in a new tab)'}).waitFor();
+ assert.equal(await buyer.getByRole('dialog').count(),0);
+ assert.equal(await buyer.getByRole('button',{name:/Track parcel/}).count(),0);
  ownsInvoice = false;
  await startAccess(entry+'#activate=old-token');
  assert.equal(await buyer.getByRole('button',{name:'Activate',exact:true}).count(),0);
@@ -181,7 +199,7 @@ const { readFile } = require('node:fs/promises');
  assert.equal(new URL(app.url()).pathname,'/');
  appSignedIn = false;
  await app.goto('http://127.0.0.1:3011/my-invoices?inv=42&t=preview');
- await app.getByRole('button',{name:'sign in to view Invoice',exact:true}).click();
+ await app.getByRole('button',{name:'Sign in to view Invoice',exact:true}).click();
  await app.getByRole('dialog').getByRole('button',{name:'Sign in',exact:true}).click();
  await app.getByLabel('Email or username').fill('invoice-test@example.test');
  await app.getByLabel('Password',{exact:true}).fill('fixture-password');
